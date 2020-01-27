@@ -33,8 +33,8 @@ eqn = Wave;
 %method = FR('Ga');
 %method = FR('LumpLo');
 %method = FR(1e-2);
-method = DGIGA(4);
-%method = DGIGA_AFC(4);
+%method = DGIGA(4);
+method = DGIGA_AFC(4);
 
 %% Initial condition
 FUN = @(x) combinedIC(x);
@@ -51,23 +51,24 @@ limiter = [];
 %limiter = Limiter.Krivodonova(eqn); % best in this case
 %limiter = Limiter.Wang(eqn);
 if isa(method,'DGIGA_AFC')
-    limiter = Limiter.AFC(eqn);
+    %limiter = Limiter.AFC(eqn);
 end
 
 %% Initial condition projection
 % method.interpolate(mesh,limiter,FUN);
 method.project(mesh,limiter,FUN);
+%method.projectLumped(mesh,limiter,FUN);
 
 %% Time-integration
 timeIntegrator = SSP_RK3(0,tEnd,eqn,limiter,CFL,dt);
-norms0 = [mesh.getSolutionNorm(1:2),mesh.getTotalVariation,mesh.getErrorNorm(FUN,1:2)];
+norms0 = [mesh.getSolutionMass(1:2),mesh.getErrorNorm(FUN,2,1:2)];
 tic
 timeIntegrator.launch(mesh,iterSkip,@(t,x) FUN(x));
 fprintf(1,'...done. (%g s)\n',toc)
 
 %% Postprocessing
-norms = [mesh.getSolutionNorm(1:2),mesh.getTotalVariation,mesh.getErrorNorm(FUN,1:2)];
-rows = {'Solution (L2)','Solution (TV)','Error (L2)'};
+norms = [mesh.getSolutionMass(1:2),mesh.getErrorNorm(FUN,2,1:2)];
+rows = {'Solution (Mass)','Error (L2)'};
 cols = {'Norm','Start','End'};
 eqn.displayData(rows,cols,norms0,norms)
 

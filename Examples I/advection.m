@@ -15,25 +15,15 @@ addpath('../Grid')
 addpath('../Math')
 
 %% Parameters
-Ne = 3; % number of elements
-p = 2; % degree of the approximation space (per element)
-L = [0 1]; % domain edges
-tEnd = 10; % final simulation time
-CFL = .005; % Courant number
-dt = []; % time-step size (overrides CFL)
-iterSkip = 50;
-    
-%% Physics
-eqn = Advection;
+Ne = 1; % number of elements
+p = 1; % degree of the approximation space (per element)
+L = [-1 9]; % domain edges
+tEnd = 4; % final simulation time
+dt = .5; % time-step size (overrides CFL)
+CFL = 1e-2; % Courant number
+iterSkip = 100;
 
-%% Discretization
-method = DGIGA(27,p,0); 
-
-%% Grid
-xEdge = linspace(L(1),L(2),Ne+1); % element end-points
-mesh = Mesh(xEdge,p,method);
-
-%% Initial condition
+%% Initial condition collection
 IC_linear = @(x) x;
 IC_quadratic = @(x) 2*(x - x.^2);
 IC_heaviside = @(x) heaviside(2/diff(L)*(x-L(1)) - 1);
@@ -48,9 +38,18 @@ IC_jiangShu = @(x) JiangShu(2/diff(L)*(x-L(1)) - 1);
 IC_randomSignal = @(x) randomSignal(x,0,3,L,0);
 IC_jaeschkeHump = @(x) .25*(1+cos(pi*min(1,2*sqrt((x-.5).^2))));
 IC_jaeschkeSquare = @(x) heaviside(x-0.25) - heaviside(x-0.75);
-%%%%%%%%%%%%%%%%%%%%%%%%
-FUN = IC_quadratic;
-%%%%%%%%%%%%%%%%%%%%%%%%
+IC_leveque = @(x) 2 - 2*heaviside(x);
+
+%% Physics
+FUN = IC_leveque; % initial condition
+eqn = Advection(1,FUN(L)); % PDE
+
+%% Discretization
+method = DGIGA_AFC(20);
+
+%% Grid
+xEdge = linspace(L(1),L(2),Ne+1); % element end-points
+mesh = Mesh(xEdge,p,method);
 
 %% Limiter
 limiter = [];
@@ -61,7 +60,7 @@ limiter = [];
 %limiter = Limiter.Krivodonova(eqn);
 %limiter = Limiter.Wang(eqn);
 if isa(method,'DGIGA_AFC')
-    limiter = Limiter.AFC(eqn); % (!-> with AFC, use FIXED time-step size)
+    %%% limiter = Limiter.AFC(eqn); % (!-> with AFC, use FIXED time-step size)
 end
 
 %% Initial condition projection
@@ -71,7 +70,7 @@ method.project(mesh,limiter,FUN,50);
 %method.project_Matthias(mesh,limiter,FUN);
 
 %% Time-integration
-timeIntegrator = SSP_RK3(0,tEnd,eqn,limiter,CFL,dt);
+timeIntegrator = SSP_RK1(0,tEnd,eqn,limiter,CFL,dt);
 % norms0 = [mesh.getSolutionMass,mesh.getSolutionNorm(1),mesh.getSolutionNorm,mesh.getTotalVariation,mesh.getErrorNorm(FUN)];
 norms0 = mesh.getSolutionMass;
 tic
@@ -79,9 +78,9 @@ timeIntegrator.launch(mesh,iterSkip,@(t,x) FUN(x));
 fprintf(1,'...done. (%g s)\n',toc)
 
 %% Postprocessing
-% norms = [mesh.getSolutionMass,mesh.getSolutionNorm,mesh.getTotalVariation,mesh.getErrorNorm(FUN)];
-norms = mesh.getSolutionMass;
+% norms = [mesh.getSolutionMass,mesh.getSolutionNorm(1),mesh.getSolutionNorm,mesh.getTotalVariation,mesh.getErrorNorm(FUN)];
 % rows = {'Solution (mass)' 'Solution (L1)' 'Solution (L2)','Solution (TV)','Error (L2)'};
+norms = mesh.getSolutionMass;
 rows = {'Solution (mass)'};
 cols = {'Norm','Start','End','Increase'};
 eqn.displayData(rows,cols,norms0,norms,norms-norms0)

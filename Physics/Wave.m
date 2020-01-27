@@ -21,6 +21,18 @@ classdef Wave < Physics
             wave.eigenvectors = [c -c; 1 1];
             wave.invEigenvectors = [1 c; -1 c]/(2*c);
         end
+        %% Convection operator
+        function convection = getConvectionMatrix(this,~,basis)
+            % Returns the discrete convection operator to be applied to the
+            % modal coefficients of the discretizated solution.
+            %
+            % Arguments
+            %  states: (unused) row array of basis function coefficients
+            %  basis: finite-dimensional discretization basis
+            % Output
+            %  convection: discrete convection operator
+            error('Vector physics not supported.')
+        end
         %% Flux function
         function flux = flux(this,states)
             flux = this.jacobian*states;
@@ -36,23 +48,23 @@ classdef Wave < Physics
 %             % Right-most boundary:
 %             mesh.elements(end).riemannR =...
 %                 this.riemannFlux(mesh.elements(end).stateR,externalState);
-%             mesh.edges{end}.computeTimeDeltas(-this.advSpeed);
+%             mesh.edges{end}.computeTimeDeltas(-this.waveSpeed);
 %             % Left-most boundary:
 %             mesh.elements(1).riemannL =...
 %                 -this.riemannFlux(externalState,mesh.elements(1).stateL);
-%             mesh.edges{1}.computeTimeDeltas(this.advSpeed);
+%             mesh.edges{1}.computeTimeDeltas(this.waveSpeed);
 %         end
         %% Reflecting boundary conditions
         function applyBoundaryConditions(this,mesh)
             % Right-most boundary:
             externalState = [mesh.elements(end).stateR(1); -mesh.elements(end).stateR(2)];
             mesh.elements(end).riemannR = this.riemannFlux(mesh.elements(end).stateR,externalState);
-            mesh.edges{end}.computeTimeDeltas(-this.advSpeed);
+            mesh.edges{end}.computeTimeDeltas(-this.waveSpeed);
             % Left-most boundary:
             externalState = [mesh.elements(1).stateL(1); -mesh.elements(1).stateL(2)];
             mesh.elements(1).riemannL =...
                 -this.riemannFlux(externalState,mesh.elements(1).stateL);
-            mesh.edges{1}.computeTimeDeltas(this.advSpeed);
+            mesh.edges{1}.computeTimeDeltas(this.waveSpeed);
         end
         %% Convert state vector(s) to characteristic variable vector(s)
         function states = stateToEigenstate(this,states)

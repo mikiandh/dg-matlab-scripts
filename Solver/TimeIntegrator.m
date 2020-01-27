@@ -77,7 +77,7 @@ classdef TimeIntegrator < handle
                 this.timeNow = this.timeNow + this.timeDelta;
                 % Check solution boundedness:
                 states = cell2mat({mesh.elements.states});
-                if any(isinf(states)) || any(isnan(states))
+                if any(isinf(states(:))) || any(isnan(states(:)))
                     %warning('Infinite or NaN state(s) detected at t = %.4f.',this.timeNow)
                     break
                 end

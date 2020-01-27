@@ -17,8 +17,8 @@ addpath('../Math')
 
 %% Test tuple setup
 data = assembleTestTuple(...
-    {FR(-.62) FR(0) FR(.5)}... semi-discretization (2)
-    ,{1}... degree (3)
+    {DGIGA(1,2,1) DGIGA(2,2,1) DGIGA(3,2,1) DGIGA(2,2,0)}... semi-discretization (2)
+    ,{2}... degree (3)
     ,{16}... #patches (4)
     ,{nan}... #spans (5)
     ,{nan}... continuity class within patch (6)

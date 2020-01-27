@@ -7,6 +7,10 @@ classdef Limiter < handle
     end
     methods (Static)
         %% Factories
+        % No limiter (placeholder)
+        function limiter = none(varargin)
+            limiter = [];
+        end
         % TVBM limiter, Cockburn & Shu 1989
         function limiter = TVBM(physics,M)
             if isa(physics,'Advection') || isa(physics,'Burgers')

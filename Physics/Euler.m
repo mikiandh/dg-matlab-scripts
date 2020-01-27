@@ -45,6 +45,18 @@ classdef Euler < Physics
         function applyBoundaryConditions(this,mesh)
             this.boundaryConditionsFunction(mesh);
         end
+        %% Convection operator
+        function convection = getConvectionMatrix(this,states,basis)
+            % Returns the discrete convection operator to be applied to the
+            % modal coefficients of the discretizated solution.
+            %
+            % Arguments
+            %  states: row array of basis function coefficients
+            %  basis: finite-dimensional discretization basis
+            % Output
+            %  convection: discrete convection operator
+            error('Vector physics not supported.')
+        end
         %% Numerical flux
         function [flux, waveSpeeds] = riemannFlux(this,stateL,stateR)
             [flux, waveSpeeds] = this.riemannSolver(stateL,stateR);

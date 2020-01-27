@@ -37,7 +37,7 @@ classdef AFC_scalar < Limiter
                     error('Vector physics not supported. Yet.')
                 end
                 % Anti-diffusive fluxes (row: recieving mode; column: contributing mode):
-                diffusionMatrix = element.basis.getConvectionMatrix(element.states,this.physics);
+                diffusionMatrix = this.physics.getConvectionMatrix(element.states,element.basis);
                 diffusionMatrix = element.basis.applyDiffusion(diffusionMatrix) - diffusionMatrix;
                 f = element.basis.massMatrix.*(element.residuals' - element.residuals) + diffusionMatrix.*(element.states' - element.states);
                 % Pre-limiting:
@@ -125,7 +125,7 @@ classdef AFC_scalar < Limiter
                     error('Vector physics not supported. Yet.')
                 end
                 % Anti-diffusive fluxes (row: recieving mode; column: contributing mode):
-                diffusionMatrix = element.basis.getConvectionMatrix(element.states,this.physics);
+                diffusionMatrix = this.physics.getConvectionMatrix(element.states,element.basis);
                 diffusionMatrix = element.basis.applyDiffusion(diffusionMatrix) - diffusionMatrix;
                 f = element.basis.massMatrix.*(element.residuals' - element.residuals) + diffusionMatrix.*(element.states' - element.states);
                 % Pre-limiting:
@@ -233,7 +233,7 @@ classdef AFC_scalar < Limiter
                     error('Vector physics not supported. Yet.')
                 end
                 % Anti-diffusive fluxes (row: recieving mode; column: contributing mode):
-                diffusionMatrix = element.basis.getConvectionMatrix(element.states,this.physics);
+                diffusionMatrix = this.physics.getConvectionMatrix(element.states,element.basis);
                 diffusionMatrix = element.basis.applyDiffusion(diffusionMatrix) - diffusionMatrix;
                 f{k} = element.basis.massMatrix.*(element.residuals' - element.residuals) + diffusionMatrix.*(element.states' - element.states);
                 % Pre-limiting:

@@ -3,6 +3,25 @@ classdef Burgers < Physics
         viscosity
         ghostStates
     end
+    methods (Static)
+        %% Convection operator
+        function convection = getConvectionMatrix(states,basis)
+            % Returns the discrete convection operator to be applied to the
+            % modal coefficients of the discretizated solution.
+            %
+            % Arguments
+            %  states: row array of basis function coefficients
+            %  basis: finite-dimensional discretization basis
+            % Output
+            %  convection: discrete convection matrix, such that k_ij = v_j · c_ji
+            convection = .5*states'.*basis.gradientMatrix;
+            % convection = .5*spdiags(states',0,basis.basisCount,basis.basisCount)*basis.gradientMatrix; % maybe faster?
+        end
+        %% Flux function
+        function flux = flux(state)
+            flux = 0.5*state.^2;
+        end
+    end
     methods
         %% Constructor
         function burgers = Burgers(ghostStates,epsilon)
@@ -14,22 +33,6 @@ classdef Burgers < Physics
             end
             burgers.equationCount = 1;
             burgers.viscosity = epsilon;
-        end
-        %% Jacobian matrix
-        function A = getJacobian(~,q)
-            % Returns the Jacobian matrices corresponding to given state
-            % vectors.
-            %
-            % Argument
-            %  q: 2D array of column state vectors
-            % Output
-            %  A: 3D array of Jacobian matrices (1x1), evaluated at each 
-            %     state vector (page index)
-            A = reshape(q,1,1,[]);
-        end
-        %% Flux function
-        function flux = flux(~,state)
-            flux = 0.5*state.^2;
         end
         %% Riemann solver (exact, with entropy fix)
         function [flux,S] = riemannFlux(this,stateL,stateR)
@@ -50,6 +53,7 @@ classdef Burgers < Physics
                 end
             end
         end
+        %% Boundary conditions
         function applyBoundaryConditions(this,mesh)
             if isempty(this.ghostStates)
                 % Periodic boundary conditions:

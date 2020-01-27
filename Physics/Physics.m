@@ -7,6 +7,7 @@ classdef (Abstract) Physics < handle
         flux(this,states)
         riemannFlux(this,stateL,stateR)
         applyBoundaryConditions(this,mesh)
+        getConvectionMatrix(this,states,basis)
     end
     methods
         function displayData(this,rowNames,colNames,varargin)

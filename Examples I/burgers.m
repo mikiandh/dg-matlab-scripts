@@ -15,16 +15,16 @@ addpath('../Grid')
 addpath('../Math')
 
 %% Parameters
-Ne = 6; % number of elements (!-> for 1 element, use FIXED time-step size)
+Ne = 1; % number of elements (!-> for 1 element, use FIXED time-step size)
 p = 1; % degree of the approximation space (per element)
-L = [-1 15]; % domain edges
-tEnd = 7; % final simulation time
-dt = 1e-2;
-CFL = .01; % Courant number
-iterSkip = 50;
+L = [-1 9]; % domain edges
+tEnd = 4; % final simulation time
+dt = .25;
+CFL = .1; % Courant number
+iterSkip = 1;
 
 %% Discretization
-method = DGIGA_AFC(1);
+method = DGIGA_AFC(20);
 
 %% Grid
 mesh = Mesh(linspace(L(1),L(2),Ne+1),p,method);
@@ -42,7 +42,7 @@ limiter = [];
 %limiter = Limiter.Krivodonova(eqn);
 %limiter = Limiter.Wang(eqn); % best in this case (close call)
 if isa(method,'DGIGA_AFC')
-    %%% limiter = Limiter.AFC(eqn);
+    %%%limiter = Limiter.AFC(eqn);
 end
 
 %% Initial condition projection
@@ -50,15 +50,18 @@ end
 method.project(mesh,limiter,FUN);
 
 %% Time-integration
-timeIntegrator = SSP_RK3(0,tEnd,eqn,limiter,CFL,dt);
-norms0 = [mesh.getSolutionMass,mesh.getSolutionNorm(1),mesh.getSolutionNorm,mesh.getTotalVariation];
+timeIntegrator = SSP_RK1(0,tEnd,eqn,limiter,CFL,dt);
+% norms0 = [mesh.getSolutionMass,mesh.getSolutionNorm(1),mesh.getSolutionNorm,mesh.getTotalVariation];
+norms0 = mesh.getSolutionMass;
 tic
 timeIntegrator.launch(mesh,iterSkip,@(t,x) FUN(x));
 disp(['   ...done. (' num2str(toc) ' s)'])
 
 %% Postprocessing
-norms = [mesh.getSolutionMass,mesh.getSolutionNorm(1),mesh.getSolutionNorm,mesh.getTotalVariation];
-rows = {'Solution (mass)' 'Solution (L1)' 'Solution (L2)','Solution (TV)'};
+% norms = [mesh.getSolutionMass,mesh.getSolutionNorm(1),mesh.getSolutionNorm,mesh.getTotalVariation];
+% rows = {'Solution (mass)' 'Solution (L1)' 'Solution (L2)','Solution (TV)'};
+norms = mesh.getSolutionMass;
+rows = {'Solution (mass)'};
 cols = {'Norm','Start','End','Increase'};
 eqn.displayData(rows,cols,norms0,norms,norms-norms0)
 
@@ -107,11 +110,15 @@ function y = jumpIC(x)
 y = Functions.jump(x,-1,1);
 end
 
+function y = halfJumpIC(x)
+y = x.*(heaviside(x) - heaviside(x-2));
+end
+
 function y = sineIC(x)
 y = 0.5*sin(9*x*pi) + 0.5;
 end
 
-function y = combinedIC(x)
+function y = combinedIC(x) % perfect initial condition; L = [-1,2], tEnd = 2
 y = Functions.gauss(x,-1,0) + Functions.jump(x,0,1);
 end
 

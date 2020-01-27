@@ -14,7 +14,7 @@ addpath('../Solver')
 
 %% Spatial discretizations
 discs = {...
-    DGIGA(1,1)
+    DGIGA(2,2,0)
     };
 
 %% Temporal discretization
@@ -22,7 +22,7 @@ time = SSP_RK3;
 
 %% Extra parameters
 % Upwinding ratio for Riemann fluxes, from -1 (downwind) to 1 (upwind):
-upwind = 0;
+upwind = 1;
 % Number of patches (only affects resolution):
 Nx = 32;
 % Temporal amplification factor function:

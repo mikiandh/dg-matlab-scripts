@@ -5,3 +5,7 @@ bsplineCurve.m
 bsplines.m
 interpatchBasis.m
 matrixOperators.m
+predictorBurgers.m
+
+# OSX directory settings
+.DS_Store

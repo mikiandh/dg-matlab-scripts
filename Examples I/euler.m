@@ -15,23 +15,24 @@ addpath('../Grid')
 addpath('../Math')
 
 %% Parameters
-Ne = 20; % number of elements
-p = 2; % degree of the approximation space (per element)
+Ne = 3; % number of elements
+p = [0 2 0]; % degree of the approximation space (per element)
 L = [0 1]; % domain edges
-tEnd = .1; % final simulation time
-dt = [];
+tEnd = .231; % final simulation time
+dt = 0.001;
 CFL = .2; % Courant number
-iterSkip = 10;
+iterSkip = 1;
 
 %% Physics
 eqn = Euler('transmissive','HLLC');
 
 %% Discretization
-method = DGIGA(1);
+method = DGIGA(64);
 
 %% Grid
-mesh = Mesh(linspace(L(1),L(2),Ne+1),p,method);
+%mesh = Mesh(linspace(L(1),L(2),Ne+1),p,method);
 %mesh = Mesh(cosspace(L(1),L(2),Ne+1,2),p,method);
+mesh = Mesh([L(1) .05 .95 L(2)],p,method);
 
 %% Limiter
 limiter = [];
@@ -54,16 +55,14 @@ method.project(mesh,limiter,FUN0);
 
 %% Time-integration
 timeIntegrator = SSP_RK3(0,tEnd,eqn,limiter,CFL,dt);
-norms0 = [mesh.getSolutionMass(1:3) mesh.getSolutionNorm(2,1:3),mesh.getTotalVariation,mesh.getErrorNorm(FUN0,2,1:3)];
+norms0 = mesh.getSolutionMass(1:3);
 tic
 timeIntegrator.launch(mesh,iterSkip,FUN);
 disp(['   ...done. (' num2str(toc) ' s)'])
 
 %% Postprocessing
-norms = [mesh.getSolutionMass(1:3) mesh.getSolutionNorm(2,1:3),...
-    mesh.getTotalVariation,...
-    mesh.getErrorNorm(@(x) FUN(timeIntegrator.timeNow,x),2,1:3)];
-rows = {'Solution (Mass)' 'Solution (L2)','Solution (TV)','Error (L2)'};
+norms = mesh.getSolutionMass(1:3);
+rows = {'Solution (mass)'};
 cols = {'Norm','Start','End','Increase'};
 eqn.displayData(rows,cols,norms0,norms,norms-norms0)
 

@@ -18,7 +18,7 @@ classdef Basis < handle
     end
     methods (Abstract)
         clone(prototype,degree) % required for the prototype instantiation pattern
-        computeResiduals(this,element,physics) % evaluate semi-discrete operator
+        computeResiduals(this,element,physics) % evaluate discrete spatial operator, i.e residual (a la Wang et al. 2013)
         sampleAt(this,x) % sample basis components at given locations
         interpolate(mesh,limiter,fun) % sample-based projection
         project(mesh,limiter,fun) % L2 projection (conservative)

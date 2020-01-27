@@ -263,16 +263,22 @@ classdef Mesh < handle
             dSigma = 0;
             % Loop over elements:
             for element = this.elements
-                if element.basis.isNodal && ~element.basis.isHybrid
+                if element.basis.isHybrid
+                    B = element.basis.vandermonde;
+                    modes = element.basis.span2mode;
+                elseif element.basis.isNodal
                     B = eye(element.basis.basisCount);
+                    modes = 1:element.basis.basisCount;
                 else
                     B = element.basis.vandermonde;
+                    modes = 1:element.basis.basisCount;
                 end
                 % Loop over knot spans:
                 for l = 1:size(B,3)
-                    dSigma = dSigma + 2; % assumes a reference knot span length of 2
-                    ids = l:l+size(B,1)-1; % states associated with current knot span
-                    mass = mass + element.states(eqs,ids)*B(:,:,l)*element.basis.gaussWeights;
+                    dSigma = dSigma + 2; % assumes length of 2
+                    mass = mass +...
+                        element.states(eqs,modes(l,:))...
+                        *B(:,:,l)*element.basis.gaussWeights;
                 end
             end
             % Convert from knot span units to physical domain units:

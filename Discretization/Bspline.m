@@ -13,10 +13,11 @@ classdef Bspline < Basis
         knots % open knot vector
         knotDiffs % knot differences
         knotCount % number of knots
-        nonzeroSpanIdToKnotId % connectivity array between each knot span of nonzero size (index) and its first/left knot (value)
         % Operators:
+        span2knot % connectivity vector between a non-vanishing knot span index and the position of its left knot in the knot vector
+        span2mode % connectivity matrix between non-vanishing knot spans (rows) and basis functions with support on each (columns)
         vandermonde % 3D array of basis functions (rows) sampled at Gauss points (columns) of each nonzero knot span (pages)
-        derivatives % idem, for the first derivative of basis functions
+        derivatives % idem, for the first derivative of the basis functions
         invVandermonde % 3D array of Gauss quadrature point contributions (rows) to modal components (columns) of each nonzero knot span (pages)
     end
     methods
@@ -69,9 +70,11 @@ classdef Bspline < Basis
             this.knotDiffs = diff(this.knots);
             this.knotCount = length(this.knots);
             this.basisCount = this.knotCount-this.order;
-            [this.breakCoords,this.nonzeroSpanIdToKnotId] = unique(this.knots);
-            this.nonzeroSpanIdToKnotId = this.nonzeroSpanIdToKnotId(2:end)'-1;
-            this.nonzeroSpanCount = length(this.nonzeroSpanIdToKnotId);
+            % Connectivity arrays:
+            [this.breakCoords,this.span2knot] = unique(this.knots);
+            this.span2knot = this.span2knot(2:end)'-1;
+            this.nonzeroSpanCount = length(this.span2knot);
+            this.span2mode = this.span2knot(1:this.nonzeroSpanCount)' - (this.degree:-1:0);
             % Gauss quadrature data:
             [this.gaussCoords,this.gaussWeights,~] = ...
                 Legendre.quadratureGaussLegendre(this.degree);
@@ -90,10 +93,7 @@ classdef Bspline < Basis
             this.left(1) = 1;
             this.right = flip(this.left);
             % Precomputed operators:
-            this.assembleMassAndDivergenceMatrices;
-            for l = 1:this.nonzeroSpanCount
-                this.invVandermonde(:,:,l) = inv(this.vandermonde(:,:,l));
-            end
+            this.assembleOperators;
         end
         %% Evaluate basis at locations
         function B = sampleAt(this,x,keepAll)
@@ -147,20 +147,21 @@ classdef Bspline < Basis
             xi = jac*(sigma+1) + this.knots(spanId);
         end
         %% Compute mass and divergence matrices
-        function assembleMassAndDivergenceMatrices(this)
-            % Computes the components of the mass and divergence matrices
+        function assembleOperators(this)
+            % Computes the components of the mass and gradient matrices
             % of this patch (more or less anologue to local assembly in 
             % FEM). Employs Gauss quadrature at the knot span level, i.e.
-            % matrices are exact (to machine accuracy).
+            % matrices are exact (to machine accuracy). Additionally,
+            % assembles the Vandermonde-like tensors.
             %
             % Outputs
             %  M: Mass matrix, i.e. interior product of each B-spline basis 
             %     function with every other, over the patch domain. 
             %     Row: basis component; column: basis component.
-            %  D: Divergence matrix, i.e. interior product over the patch 
+            %  D: Gradient matrix, i.e. interior product over the patch 
             %     domain of each B-spline basis function and every basis 
-            %     function's first derivative. Row: basis component;
-            %     column: basis component.
+            %     function's first derivative. Row: basis function;
+            %     column: basis function derivative.
             %
             % Preallocation:
             this.vandermonde = zeros(this.order,this.order,this.nonzeroSpanCount);
@@ -168,19 +169,20 @@ classdef Bspline < Basis
             this.massMatrix = sparse(this.basisCount,this.basisCount);
             this.gradientMatrix = this.massMatrix;
             % Loop over non-vanishing spans:
-            for i = 1:this.nonzeroSpanCount
-                l = this.nonzeroSpanIdToKnotId(i);
+            for l = 1:this.nonzeroSpanCount
+                % Left knot of current span:
+                n = this.span2knot(l);
                 % Affine mapping from reference knot span (sigma) to reference patch (xi):
-                [x,spanToElem] = this.mapFromReferenceKnotSpan(this.gaussCoords,l);
-                % Basis functions and first derivatives of current knot span, sampled at its Gauss points:
-                [this.vandermonde(:,:,i),this.derivatives(:,:,i)] = this.sampleSpan(this.knots,this.degree,l,x);
+                [x,spanToElem] = this.mapFromReferenceKnotSpan(this.gaussCoords,n);
+                % Vandermonde-like tensors:
+                [this.vandermonde(:,:,l),this.derivatives(:,:,l)] = this.sampleSpan(this.knots,this.degree,n,x);
+                this.invVandermonde(:,:,l) = inv(this.vandermonde(:,:,l));
                 % Knot span contributions to patch-wide inner products:
-                j = l - (this.degree:-1:0); % indices of non-zero basis functions in current knot span
-                id = 0;
-                for r = j
-                    id = id + 1;
-                    this.massMatrix(j,r) = (this.vandermonde(:,:,i).*this.vandermonde(id,:,i))*this.gaussWeights*spanToElem + this.massMatrix(j,r);
-                    this.gradientMatrix(j,r) = (this.vandermonde(:,:,i).*this.derivatives(id,:,i))*this.gaussWeights*spanToElem + this.gradientMatrix(j,r);
+                j = this.span2mode(l,:); % basis function (global) indices
+                for idx = 1:this.order % loop over (local) test function indices
+                    r = j(idx); % test function (global) index
+                    this.massMatrix(j,r) = (this.vandermonde(:,:,l).*this.vandermonde(idx,:,l))*this.gaussWeights*spanToElem + this.massMatrix(j,r);
+                    this.gradientMatrix(j,r) = (this.vandermonde(:,:,l).*this.derivatives(idx,:,l))*this.gaussWeights*spanToElem + this.gradientMatrix(j,r);
                 end
             end
         end
@@ -191,7 +193,7 @@ classdef Bspline < Basis
             x = zeros(1,this.nonzeroSpanCount*(this.degree+1));
             % Loop over knot spans:
             ids = 1:this.degree+1;
-            for l = this.nonzeroSpanIdToKnotId
+            for l = this.span2knot
                 x(ids) = this.mapFromReferenceKnotSpan(this.gaussCoords,l);
                 ids = ids + this.degree + 1;
             end
@@ -251,7 +253,7 @@ classdef Bspline < Basis
                 % Preallocation:
                 b = zeros(element.basis.basisCount,length(fun(0)));
                 % Assemble vector of initial condition inner products:
-                for l = basis.nonzeroSpanIdToKnotId % loop over non-vanishing knot spans
+                for l = basis.span2knot % loop over non-vanishing knot spans
                     [x,spanToElem] = basis.mapFromReferenceKnotSpan(sigmas,l); % from reference knot span to reference patch coordinates
                     B = basis.sampleSpan(basis.knots,basis.degree,l,x);
                     x = element.mapFromReference(x); % from reference patch to physical patch (i.e. mesh) coordinates
@@ -265,11 +267,6 @@ classdef Bspline < Basis
                 % Solve for the modal coefficients:
                 element.states = b' / element.basis.massMatrix;
             end
-              %%% No limiter expected %%%
-%             % Apply limiter (if any):
-%             if ~isempty(limiter)
-%                 limiter.apply(mesh);
-%             end
         end
         %% Lumped L2 projection (TVD + norm-preserving)
         function projectLumped(mesh,~,fun,q)
@@ -285,7 +282,7 @@ classdef Bspline < Basis
                 % Preallocation:
                 b = zeros(element.basis.basisCount,length(fun(0)));
                 % Assemble vector of initial condition inner products:
-                for l = basis.nonzeroSpanIdToKnotId % loop over non-vanishing knot spans
+                for l = basis.span2knot % loop over non-vanishing knot spans
                     [x,spanToElem] = basis.mapFromReferenceKnotSpan(sigmas,l); % from reference knot span to reference patch coordinates
                     B = basis.sampleSpan(basis.knots,basis.degree,l,x);
                     x = element.mapFromReference(x); % from reference patch to physical patch (i.e. mesh) coordinates
