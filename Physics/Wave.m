@@ -21,18 +21,6 @@ classdef Wave < Physics
             wave.eigenvectors = [c -c; 1 1];
             wave.invEigenvectors = [1 c; -1 c]/(2*c);
         end
-        %% Convection operator
-        function convection = getConvectionMatrix(this,~,basis)
-            % Returns the discrete convection operator to be applied to the
-            % modal coefficients of the discretizated solution.
-            %
-            % Arguments
-            %  states: (unused) row array of basis function coefficients
-            %  basis: finite-dimensional discretization basis
-            % Output
-            %  convection: discrete convection operator
-            error('Vector physics not supported.')
-        end
         %% Flux function
         function flux = flux(this,states)
             flux = this.jacobian*states;
@@ -110,6 +98,22 @@ classdef Wave < Physics
             K = size(meanStates,3);
             L = repmat(this.invEigenvectors,1,1,K);
             R = repmat(this.eigenvectors,1,1,K);
+        end
+        %% Sample Jacobian matrix
+        function A = getJacobianAt(this,~)
+            % Returns the Jacobian matrix corresponding to a given state
+            % vector.
+            %
+            A = this.jacobian;
+        end
+        %% Return eigenvalues and eigenvector matrices
+        function [A,L,R] = getEigensystemAt(this,~)
+            % Returns the eigenvalue and eigenvector matrices (which are 
+            % constant for this linear equation).
+            %
+            A = this.waveSpeed*[1 0; 0 -1];
+            L = this.invEigenvectors;
+            R = this.eigenvectors;
         end
     end
     methods (Static)

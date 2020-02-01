@@ -68,8 +68,9 @@ classdef Limiter < handle
         function limiter = AFC(physics)
             if isa(physics,'Advection') || isa(physics,'Burgers')
                 limiter = AFC_scalar(physics);
-%             elseif isa(physics,'Wave') || isa(physics,'Euler')
-%                 limiter = AFC_vector(physics); % TO DO: implement this!
+            elseif isa(physics,'Wave') || isa(physics,'Euler')
+                warning('Vector version of AFC is still under development.')
+                limiter = AFC_scalar(physics); % TO DO: implement AFC_vector
             else
                 error('Limiter not available.')
             end

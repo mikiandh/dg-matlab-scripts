@@ -1,6 +1,6 @@
-clc
+%clc
 clear
-%close all
+close all
 %path(pathdef)
 
 % This script solves the wave equation in 1D. Uses the DGSEM classes.
@@ -15,26 +15,27 @@ addpath('../Grid')
 addpath('../Math')
 
 %% Parameters
-Ne = 15; % number of elements (!-> for 1 element, use FIXED time-step size)
-p = 4; % degree of the approximation space (per element)
+Ne = 1; % number of elements (!-> for 1 element, use FIXED time-step size)
+p = 2; % degree of the approximation space (per element)
 L = [0 1]; % domain edges
-tEnd = 4.0; % final simulation time
+tEnd = 2.0; % final simulation time
 dt = [];
-CFL = .05; % Courant number
-iterSkip = 120;
+CFL = .01; % Courant number
+iterSkip = 100;
     
 %% Physics
 eqn = Wave;
 
 %% Discretization
-%method = QDG;
+%method = DG;
 %method = DGSEM;
 %method = FR('DG');
 %method = FR('Ga');
 %method = FR('LumpLo');
 %method = FR(1e-2);
-%method = DGIGA(4);
-method = DGIGA_AFC(4);
+%method = DGIGA(28);
+%method = DGIGA_AFC(30);
+method = DGIGA_AFC_vector(58);
 
 %% Initial condition
 FUN = @(x) combinedIC(x);
@@ -51,7 +52,7 @@ limiter = [];
 %limiter = Limiter.Krivodonova(eqn); % best in this case
 %limiter = Limiter.Wang(eqn);
 if isa(method,'DGIGA_AFC')
-    %limiter = Limiter.AFC(eqn);
+    limiter = Limiter.AFC(eqn);
 end
 
 %% Initial condition projection
@@ -60,7 +61,7 @@ method.project(mesh,limiter,FUN);
 %method.projectLumped(mesh,limiter,FUN);
 
 %% Time-integration
-timeIntegrator = SSP_RK3(0,tEnd,eqn,limiter,CFL,dt);
+timeIntegrator = SSP_RK1(0,tEnd,eqn,limiter,CFL,dt);
 norms0 = [mesh.getSolutionMass(1:2),mesh.getErrorNorm(FUN,2,1:2)];
 tic
 timeIntegrator.launch(mesh,iterSkip,@(t,x) FUN(x));
@@ -74,9 +75,8 @@ eqn.displayData(rows,cols,norms0,norms)
 
 %% Auxiliary functions
 function y = constantIC(x)
-% Initial condition that models a smooth displacement pulse.
 y = zeros(2,length(x));
-y(1,:) = 1;
+y(2,:) = 1;
 end
 
 function y = pickIC(x)

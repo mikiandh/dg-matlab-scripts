@@ -1,11 +1,12 @@
 classdef Element < handle
     properties
+        % DG:
         xL
         xR
         dx
         basis % handle to a basis sub-class
         states % state vector at each degree of freedom (node or mode)
-        fluxes % flux vector at nodes (if any)
+        fluxes % flux vector at each degree of freedom (Fletcher's group formulation)
         stateL % state vector at left edge
         stateR
         fluxL % flux vector at left edge
@@ -13,11 +14,16 @@ classdef Element < handle
         riemannL % Riemann (upwind) flux vector at left edge
         riemannR
         residuals % residual (i.e. time derivative) vector at nodes
+        dofCount % number of degrees of freedom per element, per equation
+        % AFC:
+        jacobians % low order discrete Jacobian operator (cell array)
+        diffusions % artificial diffusion operator (cell array)
+        % Limiter:
+        limiterHistory
+        % SSP RK:
         extraStates
         extraResiduals
         localTimeDelta
-        limiterHistory
-        dofCount % number of degrees of freedom per element, per equation
     end
     methods
         %% Constructor

@@ -7,9 +7,12 @@ classdef (Abstract) Physics < handle
         flux(this,states)
         riemannFlux(this,stateL,stateR)
         applyBoundaryConditions(this,mesh)
-        getConvectionMatrix(this,states,basis)
     end
     methods
+        function getDissipationMatrix(this,stateL,stateR)
+            % Returns the dissipation matrix to be used when constructing
+            % the low order predictor in AFC. Scalar approach (Jaeschke
+        end
         function displayData(this,rowNames,colNames,varargin)
             % Function that prints a table of data (with arbitrary number
             % of columns and rows) in which each position contains a column

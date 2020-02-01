@@ -34,6 +34,12 @@ classdef Burgers < Physics
             burgers.equationCount = 1;
             burgers.viscosity = epsilon;
         end
+        %% Flux jacobian
+        function A = jacobian(this,element)
+            % Returns the Jacobian (in this case, a scalar) of the
+            % conserved fluxes.
+            A = this.advSpeed;
+        end
         %% Riemann solver (exact, with entropy fix)
         function [flux,S] = riemannFlux(this,stateL,stateR)
             S = [stateL stateR]';

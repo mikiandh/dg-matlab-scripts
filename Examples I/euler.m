@@ -15,24 +15,24 @@ addpath('../Grid')
 addpath('../Math')
 
 %% Parameters
-Ne = 3; % number of elements
-p = [0 2 0]; % degree of the approximation space (per element)
+Ne = 6; % number of elements
+p = 2; % degree of the approximation space (per element)
 L = [0 1]; % domain edges
-tEnd = .231; % final simulation time
-dt = 0.001;
-CFL = .2; % Courant number
-iterSkip = 1;
+tEnd = .125; % final simulation time
+dt = [];
+CFL = .005; % Courant number
+iterSkip = 30;
 
 %% Physics
 eqn = Euler('transmissive','HLLC');
 
 %% Discretization
-method = DGIGA(64);
+method = DGIGA_AFC_vector(20);
 
 %% Grid
-%mesh = Mesh(linspace(L(1),L(2),Ne+1),p,method);
+mesh = Mesh(linspace(L(1),L(2),Ne+1),p,method);
 %mesh = Mesh(cosspace(L(1),L(2),Ne+1,2),p,method);
-mesh = Mesh([L(1) .05 .95 L(2)],p,method);
+%mesh = Mesh([L(1) .05 .95 L(2)],p,method);
 
 %% Limiter
 limiter = [];

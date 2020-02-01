@@ -31,6 +31,18 @@ classdef Advection < Physics
         function flux = flux(this,state)
             flux = this.advSpeed*state;
         end
+        %% Flux jacobian
+        function A = getJacobian(this,~,~)
+            % Returns the "edge Jacobian" (in this case, a scalar) of the
+            % conserved fluxes, evaluated at the "virtual edge" connecting 
+            % the 1st given state with 2nd.
+            %
+            % Arguments
+            %  statesL: (not used) first state
+            %  statesR: (not used) second state
+            %
+            A = this.advSpeed;
+        end
         %% Riemann solver (exact)
         function [flux,S] = riemannFlux(this,stateL,stateR)
             S = this.advSpeed;

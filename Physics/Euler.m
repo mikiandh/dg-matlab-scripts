@@ -45,18 +45,6 @@ classdef Euler < Physics
         function applyBoundaryConditions(this,mesh)
             this.boundaryConditionsFunction(mesh);
         end
-        %% Convection operator
-        function convection = getConvectionMatrix(this,states,basis)
-            % Returns the discrete convection operator to be applied to the
-            % modal coefficients of the discretizated solution.
-            %
-            % Arguments
-            %  states: row array of basis function coefficients
-            %  basis: finite-dimensional discretization basis
-            % Output
-            %  convection: discrete convection operator
-            error('Vector physics not supported.')
-        end
         %% Numerical flux
         function [flux, waveSpeeds] = riemannFlux(this,stateL,stateR)
             [flux, waveSpeeds] = this.riemannSolver(stateL,stateR);
@@ -98,6 +86,18 @@ classdef Euler < Physics
             fluxes(1,:) = fluxes(2,:);
             fluxes(2,:) = fluxes(2,:).*states(2,:) + states(3,:);
             fluxes(3,:) = states(2,:).*(fluxes(3,:) + states(3,:));
+        end
+        %% Sample flux Jacobian matrix
+        function A = getJacobianAt(state)
+            % Returns the Jacobian matrix corresponding to a given state
+            % vector (1D array)
+            %
+            % Evaluate Jacobian matrix as a function of conserved variables
+            % (from Toro 2009, p. 88):
+            state = state/state(1);
+            A = [0 1 0
+                 -.8*state(2)^2 1.6*state(2) .4
+                 -1.4*state(2)*state(3)+.4*state(2)^3 1.4*state(3)-.6*state(2)^2 1.4*state(2)];
         end
         %% Compute vector(s) of all primitive variables from state vector(s)
         function vars = allPrimitiveVarsFromState(state)
@@ -422,6 +422,30 @@ classdef Euler < Physics
                 L(:,:,k) = 0.2/a^2*[H+2.5*a*(u-a) -(u+2.5*a) 1; -2*H+10*a^2 2*u -2; H-2.5*a*(u+a) -u+2.5*a 1];
             end
         end
+        %% Return eigenvalues and eigenvector matrices for given mean states
+        function [A,L,R] = getEigensystemAt(meanStates)
+            % Returns the eigenvector matrices evaluated at the mean state
+            % passed as input.
+            %
+            % meanStates(i,j,k)
+            % A(i,j,k)
+            % L(i,j,k)
+            % R(i,j,k)
+            %  i: system dimension
+            %  j: eigenvector index
+            %  k: element
+            %
+            K = size(meanStates,3);
+            R = zeros(3,3,K);
+            L = R;
+            A = R;
+            for k = 1:K
+                [~,u,~,a,H] = Euler.getPrimitivesFromState(meanStates(:,1,k));
+                R(:,:,k) = [1 1 1; u-a u u+a; H-u*a 0.5*u^2 H+u*a];
+                L(:,:,k) = 0.2/a^2*[H+2.5*a*(u-a) -(u+2.5*a) 1; -2*H+10*a^2 2*u -2; H-2.5*a*(u+a) -u+2.5*a 1];
+                A(:,:,k) = diag([u-a u u+a]);
+            end
+        end
         %% Return left and right eigenvectormatrices for given mean states
         function [L,R] = getLocalEigenvectors(stateL,stateR)
             % Returns the eigenvector matrices evaluated at the local
@@ -447,6 +471,34 @@ classdef Euler < Physics
             R = [uAvg-aAvg uAvg uAvg+aAvg; HAvg-uAvg*aAvg 0.5*uAvg^2 HAvg+uAvg*aAvg];
             L = 0.2/aAvg^2*[HAvg+2.5*aAvg*(uAvg-aAvg) -uAvg-2.5*aAvg 1; -2*HAvg+10*aAvg^2 2*uAvg -2; HAvg-2.5*aAvg*(uAvg+aAvg) -uAvg+2.5*aAvg 1];
         end
+        %% Roe-averaged eigenvalue and eigenvector matrices
+        function [A,L,R] = getLocalEigensystem(stateL,stateR)
+            % Returns the eigenvalue and eigenvector matrices evaluated at
+            % the local Roe-averaged state between the passed state vectors.
+            %
+            % stateL(i,1), stateR(i,1)
+            % A(i,j)
+            % L(i,j)
+            % R(i,j)
+            %  i: system dimension
+            %  j: eigenvector index
+            %
+            % Primitive variables:
+            [r,u,~,~,H] = Euler.getPrimitivesFromState(stateL);
+            [rAvg,uAvg,~,~,HAvg] = Euler.getPrimitivesFromState(stateR);
+            % Roe averages:
+            r = realpow(r,0.5);
+            rAvg = realpow(rAvg,0.5);
+            aux = 1/(rAvg + r);
+            uAvg = (rAvg*uAvg + r*u)*aux;
+            HAvg = (rAvg*HAvg + r*H)*aux;
+            aAvg = realpow(0.4*(HAvg - 0.5*uAvg^2),0.5);
+            % Local (a.k.a Roe averaged) eigenvectors:
+            R = [1 1 1; uAvg-aAvg uAvg uAvg+aAvg; HAvg-uAvg*aAvg 0.5*uAvg^2 HAvg+uAvg*aAvg];
+            L = 0.2/aAvg^2*[HAvg+2.5*aAvg*(uAvg-aAvg) -uAvg-2.5*aAvg 1; -2*HAvg+10*aAvg^2 2*uAvg -2; HAvg-2.5*aAvg*(uAvg+aAvg) -uAvg+2.5*aAvg 1];
+            % Local eigenvalue matrix:
+            A = diag([uAvg-aAvg uAvg uAvg+aAvg]);
+        end
         %% Check for positivity in certain quantities
         function PASS = checkWithinPhysicalBounds(stateL,stateR)
             PASS = 0;
@@ -466,6 +518,84 @@ classdef Euler < Physics
                 return
             end
             PASS = 1;
+        end
+        %% Numerical diffusion (Roe average)
+        function applyArtificialDiffusion_44(element)
+            % Adds artifficial diffusion to an element's residuals. The
+            % element's basis is assumed to be DGIGA_AFC.
+            %
+            % See Kuzmin et al. 2012, eqs. 42 - 46. Current version employs
+            % the Roe averaged Jacobians (eq. 42).
+            %
+            % Loop over pairs of modes with shared support:
+            [rows,cols] = find(element.basis.massMatrix);
+            for e = 1:length(rows) % !-> an edge joins two control locations, i.e. the set of all edges is the control poligon
+                r = rows(e);
+                j = cols(r);
+                if r == j
+                    continue
+                else
+                    aux = element.basis.gradientMatrix(j,r);
+                    aux = .5*(aux - element.basis.gradientMatrix(r,j));
+                    [A,L,R] = Euler.getLocalEigensystem(element.states(:,r),element.states(:,j));
+                    aux = abs(aux)*R*abs(A)*L; % Möller & Jaeschke, 2018 (eq. 16)
+                    element.residuals(:,r) =...
+                        element.residuals(:,r) +...
+                        aux*(element.states(:,j) - element.states(:,r));
+                end
+            end
+        end
+        %% Numerical diffusion (arithmetic average)
+        function applyArtificialDiffusion_45(element)
+            % Adds artifficial diffusion to an element's residuals. The
+            % element's basis is assumed to be DGIGA_AFC.
+            %
+            % See Kuzmin et al. 2012, eqs. 42 - 46. Current version employs
+            % the arithmetically averaged Jacobians (eq. 44).
+            %
+            % Loop over pairs of modes with shared support:
+            [rows,cols] = find(element.basis.massMatrix);
+            for e = 1:length(rows) % !-> an edge joins two control locations, i.e. the set of all edges is the control poligon
+                r = rows(e);
+                j = cols(e); % <- fixed a bug, but did not check!
+                if r == j
+                    continue
+                else
+                    aux = element.basis.gradientMatrix(j,r);
+                    aux = .5*(aux - element.basis.gradientMatrix(r,j));
+                    [A,L,R] = Euler.getEigensystemAt(.5*(element.states(:,r)+element.states(:,j)));
+                    aux = abs(aux)*R*abs(A)*L; % Möller & Jaeschke, 2018 (eq. 16)
+                    element.residuals(:,r) =...
+                        element.residuals(:,r) +...
+                        aux*(element.states(:,j) - element.states(:,r));
+                end
+            end
+        end
+        %% Numerical diffusion (Rusanov)
+        function applyArtificialDiffusion(element)
+            % Adds artifficial diffusion to an element's residuals. The
+            % element's basis is assumed to be DGIGA_AFC.
+            %
+            % See Kuzmin et al. 2012, eqs. 44 - 46. Current version employs
+            % Rusanov-like scalar diffusion (eq. 45).
+            %
+            % Loop over pairs of modes with shared support:
+            [rows,cols] = find(element.basis.massMatrix);
+            for e = 1:length(rows) % !-> an edge joins two control locations, i.e. the set of all edges is the control poligon
+                r = rows(e);
+                j = cols(r);
+                if r == j
+                    continue
+                else
+                    aux = element.basis.gradientMatrix(j,r);
+                    aux = .5*(aux - element.basis.gradientMatrix(r,j));
+                    [A,L,R] = Euler.getEigensystemAt(.5*(element.states(:,r)+element.states(:,j)));
+                    aux = abs(aux)*R*abs(A)*L; % Möller & Jaeschke, 2018 (eq. 16)
+                    element.residuals(:,r) =...
+                        element.residuals(:,r) +...
+                        aux*(element.states(:,j) - element.states(:,r));
+                end
+            end
         end
     end
 end
