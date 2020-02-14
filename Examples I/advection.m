@@ -16,12 +16,12 @@ addpath('../Math')
 
 %% Parameters
 Ne = 1; % number of elements
-p = 1; % degree of the approximation space (per element)
-L = [-1 9]; % domain edges
-tEnd = 4; % final simulation time
-dt = .5; % time-step size (overrides CFL)
-CFL = 1e-2; % Courant number
-iterSkip = 100;
+p = 2; % degree of the approximation space (per element)
+L = [-1 1]; % domain edges
+tEnd = 0; % final simulation time
+dt = []; % time-step size (overrides CFL)
+CFL = .01; % Courant number
+iterSkip = 1;
 
 %% Initial condition collection
 IC_linear = @(x) x;
@@ -41,11 +41,11 @@ IC_jaeschkeSquare = @(x) heaviside(x-0.25) - heaviside(x-0.75);
 IC_leveque = @(x) 2 - 2*heaviside(x);
 
 %% Physics
-FUN = IC_leveque; % initial condition
-eqn = Advection(1,FUN(L)); % PDE
+FUN = IC_combined; % initial condition
+eqn = Advection(1,[]); % PDE + BCs
 
 %% Discretization
-method = DGIGA_AFC(20);
+method = DGIGA_AFC_vector(67);
 
 %% Grid
 xEdge = linspace(L(1),L(2),Ne+1); % element end-points
@@ -59,9 +59,7 @@ limiter = [];
 %limiter = Limiter.Burbeau(eqn);
 %limiter = Limiter.Krivodonova(eqn);
 %limiter = Limiter.Wang(eqn);
-if isa(method,'DGIGA_AFC')
-    %%% limiter = Limiter.AFC(eqn); % (!-> with AFC, use FIXED time-step size)
-end
+limiter = AFC(eqn);
 
 %% Initial condition projection
 %method.interpolate(mesh,limiter,FUN);
@@ -70,7 +68,7 @@ method.project(mesh,limiter,FUN,50);
 %method.project_Matthias(mesh,limiter,FUN);
 
 %% Time-integration
-timeIntegrator = SSP_RK1(0,tEnd,eqn,limiter,CFL,dt);
+timeIntegrator = SSP_RK3(0,tEnd,eqn,limiter,CFL,dt);
 % norms0 = [mesh.getSolutionMass,mesh.getSolutionNorm(1),mesh.getSolutionNorm,mesh.getTotalVariation,mesh.getErrorNorm(FUN)];
 norms0 = mesh.getSolutionMass;
 tic

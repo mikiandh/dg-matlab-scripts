@@ -123,6 +123,72 @@ classdef Mesh < handle
                 end
             end
         end
+        %% Deduce local extrema
+        function findExtrema(this)
+            % This method initializes arrays maxima/minima of each element 
+            % with its local maximum/minimum state values.
+            %
+            % Searches extrema in the full stencil width across each patch 
+            % interface, i.e. all basis modes that "touch" a patch 
+            % interface (on both sides of it) share common extrema.
+            %
+            % Find intra-patch extrema:
+            N = this.elementCount;
+            for element = this.elements
+                % Aliases:
+                r = element.basis.pairs(1,:); % test functions
+                j = element.basis.pairs(2,:); % overlapping basis functions
+                % Loop over control points of current patch:
+                for m = r
+                    ids = j(r == m);
+                    element.maxima(:,m) = max(element.states(:,ids),[],2);
+                    element.minima(:,m) = min(element.states(:,ids),[],2);
+                end
+            end
+            % Communicate inter-patch extrema:
+            %
+            %  Right(left)-most control point extrema of patch k is also
+            %  the extrema of the first(last) control point of patch k+1
+            %  (k-1).
+            %
+            for k = 2:N % loop over (left) interfaces
+                % Aliases:
+                elementL = this.elements(k-1);
+                elementR = this.elements(k);
+                % Common maxima:
+                aux = max([elementL.maxima(:,end),elementR.maxima(:,1)],[],2);
+                elementL.maxima(:,end) = aux;
+                elementR.maxima(:,1) = aux;
+                % Common minima:
+                aux = min([elementL.minima(:,end),elementR.minima(:,1)],[],2);
+                elementL.minima(:,end) = aux;
+                elementR.minima(:,1) = aux;
+            end
+            % Distribute inter-patch extrema inwards of each patch:
+            for element = this.elements
+                % Aliases:
+                basis = element.basis;
+                r = basis.edges(1,:); % test functions
+                j = basis.edges(2,:); % overlapping basis functions (excluding self-support)
+                % Left/right-most control point nearest neighbours:
+                for m = [1 basis.basisCount]
+                    idsTo = j(r == m);
+                    idsFrom = m*ones(size(idsTo));
+                    element.maxima(:,idsTo) = max(element.maxima(:,idsTo),element.maxima(:,idsFrom));
+                    element.minima(:,idsTo) = min(element.minima(:,idsTo),element.minima(:,idsFrom));
+                end
+            end
+            % Override extrema of control points closest to  boundaries:
+            % (Kuzmin et al, 2012; remark 5, pp. 163, bottom)
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %%% TODO: test whether this works %%%
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%             warning('This has not been tested yet!')
+%             this.elements(1).maxima(:,1) = inf;
+%             this.elements(1).minima(:,1) = -inf;
+%             this.elements(end).maxima(:,end) = inf;
+%             this.elements(end).minima(:,end) = -inf;
+        end
         %% Set matrices of modal coefficients of the entire mesh
         function setModalCoeffs(this,Q,eqs)
             k = 0;
@@ -254,7 +320,6 @@ classdef Mesh < handle
             % optimal order for each element.
             %
             % eqs: column array (1 by default)
-            % x: row array of expected singular locations (optional)
             if nargin < 2
                 eqs = 1; % assume scalar case
             end
@@ -283,6 +348,44 @@ classdef Mesh < handle
             end
             % Convert from knot span units to physical domain units:
             mass = mass/dSigma*(this.edges{end}.coord - this.edges{1}.coord);
+        end
+        %% Total variation in the means
+        function tvm = getTVM(this,eqs)
+            % Computes the total variation in the (patch-wide) means of 
+            % solution vector components via Gauss quadrature of optimal 
+            % order.
+            %
+            % eqs: column array (1 by default)
+            if nargin < 2
+                eqs = 1; % assume scalar case
+            end
+            % Preallocate:
+            masses = zeros(length(eqs),this.elementCount); % patch-wise mass norms
+            % Compute the mass in each patch:
+            k = 0;
+            for element = this.elements
+                k = k + 1;
+                if element.basis.isHybrid
+                    B = element.basis.vandermonde;
+                    modes = element.basis.span2mode;
+                elseif element.basis.isNodal
+                    B = eye(element.basis.basisCount);
+                    modes = 1:element.basis.basisCount;
+                else
+                    B = element.basis.vandermonde;
+                    modes = 1:element.basis.basisCount;
+                end
+                % Loop over knot spans:
+                for l = 1:size(B,3)
+                    masses(:,k) = masses(:,k) +...
+                        element.states(eqs,modes(l,:))...
+                        *B(:,:,l)*element.basis.gaussWeights;
+                end
+                % Normalize by the length of the patch:
+                masses(:,k) = masses(:,k)/(2*size(B,3));
+            end
+            % Compute the total variation in the means:
+            tvm = sum(abs(masses(:,2:end) - masses(:,1:end-1)),2);
         end
         %% Compute solution norms (using adaptive Gauss-Konrod quadrature)
         function norms = getSolutionNorm(this,p,eqs,x)

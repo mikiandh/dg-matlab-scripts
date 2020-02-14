@@ -1,4 +1,8 @@
 classdef Advection < Physics
+    properties (Constant)
+        equationCount = 1
+        controlVars = 1
+    end
     properties
         advSpeed
         ghostStates
@@ -6,7 +10,6 @@ classdef Advection < Physics
     methods
         %% Constructor
         function advection = Advection(a,ghostStates)
-            advection.equationCount = 1;
             advection.advSpeed = 1;
             if nargin > 0
                 advection.advSpeed = a;
@@ -42,6 +45,18 @@ classdef Advection < Physics
             %  statesR: (not used) second state
             %
             A = this.advSpeed;
+        end
+        %% Jacobian eigen-decomposition
+        function [A,L,R] = getEigensystemAt(this,~,~)
+            % Returns the eigenvalue and eigenvector matrices evaluated at,
+            % either:
+            %
+            % A) the given state vector
+            % B) the "generalized Roe average" between two given states
+            %
+            A = this.advSpeed;
+            L = 1;
+            R = 1;
         end
         %% Riemann solver (exact)
         function [flux,S] = riemannFlux(this,stateL,stateR)

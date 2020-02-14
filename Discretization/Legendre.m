@@ -22,6 +22,8 @@ classdef Legendre < Basis
                 this.derivatives = ...
                     this.diffLegendre(this.gaussCoords',this.vandermonde);
                 this.assembleMassAndConvectionMatrices;
+                % Sparsity graph:
+                this.computeSparsityGraph;
             end
         end
         %% Evaluate Legendre polynomial basis

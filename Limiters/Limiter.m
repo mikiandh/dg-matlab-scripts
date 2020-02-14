@@ -66,14 +66,17 @@ classdef Limiter < handle
         end
         % Algebraic Flux Correction, Kuzmin et. al. 2012
         function limiter = AFC(physics)
-            if isa(physics,'Advection') || isa(physics,'Burgers')
-                limiter = AFC_scalar(physics);
-            elseif isa(physics,'Wave') || isa(physics,'Euler')
-                warning('Vector version of AFC is still under development.')
-                limiter = AFC_scalar(physics); % TO DO: implement AFC_vector
-            else
-                error('Limiter not available.')
-            end
+            limiter = AFC(physics);
+%%% UNIFIED %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%             if isa(physics,'Advection') || isa(physics,'Burgers')
+%                 limiter = AFC_scalar(physics);
+%             elseif isa(physics,'Wave') || isa(physics,'Euler')
+%                 warning('Vector version of AFC is still under development.')
+%                 limiter = AFC(physics);
+%             else
+%                 error('Limiter not available.')
+%             end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         end
         %% Minmod function for 3 scalar arguments
         function d = minmod(a,b,c)

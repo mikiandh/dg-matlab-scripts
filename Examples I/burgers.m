@@ -1,4 +1,4 @@
-clc
+%clc
 clear
 %close all
 %path(pathdef)
@@ -16,22 +16,22 @@ addpath('../Math')
 
 %% Parameters
 Ne = 1; % number of elements (!-> for 1 element, use FIXED time-step size)
-p = 1; % degree of the approximation space (per element)
-L = [-1 9]; % domain edges
-tEnd = 4; % final simulation time
-dt = .25;
-CFL = .1; % Courant number
-iterSkip = 1;
+p = 2; % degree of the approximation space (per element)
+L = [-3 3]; % domain edges
+tEnd = .5; % final simulation time
+dt = 1e-3;
+CFL = 1; % Courant number
+iterSkip = 100;
 
 %% Discretization
-method = DGIGA_AFC(20);
+method = DGIGA_AFC_vector(66);
 
 %% Grid
 mesh = Mesh(linspace(L(1),L(2),Ne+1),p,method);
 
 %% Physics
-FUN = @leveque2; % initial condition
-eqn = Burgers(FUN(L)); % PDE
+fun = @leveque1; % initial condition
+eqn = Burgers(fun(L)); % PDE
 
 %% Limiter
 limiter = [];
@@ -41,29 +41,39 @@ limiter = [];
 %limiter = Limiter.Burbeau(eqn);
 %limiter = Limiter.Krivodonova(eqn);
 %limiter = Limiter.Wang(eqn); % best in this case (close call)
-if isa(method,'DGIGA_AFC')
-    %%%limiter = Limiter.AFC(eqn);
-end
+limiter = Limiter.AFC(eqn);
 
 %% Initial condition projection
-% method.interpolate(mesh,limiter,FUN);
-method.project(mesh,limiter,FUN);
+%method.interpolate(mesh,limiter,fun);
+method.project(mesh,limiter,fun);
+%method.projectLumped(mesh,limiter,fun);
 
 %% Time-integration
-timeIntegrator = SSP_RK1(0,tEnd,eqn,limiter,CFL,dt);
+timeIntegrator = SSP_RK3(0,tEnd,eqn,limiter,CFL,dt);
 % norms0 = [mesh.getSolutionMass,mesh.getSolutionNorm(1),mesh.getSolutionNorm,mesh.getTotalVariation];
-norms0 = mesh.getSolutionMass;
+norms0 = [mesh.getSolutionMass mesh.getTVM];
 tic
-timeIntegrator.launch(mesh,iterSkip,@(t,x) FUN(x));
-disp(['   ...done. (' num2str(toc) ' s)'])
+timeIntegrator.launch(mesh,iterSkip,@(t,x) fun(x));
+timeCPU = toc;
+disp(['   ...done. (' num2str(timeCPU) ' s)'])
 
 %% Postprocessing
 % norms = [mesh.getSolutionMass,mesh.getSolutionNorm(1),mesh.getSolutionNorm,mesh.getTotalVariation];
 % rows = {'Solution (mass)' 'Solution (L1)' 'Solution (L2)','Solution (TV)'};
-norms = mesh.getSolutionMass;
-rows = {'Solution (mass)'};
+norms = [mesh.getSolutionMass mesh.getTVM];
+rows = {'Solution (mass)', 'Solution (TVM)'};
 cols = {'Norm','Start','End','Increase'};
 eqn.displayData(rows,cols,norms0,norms,norms-norms0)
+
+%%% Plot the exact solution to Leveque1 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+x = linspace(-3,3,1000);
+y = @(x) -1 + (1+x/tEnd).*heaviside(x+tEnd) + (2-x/tEnd).*heaviside(x-2*tEnd);
+hold all
+h = get(gca,'Children');
+h(end).LineStyle = ':';
+plot(x,y(x),'-.k')
+fprintf('L2 norm of the error: %g \n',mesh.getErrorNorm(y,2));
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% Initial conditions
 function y = riemann1A(x) % right-going shock
@@ -126,7 +136,9 @@ function y = toroIC(x) % from Toro, 2009 (p. 196); L = [0 1.5], tEnd = .5
 y = -.5 + 1.5*heaviside(x-.5) - 1*heaviside(x-1);
 end
 
-function y = leveque1(x) % Leveque (expansion wave), 2002 (p. 231); L = [-3 3], tEnd = 1.
+function y = leveque1(x) % Leveque (expansion wave), 2002 (p. 231); L = [-3 3], tEnd = .5.
+% NOTE: cancellation of fluxes may occur if -qL = qR
+% NOTE: IGA breaks whenever N is even if shock is at x == 0
 y = -1 + 3*heaviside(x);
 end
 
@@ -136,4 +148,8 @@ end
 
 function y = leveque3(x) % Inspired by Leveque, 2002 (p. 223); L = [-8 8], tEnd = 6.
 y = Functions.gauss(x,-4,4).*Functions.tones(x,[1 4 8],[1 2 3],-8,8);
+end
+
+function y = hesthaven(x) % Hesthaven & Warburton, 2008 (p. 141); L = [-1 1], tEnd = 0.8.
+y = 2 - heaviside(x+.5);
 end

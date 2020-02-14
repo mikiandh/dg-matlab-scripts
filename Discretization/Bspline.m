@@ -94,6 +94,8 @@ classdef Bspline < Basis
             this.right = flip(this.left);
             % Precomputed operators:
             this.assembleOperators;
+            % Sparsity graph:
+            this.computeSparsityGraph;
         end
         %% Evaluate basis at locations
         function B = sampleAt(this,x,keepAll)

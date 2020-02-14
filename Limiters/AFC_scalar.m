@@ -39,6 +39,7 @@ classdef AFC_scalar < Limiter
                 % Anti-diffusive fluxes (row: recieving mode; column: contributing mode):
                 diffusionMatrix = this.physics.getConvectionMatrix(element.states,element.basis);
                 diffusionMatrix = element.basis.applyDiffusion(diffusionMatrix) - diffusionMatrix;
+                diffusionMatrix = 2/element.dx*diffusionMatrix; % map diffusion matrix to reference element space
                 f = element.basis.massMatrix.*(element.residuals' - element.residuals) + diffusionMatrix.*(element.states' - element.states);
                 % Pre-limiting:
                 f(f.*(element.states-element.states') > 0) = 0;
@@ -127,6 +128,7 @@ classdef AFC_scalar < Limiter
                 % Anti-diffusive fluxes (row: recieving mode; column: contributing mode):
                 diffusionMatrix = this.physics.getConvectionMatrix(element.states,element.basis);
                 diffusionMatrix = element.basis.applyDiffusion(diffusionMatrix) - diffusionMatrix;
+                diffusionMatrix = 2/element.dx*diffusionMatrix; % map diffusion matrix to reference element space
                 f = element.basis.massMatrix.*(element.residuals' - element.residuals) + diffusionMatrix.*(element.states' - element.states);
                 % Pre-limiting:
                 f(f.*(element.states-element.states') > 0) = 0;
@@ -235,6 +237,7 @@ classdef AFC_scalar < Limiter
                 % Anti-diffusive fluxes (row: recieving mode; column: contributing mode):
                 diffusionMatrix = this.physics.getConvectionMatrix(element.states,element.basis);
                 diffusionMatrix = element.basis.applyDiffusion(diffusionMatrix) - diffusionMatrix;
+                diffusionMatrix = 2/element.dx*diffusionMatrix; % map diffusion matrix to reference element space
                 f{k} = element.basis.massMatrix.*(element.residuals' - element.residuals) + diffusionMatrix.*(element.states' - element.states);
                 % Pre-limiting:
                 f{k}(f{k}.*(element.states-element.states') > 0) = 0;

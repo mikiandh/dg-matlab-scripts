@@ -11,23 +11,25 @@ classdef Lagrange < Basis
     end
     methods
         %% Constructor
-        function lagrange = Lagrange(p)
+        function this = Lagrange(p)
             if nargin > 0
-                lagrange.degree = p;
-                lagrange.order = p+1;
-                lagrange.basisCount = lagrange.order;
-                [lagrange.nodeCoords, lagrange.nodeWeights,lagrange.vandermonde] =...
+                this.degree = p;
+                this.order = p+1;
+                this.basisCount = this.order;
+                [this.nodeCoords, this.nodeWeights,this.vandermonde] =...
                     Legendre.quadratureGaussLegendre(p);
-                lagrange.gaussCoords = lagrange.nodeCoords;
-                lagrange.gaussWeights = lagrange.nodeWeights;
-                lagrange.invVandermonde = inv(lagrange.vandermonde);
-                lagrange.basisWeights =...
-                    lagrange.barycentricWeights(lagrange.nodeCoords);
-                lagrange.left = lagrange.sampleAt(-1);
-                lagrange.right = lagrange.sampleAt(1);
-                lagrange.derivatives = lagrange.derivativeMatrix(...
-                    lagrange.nodeCoords,lagrange.basisWeights); % vanilla derivative matrix
-                lagrange.assembleMassAndConvectionMatrices;
+                this.gaussCoords = this.nodeCoords;
+                this.gaussWeights = this.nodeWeights;
+                this.invVandermonde = inv(this.vandermonde);
+                this.basisWeights =...
+                    this.barycentricWeights(this.nodeCoords);
+                this.left = this.sampleAt(-1);
+                this.right = this.sampleAt(1);
+                this.derivatives = this.derivativeMatrix(...
+                    this.nodeCoords,this.basisWeights); % vanilla derivative matrix
+                this.assembleMassAndConvectionMatrices;
+                % Sparsity graph:
+                this.computeSparsityGraph;
             end
         end
         %% Evaluate Lagrange polynomial basis

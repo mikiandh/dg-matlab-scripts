@@ -15,6 +15,8 @@ classdef Basis < handle
         nodeCoords
         gaussCoords
         gaussWeights
+        pairs % 2D array of test function/basis function pairs within mutual nonzero support; 1st row: test function, r; 2nd row: basis function, j; 3rd row: linear index; 4th row: transposed linear index
+        edges % idem, but excludes pairs of repeated control points, i.e. j == r ("virtual" edges a la Kuzmin et al. 2012)
     end
     methods (Abstract)
         clone(prototype,degree) % required for the prototype instantiation pattern
@@ -25,6 +27,16 @@ classdef Basis < handle
         %%% integrateFun(fun,q) % numerically integrate a given function over the reference patch
     end
     methods
+        function computeSparsityGraph(this)
+            % Fills the properties related to the sparsity graph of the
+            % discretization (i.e. nonzero entries in the mass matrix).
+            [r,j] = find(this.massMatrix);
+            ind = sub2ind(this.basisCount*[1 1],r,j);
+            dni = sub2ind(this.basisCount*[1 1],j,r);
+            this.pairs = [r'; j'; ind'; dni'];
+            this.edges = this.pairs(:,r~=j);
+            %%% this.edges = [this.edges; 1:size(this.edges,2)];
+        end
         function x = getGaussCoords(this)
             % Retrieves quadrature point locations in reference patch 
             % coordinates. Default implementation (override as necessary).

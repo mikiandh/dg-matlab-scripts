@@ -15,19 +15,19 @@ addpath('../Grid')
 addpath('../Math')
 
 %% Parameters
-Ne = 6; % number of elements
+Ne = 4; % number of elements
 p = 2; % degree of the approximation space (per element)
-L = [0 1]; % domain edges
-tEnd = .125; % final simulation time
+L = [-5 5]; % domain edges
+tEnd = 1.8; % final simulation time
 dt = [];
-CFL = .005; % Courant number
-iterSkip = 30;
+CFL = .01; % Courant number
+iterSkip = 10;
 
 %% Physics
 eqn = Euler('transmissive','HLLC');
 
 %% Discretization
-method = DGIGA_AFC_vector(20);
+method = DGIGA_AFC_vector(62);
 
 %% Grid
 mesh = Mesh(linspace(L(1),L(2),Ne+1),p,method);
@@ -42,12 +42,10 @@ limiter = [];
 %limiter = Limiter.Burbeau(eqn);
 %limiter = Limiter.Krivodonova(eqn);
 %limiter = Limiter.Wang(eqn); % best in this case (except for, maybe, toro5)
-if isa(method,'DGIGA_AFC')
-    limiter = Limiter.AFC(eqn);
-end
+limiter = Limiter.AFC(eqn);
 
 %% Initial condition/exact solution
-FUN = @leveque;
+FUN = @shuOsher;
 
 %% Initial condition projection
 FUN0 = @(x) FUN(0,x);
@@ -125,7 +123,7 @@ y(:,x < 0.1) = y1.*y(:,x < 0.1);
 y(:,x >= 0.1 & x < 0.9) = y2.*y(:,x >= 0.1 & x < 0.9);
 y(:,x > 0.9) = y3.*y(:,x > 0.9);
 end
-% Shu and Osher:
+% Shu and Osher (mimicks shock-turbulence interaction):
 function y = shuOsher(~,x)
 % tEnd = 1.8
 % L = [-5 5]

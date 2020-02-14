@@ -1,4 +1,8 @@
 classdef Wave < Physics
+    properties (Constant)
+        equationCount = 2
+        controlVars = 1:2
+    end
     properties
         waveSpeed
         jacobian % i.e. A matrix
@@ -13,7 +17,6 @@ classdef Wave < Physics
             if nargin == 0
                 c = 1;
             end
-            wave.equationCount = 2;
             wave.waveSpeed = c;
             wave.jacobian = [0 c^2; 1 0];
             wave.jacobianL = 0.5*[abs(c) c^2; 1 abs(c)];
@@ -106,10 +109,13 @@ classdef Wave < Physics
             %
             A = this.jacobian;
         end
-        %% Return eigenvalues and eigenvector matrices
-        function [A,L,R] = getEigensystemAt(this,~)
-            % Returns the eigenvalue and eigenvector matrices (which are 
-            % constant for this linear equation).
+        %% Jacobian eigen-decomposition
+        function [A,L,R] = getEigensystemAt(this,~,~)
+            % Returns the eigenvalue and eigenvector matrices evaluated at,
+            % either:
+            %
+            % A) the given state vector
+            % B) the "generalized Roe average" between two given states
             %
             A = this.waveSpeed*[1 0; 0 -1];
             L = this.invEigenvectors;

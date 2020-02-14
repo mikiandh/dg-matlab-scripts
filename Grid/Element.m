@@ -16,8 +16,10 @@ classdef Element < handle
         residuals % residual (i.e. time derivative) vector at nodes
         dofCount % number of degrees of freedom per element, per equation
         % AFC:
-        jacobians % low order discrete Jacobian operator (cell array)
         diffusions % artificial diffusion operator (cell array)
+        antidiffusiveFluxes % sparse 2D array of FCT antidiffusive flux vectors along pairs of modes (with zero padding)
+        maxima % 2D array of distances to local maximum state values, column: control point; row: system component
+        minima % idem, for minima
         % Limiter:
         limiterHistory
         % SSP RK:
@@ -132,6 +134,32 @@ classdef Element < handle
         %% Update element residuals according to its basis
         function computeResiduals(this,physics)
             this.basis.computeResiduals(this,physics);
+        end
+        %% Correct element states by adding antidiffusive fluxes
+        function applyAntidiffusiveFluxes(this)
+            % Updates the state vectors on an element by adding its
+            % antidiffusive fluxes, weighted appropriately by the lumped
+            % mass matrix entries.
+            %
+            % TO DO: vectorize (via accumulation? see example: sparse)
+            %
+            for edge = this.basis.edges
+                this.states(:,edge(1)) = this.states(:,edge(1)) +...
+                    this.antidiffusiveFluxes(:,edge(3))./...
+                    this.basis.lumpedMassMatrixDiagonal(edge(1));
+            end
+        end
+        %% Remove antidiffusive fluxes from element states
+        function removeAntidiffusiveFluxes(this,betas)
+            %
+            % TO DO: vectorize!
+            %
+            for edge = this.basis.edges
+                this.states(:,edge(1)) = this.states(:,edge(1)) -...
+                    betas(edge(1),edge(2)).*...
+                    this.antidiffusiveFluxes(:,edge(3))./...
+                    this.basis.lumpedMassMatrixDiagonal(edge(1));
+            end
         end
     end
 end

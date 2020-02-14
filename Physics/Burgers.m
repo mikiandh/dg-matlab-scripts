@@ -1,4 +1,8 @@
 classdef Burgers < Physics
+    properties (Constant)
+        equationCount = 1
+        controlVars = 1
+    end
     properties
         viscosity
         ghostStates
@@ -21,6 +25,22 @@ classdef Burgers < Physics
         function flux = flux(state)
             flux = 0.5*state.^2;
         end
+        %% Jacobian eigen-decomposition
+        function [A,L,R] = getEigensystemAt(state1,state2)
+            % Returns the eigenvalue and eigenvector matrices evaluated at,
+            % either:
+            %
+            % A) the given state vector
+            % B) the "generalized Roe average" between two given states
+            %
+            if nargin == 1
+                A = state1;
+            else
+                A = .5*(state1+state2); % Roe average for Burgers' reduces to arithmetic average (see Toro 2009, section 11.2)
+            end
+            L = 1;
+            R = 1;
+        end
     end
     methods
         %% Constructor
@@ -31,14 +51,7 @@ classdef Burgers < Physics
             if nargin > 0
                 burgers.ghostStates = ghostStates;
             end
-            burgers.equationCount = 1;
             burgers.viscosity = epsilon;
-        end
-        %% Flux jacobian
-        function A = jacobian(this,element)
-            % Returns the Jacobian (in this case, a scalar) of the
-            % conserved fluxes.
-            A = this.advSpeed;
         end
         %% Riemann solver (exact, with entropy fix)
         function [flux,S] = riemannFlux(this,stateL,stateR)

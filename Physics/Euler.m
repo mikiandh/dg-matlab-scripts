@@ -1,11 +1,14 @@
 classdef Euler < Physics
+    properties (Constant)
+        equationCount = 3
+        controlVars = [1 2 3] % [density velocity pressure]
+    end
     properties
         riemannSolver
     end
     methods
         %% Constructor
         function euler = Euler(boundaryConditions,riemannSolver)
-            euler.equationCount = 3;
             euler.boundaryConditionsFunction = @Euler.applyTransmissiveBoundaryConditions;
             euler.riemannSolver = @Euler.riemannRoe;
             if nargin > 0
@@ -126,8 +129,21 @@ classdef Euler < Physics
             r = state(1,:);
             u = state(2,:)/state(1,:);
             p = 0.4*(state(3,:) - 0.5*r.*u.^2);
-            a = realpow(1.4*p/r,0.5);
-            H = (state(3,:) + p)/r;
+            a = realpow(1.4*p./r,0.5);
+            H = (state(3,:) + p)./r;
+        end
+        %% Roe-averaged variables (one by one) from state vectors
+        function [rAvg,uAvg,HAvg,aAvg] = getRoeFromState(statesL,statesR)
+            % Primitive variables:
+            [r,u,~,~,H] = Euler.getPrimitivesFromState(statesL);
+            [rAvg,uAvg,~,~,HAvg] = Euler.getPrimitivesFromState(statesR);
+            % Roe averages:
+            r = realpow(r,0.5);
+            rAvg = realpow(rAvg,0.5);
+            aux = 1./(rAvg + r);
+            uAvg = (rAvg.*uAvg + r.*u).*aux;
+            HAvg = (rAvg.*HAvg + r.*H).*aux;
+            aAvg = realpow(0.4*(HAvg - 0.5*uAvg.^2),0.5);
         end
         %% Riemann solver (exact)
         function [flux,S] = riemannExact(stateL,stateR)
@@ -422,29 +438,22 @@ classdef Euler < Physics
                 L(:,:,k) = 0.2/a^2*[H+2.5*a*(u-a) -(u+2.5*a) 1; -2*H+10*a^2 2*u -2; H-2.5*a*(u+a) -u+2.5*a 1];
             end
         end
-        %% Return eigenvalues and eigenvector matrices for given mean states
-        function [A,L,R] = getEigensystemAt(meanStates)
-            % Returns the eigenvector matrices evaluated at the mean state
-            % passed as input.
+        %% Jacobian eigen-decomposition
+        function [A,L,R] = getEigensystemAt(state1,state2)
+            % Returns the eigenvalue and eigenvector matrices evaluated at,
+            % either:
             %
-            % meanStates(i,j,k)
-            % A(i,j,k)
-            % L(i,j,k)
-            % R(i,j,k)
-            %  i: system dimension
-            %  j: eigenvector index
-            %  k: element
+            % A) the given state vector
+            % B) the "generalized Roe average" between two given states
             %
-            K = size(meanStates,3);
-            R = zeros(3,3,K);
-            L = R;
-            A = R;
-            for k = 1:K
-                [~,u,~,a,H] = Euler.getPrimitivesFromState(meanStates(:,1,k));
-                R(:,:,k) = [1 1 1; u-a u u+a; H-u*a 0.5*u^2 H+u*a];
-                L(:,:,k) = 0.2/a^2*[H+2.5*a*(u-a) -(u+2.5*a) 1; -2*H+10*a^2 2*u -2; H-2.5*a*(u+a) -u+2.5*a 1];
-                A(:,:,k) = diag([u-a u u+a]);
+            if nargin > 1
+                [~,u,H,a] = Euler.getRoeFromState(state1,state2); % Roe variables
+            else
+                [~,u,~,a,H] = Euler.getPrimitivesFromState(state1); % primitive variables
             end
+            R = [1 1 1; u-a u u+a; H-u*a 0.5*u^2 H+u*a];
+            L = 0.2/a^2*[H+2.5*a*(u-a) -(u+2.5*a) 1; -2*H+10*a^2 2*u -2; H-2.5*a*(u+a) -u+2.5*a 1];
+            A = diag([u-a u u+a]);
         end
         %% Return left and right eigenvectormatrices for given mean states
         function [L,R] = getLocalEigenvectors(stateL,stateR)
@@ -519,83 +528,85 @@ classdef Euler < Physics
             end
             PASS = 1;
         end
-        %% Numerical diffusion (Roe average)
-        function applyArtificialDiffusion_44(element)
-            % Adds artifficial diffusion to an element's residuals. The
-            % element's basis is assumed to be DGIGA_AFC.
-            %
-            % See Kuzmin et al. 2012, eqs. 42 - 46. Current version employs
-            % the Roe averaged Jacobians (eq. 42).
-            %
-            % Loop over pairs of modes with shared support:
-            [rows,cols] = find(element.basis.massMatrix);
-            for e = 1:length(rows) % !-> an edge joins two control locations, i.e. the set of all edges is the control poligon
-                r = rows(e);
-                j = cols(r);
-                if r == j
-                    continue
-                else
-                    aux = element.basis.gradientMatrix(j,r);
-                    aux = .5*(aux - element.basis.gradientMatrix(r,j));
-                    [A,L,R] = Euler.getLocalEigensystem(element.states(:,r),element.states(:,j));
-                    aux = abs(aux)*R*abs(A)*L; % Möller & Jaeschke, 2018 (eq. 16)
-                    element.residuals(:,r) =...
-                        element.residuals(:,r) +...
-                        aux*(element.states(:,j) - element.states(:,r));
-                end
-            end
-        end
-        %% Numerical diffusion (arithmetic average)
-        function applyArtificialDiffusion_45(element)
-            % Adds artifficial diffusion to an element's residuals. The
-            % element's basis is assumed to be DGIGA_AFC.
-            %
-            % See Kuzmin et al. 2012, eqs. 42 - 46. Current version employs
-            % the arithmetically averaged Jacobians (eq. 44).
-            %
-            % Loop over pairs of modes with shared support:
-            [rows,cols] = find(element.basis.massMatrix);
-            for e = 1:length(rows) % !-> an edge joins two control locations, i.e. the set of all edges is the control poligon
-                r = rows(e);
-                j = cols(e); % <- fixed a bug, but did not check!
-                if r == j
-                    continue
-                else
-                    aux = element.basis.gradientMatrix(j,r);
-                    aux = .5*(aux - element.basis.gradientMatrix(r,j));
-                    [A,L,R] = Euler.getEigensystemAt(.5*(element.states(:,r)+element.states(:,j)));
-                    aux = abs(aux)*R*abs(A)*L; % Möller & Jaeschke, 2018 (eq. 16)
-                    element.residuals(:,r) =...
-                        element.residuals(:,r) +...
-                        aux*(element.states(:,j) - element.states(:,r));
-                end
-            end
-        end
-        %% Numerical diffusion (Rusanov)
-        function applyArtificialDiffusion(element)
-            % Adds artifficial diffusion to an element's residuals. The
-            % element's basis is assumed to be DGIGA_AFC.
-            %
-            % See Kuzmin et al. 2012, eqs. 44 - 46. Current version employs
-            % Rusanov-like scalar diffusion (eq. 45).
-            %
-            % Loop over pairs of modes with shared support:
-            [rows,cols] = find(element.basis.massMatrix);
-            for e = 1:length(rows) % !-> an edge joins two control locations, i.e. the set of all edges is the control poligon
-                r = rows(e);
-                j = cols(r);
-                if r == j
-                    continue
-                else
-                    aux = element.basis.gradientMatrix(j,r);
-                    aux = .5*(aux - element.basis.gradientMatrix(r,j));
-                    [A,L,R] = Euler.getEigensystemAt(.5*(element.states(:,r)+element.states(:,j)));
-                    aux = abs(aux)*R*abs(A)*L; % Möller & Jaeschke, 2018 (eq. 16)
-                    element.residuals(:,r) =...
-                        element.residuals(:,r) +...
-                        aux*(element.states(:,j) - element.states(:,r));
-                end
-            end
-        end
+%%% DEPRECATED %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%         %% Numerical diffusion (Roe average)
+%         function applyArtificialDiffusion_44(element)
+%             % Adds artifficial diffusion to an element's residuals. The
+%             % element's basis is assumed to be DGIGA_AFC.
+%             %
+%             % See Kuzmin et al. 2012, eqs. 42 - 46. Current version employs
+%             % the Roe averaged Jacobians (eq. 42).
+%             %
+%             % Loop over pairs of modes with shared support:
+%             [rows,cols] = find(element.basis.massMatrix);
+%             for e = 1:length(rows) % !-> an edge joins two control locations, i.e. the set of all edges is the control poligon
+%                 r = rows(e);
+%                 j = cols(r);
+%                 if r == j
+%                     continue
+%                 else
+%                     aux = element.basis.gradientMatrix(j,r);
+%                     aux = .5*(aux - element.basis.gradientMatrix(r,j));
+%                     [A,L,R] = Euler.getLocalEigensystem(element.states(:,r),element.states(:,j));
+%                     aux = abs(aux)*R*abs(A)*L; % Möller & Jaeschke, 2018 (eq. 16)
+%                     element.residuals(:,r) =...
+%                         element.residuals(:,r) +...
+%                         aux*(element.states(:,j) - element.states(:,r));
+%                 end
+%             end
+%         end
+%         %% Numerical diffusion (arithmetic average)
+%         function applyArtificialDiffusion_45(element)
+%             % Adds artifficial diffusion to an element's residuals. The
+%             % element's basis is assumed to be DGIGA_AFC.
+%             %
+%             % See Kuzmin et al. 2012, eqs. 42 - 46. Current version employs
+%             % the arithmetically averaged Jacobians (eq. 44).
+%             %
+%             % Loop over pairs of modes with shared support:
+%             [rows,cols] = find(element.basis.massMatrix);
+%             for e = 1:length(rows) % !-> an edge joins two control locations, i.e. the set of all edges is the control poligon
+%                 r = rows(e);
+%                 j = cols(e); % <- fixed a bug, but did not check!
+%                 if r == j
+%                     continue
+%                 else
+%                     aux = element.basis.gradientMatrix(j,r);
+%                     aux = .5*(aux - element.basis.gradientMatrix(r,j));
+%                     [A,L,R] = Euler.getEigensystemAt(.5*(element.states(:,r)+element.states(:,j)));
+%                     aux = abs(aux)*R*abs(A)*L; % Möller & Jaeschke, 2018 (eq. 16)
+%                     element.residuals(:,r) =...
+%                         element.residuals(:,r) +...
+%                         aux*(element.states(:,j) - element.states(:,r));
+%                 end
+%             end
+%         end
+%         %% Numerical diffusion (Rusanov)
+%         function applyArtificialDiffusion(element)
+%             % Adds artifficial diffusion to an element's residuals. The
+%             % element's basis is assumed to be DGIGA_AFC.
+%             %
+%             % See Kuzmin et al. 2012, eqs. 44 - 46. Current version employs
+%             % Rusanov-like scalar diffusion (eq. 45).
+%             %
+%             % Loop over pairs of modes with shared support:
+%             [rows,cols] = find(element.basis.massMatrix);
+%             for e = 1:length(rows) % !-> an edge joins two control locations, i.e. the set of all edges is the control poligon
+%                 r = rows(e);
+%                 j = cols(r);
+%                 if r == j
+%                     continue
+%                 else
+%                     aux = element.basis.gradientMatrix(j,r);
+%                     aux = .5*(aux - element.basis.gradientMatrix(r,j));
+%                     [A,L,R] = Euler.getEigensystemAt(.5*(element.states(:,r)+element.states(:,j)));
+%                     aux = abs(aux)*R*abs(A)*L; % Möller & Jaeschke, 2018 (eq. 16)
+%                     element.residuals(:,r) =...
+%                         element.residuals(:,r) +...
+%                         aux*(element.states(:,j) - element.states(:,r));
+%                 end
+%             end
+%         end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     end
 end

@@ -1,18 +1,18 @@
 classdef (Abstract) Physics < handle
+    properties (Constant,Abstract)
+        equationCount % number of components that this system of PDEs has
+        controlVars % indices of components considered control variables
+    end
     properties
-        equationCount
         boundaryConditionsFunction
     end
     methods (Abstract)
         flux(this,states)
         riemannFlux(this,stateL,stateR)
+        getEigensystemAt(this,state1,state2)
         applyBoundaryConditions(this,mesh)
     end
     methods
-        function getDissipationMatrix(this,stateL,stateR)
-            % Returns the dissipation matrix to be used when constructing
-            % the low order predictor in AFC. Scalar approach (Jaeschke
-        end
         function displayData(this,rowNames,colNames,varargin)
             % Function that prints a table of data (with arbitrary number
             % of columns and rows) in which each position contains a column

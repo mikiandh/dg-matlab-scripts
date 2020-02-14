@@ -1,9 +1,9 @@
-%clc
+clc
 clear
-close all
+%close all
 %path(pathdef)
 
-% This script solves the wave equation in 1D. Uses the DGSEM classes.
+% This script solves the wave equation in 1D.
 
 %% Dependencies
 addpath('../../../../Extra')
@@ -18,7 +18,7 @@ addpath('../Math')
 Ne = 1; % number of elements (!-> for 1 element, use FIXED time-step size)
 p = 2; % degree of the approximation space (per element)
 L = [0 1]; % domain edges
-tEnd = 2.0; % final simulation time
+tEnd = 0.0; % final simulation time
 dt = [];
 CFL = .01; % Courant number
 iterSkip = 100;
@@ -35,7 +35,7 @@ eqn = Wave;
 %method = FR(1e-2);
 %method = DGIGA(28);
 %method = DGIGA_AFC(30);
-method = DGIGA_AFC_vector(58);
+method = DGIGA_AFC_vector(67);
 
 %% Initial condition
 FUN = @(x) combinedIC(x);
@@ -51,17 +51,16 @@ limiter = [];
 %limiter = Limiter.Burbeau(eqn);
 %limiter = Limiter.Krivodonova(eqn); % best in this case
 %limiter = Limiter.Wang(eqn);
-if isa(method,'DGIGA_AFC')
-    limiter = Limiter.AFC(eqn);
-end
+limiter = Limiter.AFC(eqn);
+
 
 %% Initial condition projection
 % method.interpolate(mesh,limiter,FUN);
 method.project(mesh,limiter,FUN);
-%method.projectLumped(mesh,limiter,FUN);
+% method.projectLumped(mesh,limiter,FUN);
 
 %% Time-integration
-timeIntegrator = SSP_RK1(0,tEnd,eqn,limiter,CFL,dt);
+timeIntegrator = SSP_RK3(0,tEnd,eqn,limiter,CFL,dt);
 norms0 = [mesh.getSolutionMass(1:2),mesh.getErrorNorm(FUN,2,1:2)];
 tic
 timeIntegrator.launch(mesh,iterSkip,@(t,x) FUN(x));
