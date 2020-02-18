@@ -1,4 +1,4 @@
-%clc
+clc
 clear
 %close all
 %path(pathdef)
@@ -16,7 +16,7 @@ addpath('../Math')
 
 %% Parameters
 Ne = 1; % number of elements
-p = 5; % degree of the approximation space (per element)
+p = 50; % degree of the approximation space (per element)
 L = [0 1]; % domain edges
 tEnd = 1; % final simulation time
 dt = []; % time-step size (overrides CFL)
@@ -45,7 +45,7 @@ FUN = IC_gauss; % initial condition
 eqn = Advection(1,[]); % PDE + BCs
 
 %% Discretization
-method = DGIGA(33);
+method = DGSEM;
 
 %% Grid
 xEdge = linspace(L(1),L(2),Ne+1); % element end-points
@@ -69,16 +69,16 @@ method.project(mesh,limiter,FUN);
 
 %% Time-integration
 timeIntegrator = SSP_RK3(0,tEnd,eqn,limiter,CFL,dt);
-norms0 = [mesh.getSolutionMass,mesh.getSolutionNorm(1),mesh.getSolutionNorm,mesh.getTotalVariation,mesh.getErrorNorm(FUN)];
-%norms0 = mesh.getSolutionMass;
+%norms0 = [mesh.getSolutionMass,mesh.getSolutionNorm(1),mesh.getSolutionNorm,mesh.getTotalVariation,mesh.getErrorNorm(FUN)];
+norms0 = mesh.getSolutionMass;
 tic
 timeIntegrator.launch(mesh,iterSkip,@(t,x) FUN(x));
 fprintf(1,'...done. (%g s)\n',toc)
 
 %% Postprocessing
-norms = [mesh.getSolutionMass,mesh.getSolutionNorm(1),mesh.getSolutionNorm,mesh.getTotalVariation,mesh.getErrorNorm(FUN)];
-rows = {'Solution (mass)' 'Solution (L1)' 'Solution (L2)','Solution (TV)','Error (L2)'};
-% norms = mesh.getSolutionMass;
-% rows = {'Solution (mass)'};
+% norms = [mesh.getSolutionMass,mesh.getSolutionNorm(1),mesh.getSolutionNorm,mesh.getTotalVariation,mesh.getErrorNorm(FUN)];
+% rows = {'Solution (mass)' 'Solution (L1)' 'Solution (L2)','Solution (TV)','Error (L2)'};
+norms = mesh.getSolutionMass;
+rows = {'Solution (mass)'};
 cols = {'Norm','Start','End','Increase'};
 eqn.displayData(rows,cols,norms0,norms,norms-norms0)
