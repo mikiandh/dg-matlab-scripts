@@ -1,7 +1,7 @@
 classdef TVBM_scalar < Limiter
     properties
         everyStage = true;
-        M % modified Minmod function parameter
+        M % modified Minmod function parameter (M >= 2/3*|q_xx|)
     end
     methods
         %% Constructor
