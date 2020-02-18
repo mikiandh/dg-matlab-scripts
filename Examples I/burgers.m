@@ -16,12 +16,12 @@ addpath('../Math')
 
 %% Parameters
 Ne = 1; % number of elements (!-> for 1 element, use FIXED time-step size)
-p = 2; % degree of the approximation space (per element)
+p = 1; % degree of the approximation space (per element)
 L = [-3 3]; % domain edges
 tEnd = .5; % final simulation time
 dt = 1e-3;
 CFL = 1; % Courant number
-iterSkip = 100;
+iterSkip = 1;
 
 %% Discretization
 method = DGIGA_AFC_vector(66);

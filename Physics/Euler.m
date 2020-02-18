@@ -158,18 +158,11 @@ classdef Euler < Physics
                 stateR(1),stateR(2),stateR(3),0);
             flux = Euler.flux(Euler.primitiveToState([r u p]'));
         end
-        %% Riemann solver (Rusanov)
+        %% Riemann solver (Rusanov, a.k.a Local Lax-Friedrichs)
         function [flux,S] = riemannRusanov(stateL,stateR)
             this.flux1 = Euler.flux(stateL) + Euler.flux(stateR);
             this.flux2 = stateR - stateL;
             % Wave speed estimate:
-            
-            %%% TESTING %%%
-            pL = 0.4*(stateL(3) - 0.5*stateL(2)^2/stateL(1));
-            pR = 0.4*(stateR(3) - 0.5*stateR(2)^2/stateR(1));
-            PASS = Euler.checkWithinPhysicalBounds(stateL,stateR);
-            %%%%%%%%%%%%%%%
-            
             [~,uL,~,aL,~] = Euler.getPrimitivesFromState(stateL); %%% FIXME: Woodward & Colella bursts here
             [~,uR,~,aR,~] = Euler.getPrimitivesFromState(stateR);
             S = max(abs(uL) + aL, abs(uR) + aR);

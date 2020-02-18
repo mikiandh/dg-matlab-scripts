@@ -49,7 +49,7 @@ classdef AFC < Limiter
             % Convert state to control variables:
             this.syncStatesFun(mesh);
             % Determine local predictor extrema:
-            mesh.findExtrema;
+            this.findExtrema(mesh);
             % Apply FCT limiting:
             this.applySynchronizedFCT(mesh);
             % Apply failsafe limiting:
@@ -229,6 +229,127 @@ classdef AFC < Limiter
             alphas = min(alphas,alphas');
             % Re-arrange to match conservative antidiffusive flux arrangement:
             alphas = reshape(full(alphas),1,N^2);
+        end
+        %% Deduce local extrema (full support across patch boundaries)
+        function findExtrema(mesh)
+            % This method initializes arrays maxima/minima of each element 
+            % with its local maximum/minimum state values.
+            %
+            % Searches extrema in the full stencil width across each patch 
+            % interface, i.e. all basis modes that "touch" a patch 
+            % interface (on both sides of it) share common extrema.
+            %
+            % Find intra-patch extrema:
+            N = mesh.elementCount;
+            for element = mesh.elements
+                % Aliases:
+                r = element.basis.pairs(1,:); % test functions
+                j = element.basis.pairs(2,:); % overlapping basis functions
+                % Loop over control points of current patch:
+                for m = r
+                    ids = j(r == m);
+                    element.maxima(:,m) = max(element.states(:,ids),[],2);
+                    element.minima(:,m) = min(element.states(:,ids),[],2);
+                end
+            end
+            % Communicate inter-patch extrema:
+            %
+            %  Right(left)-most control point extrema of patch k is also
+            %  the extrema of the first(last) control point of patch k+1
+            %  (k-1).
+            %
+            for k = 2:N % loop over (left) interfaces
+                % Aliases:
+                elementL = mesh.elements(k-1);
+                elementR = mesh.elements(k);
+                % Common maxima:
+                aux = max([elementL.maxima(:,end),elementR.maxima(:,1)],[],2);
+                elementL.maxima(:,end) = aux;
+                elementR.maxima(:,1) = aux;
+                % Common minima:
+                aux = min([elementL.minima(:,end),elementR.minima(:,1)],[],2);
+                elementL.minima(:,end) = aux;
+                elementR.minima(:,1) = aux;
+            end
+            % Distribute inter-patch extrema inwards of each patch:
+            for element = mesh.elements
+                % Aliases:
+                basis = element.basis;
+                r = basis.edges(1,:); % test functions
+                j = basis.edges(2,:); % overlapping basis functions (excluding self-support)
+                % Left/right-most control point nearest neighbours:
+                for m = [1 basis.basisCount]
+                    idsTo = j(r == m);
+                    idsFrom = m*ones(size(idsTo));
+                    element.maxima(:,idsTo) = max(element.maxima(:,idsTo),element.maxima(:,idsFrom));
+                    element.minima(:,idsTo) = min(element.minima(:,idsTo),element.minima(:,idsFrom));
+                end
+            end
+            % Override extrema of control points closest to mesh boundaries:
+            % (Kuzmin et al, 2012; remark 5, pp. 163, bottom)
+            mesh.elements(1).maxima(:,1) = inf;
+            mesh.elements(1).minima(:,1) = -inf;
+            mesh.elements(end).maxima(:,end) = inf;
+            mesh.elements(end).minima(:,end) = -inf;
+        end
+        %% Deduce local extrema (minimal support across patch boundaries)
+        function findExtremaBAD(mesh)
+            % This method initializes arrays maxima/minima of each element 
+            % with its local maximum/minimum state values.
+            %
+            % Searches extrema only on the first control point across each 
+            % patch interface, i.e. only the extrema of the right-most
+            % mode of the left patch can be candidate extrema of the right
+            % patch.
+            %
+            % Alias:
+            N = mesh.elementCount;
+            % Determine common extrema (nearest modes to patch boundaries):
+            for k = 2:N % loop over (left) interfaces
+                % Aliases:
+                elementL = mesh.elements(k-1);
+                elementR = mesh.elements(k);
+                % Common maxima:
+                aux = max([elementL.states(:,end),elementR.states(:,1)],[],2);
+                elementL.maxima(:,N) = aux;
+                elementR.maxima(:,1) = aux;
+                % Common minima:
+                aux = min([elementL.states(:,end),elementR.states(:,1)],[],2);
+                elementL.minima(:,N) = aux;
+                elementR.minima(:,1) = aux;
+            end
+            % Find intra-patch extrema:
+            for element = mesh.elements
+                % Aliases:
+                r = element.basis.pairs(1,:); % test functions
+                j = element.basis.pairs(2,:); % overlapping basis functions
+                % Loop over control points of current patch:
+                for m = r
+                    ids = j(r == m);
+                    element.maxima(:,m) = max(element.states(:,ids),[],2);
+                    element.minima(:,m) = min(element.states(:,ids),[],2);
+                end
+            end
+            % Distribute inter-patch extrema inwards of each patch:
+            for element = mesh.elements
+                % Aliases:
+                basis = element.basis;
+                r = basis.edges(1,:); % test functions
+                j = basis.edges(2,:); % overlapping basis functions (excluding self-support)
+                % Left/right-most control point nearest neighbours:
+                for m = [1 basis.basisCount]
+                    idsTo = j(r == m);
+                    idsFrom = m*ones(size(idsTo));
+                    element.maxima(:,idsTo) = max(element.maxima(:,idsTo),element.maxima(:,idsFrom));
+                    element.minima(:,idsTo) = min(element.minima(:,idsTo),element.minima(:,idsFrom));
+                end
+            end
+            % Override extrema of control points closest to mesh boundaries:
+            % (Kuzmin et al, 2012; remark 5, pp. 163, bottom)
+            mesh.elements(1).maxima(:,1) = inf;
+            mesh.elements(1).minima(:,1) = -inf;
+            mesh.elements(end).maxima(:,end) = inf;
+            mesh.elements(end).minima(:,end) = -inf;
         end
         %% Default sync function
         function sync_skip(~,~)

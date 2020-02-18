@@ -141,24 +141,28 @@ classdef Element < handle
             % antidiffusive fluxes, weighted appropriately by the lumped
             % mass matrix entries.
             %
-            % TO DO: vectorize (via accumulation? see example: sparse)
-            %
-            for edge = this.basis.edges
-                this.states(:,edge(1)) = this.states(:,edge(1)) +...
-                    this.antidiffusiveFluxes(:,edge(3))./...
-                    this.basis.lumpedMassMatrixDiagonal(edge(1));
+            % Aliases:
+            N = this.basis.basisCount;
+            masses = this.basis.lumpedMassMatrixDiagonal;
+            % Loop over equations:
+            for i = 1:size(this.states,1)
+                f = reshape(this.antidiffusiveFluxes(i,:),N,N);
+                this.states(i,:) = this.states(i,:) + sum(f,2)'./masses;
             end
         end
         %% Remove antidiffusive fluxes from element states
         function removeAntidiffusiveFluxes(this,betas)
+            % Updates the state vectors on an element by removing a faction
+            % of its antidiffusive fluxes, weighted appropriately by the 
+            % lumped mass matrix entries.
             %
-            % TO DO: vectorize!
-            %
-            for edge = this.basis.edges
-                this.states(:,edge(1)) = this.states(:,edge(1)) -...
-                    betas(edge(1),edge(2)).*...
-                    this.antidiffusiveFluxes(:,edge(3))./...
-                    this.basis.lumpedMassMatrixDiagonal(edge(1));
+            % Aliases:
+            N = this.basis.basisCount;
+            masses = this.basis.lumpedMassMatrixDiagonal;
+            % Loop over equations:
+            for i = 1:size(this.states,1)
+                f = betas.*reshape(this.antidiffusiveFluxes(i,:),N,N);
+                this.states(i,:) = this.states(i,:) - sum(f,2)'./masses;
             end
         end
     end

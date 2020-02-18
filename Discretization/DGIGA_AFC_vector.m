@@ -186,7 +186,7 @@ classdef DGIGA_AFC_vector < Bspline
             % Convert states to control variables:
             limiter.syncStatesFun(mesh);
             % Determine local predictor extrema:
-            mesh.findExtrema;
+            limiter.findExtrema(mesh);
             % Synchronized FCT patch-wise, with inter-patch coupling:
             limiter.applySynchronizedFCT(mesh);
             % Additional failsafe limiting:
