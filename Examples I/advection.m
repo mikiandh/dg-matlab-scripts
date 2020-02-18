@@ -1,4 +1,4 @@
-clc
+%clc
 clear
 %close all
 %path(pathdef)
@@ -6,7 +6,7 @@ clear
 % This script solves the advection equation in 1D.
 
 %% Dependencies
-addpath('../../../../Extra')
+addpath('../Extra')
 addpath('../Discretization')
 addpath('../Limiters')
 addpath('../Physics')
@@ -15,13 +15,13 @@ addpath('../Grid')
 addpath('../Math')
 
 %% Parameters
-Ne = 3; % number of elements
-p = 2; % degree of the approximation space (per element)
-L = [-3 3]; % domain edges
-tEnd = 6; % final simulation time
+Ne = 1; % number of elements
+p = 5; % degree of the approximation space (per element)
+L = [0 1]; % domain edges
+tEnd = 1; % final simulation time
 dt = []; % time-step size (overrides CFL)
-CFL = .01; % Courant number
-iterSkip = 100;
+CFL = .001; % Courant number
+iterSkip = 10;
 
 %% Initial condition collection
 IC_linear = @(x) x;
@@ -41,11 +41,11 @@ IC_jaeschkeSquare = @(x) heaviside(x-0.25) - heaviside(x-0.75);
 IC_leveque = @(x) 2 - 2*heaviside(x);
 
 %% Physics
-FUN = IC_combined; % initial condition
+FUN = IC_gauss; % initial condition
 eqn = Advection(1,[]); % PDE + BCs
 
 %% Discretization
-method = DGIGA_AFC_vector(33);
+method = DGIGA(33);
 
 %% Grid
 xEdge = linspace(L(1),L(2),Ne+1); % element end-points
@@ -59,7 +59,7 @@ limiter = [];
 %limiter = Limiter.Burbeau(eqn);
 %limiter = Limiter.Krivodonova(eqn);
 %limiter = Limiter.Wang(eqn);
-limiter = AFC(eqn);
+%limiter = AFC(eqn);
 
 %% Initial condition projection
 %method.interpolate(mesh,limiter,FUN);

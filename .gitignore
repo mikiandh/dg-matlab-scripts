@@ -1,11 +1,5 @@
-# Development and test files
-seriesAcceleration.m
-piecewisePolys.m
-bsplineCurve.m
-bsplines.m
-interpatchBasis.m
-matrixOperators.m
-predictorBurgers.m
-
-# OSX directory settings
+# OSX directory settings files
 .DS_Store
+
+# MATLAB temporary files
+*.m~
