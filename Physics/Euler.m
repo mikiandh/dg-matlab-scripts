@@ -10,7 +10,7 @@ classdef Euler < Physics
         %% Constructor
         function euler = Euler(boundaryConditions,riemannSolver)
             euler.boundaryConditionsFunction = @Euler.applyTransmissiveBoundaryConditions;
-            euler.riemannSolver = @Euler.riemannRoe;
+            euler.riemannSolver = @Euler.riemannLLF;
             if nargin > 0
                 switch boundaryConditions
                     case {'reflecting','reflective'}
@@ -25,8 +25,8 @@ classdef Euler < Physics
                 switch riemannSolver
                     case 'exact'
                         euler.riemannSolver = @Euler.riemannExact;
-                    case 'Rusanov'
-                        euler.riemannSolver = @Euler.riemannRusanov;
+                    case {'LLF','Rusanov'}
+                        euler.riemannSolver = @Euler.riemannLLF;
                     case {'Roe','Roe1'}
                         euler.riemannSolver = @Euler.riemannRoe1;
                     case 'Roe0'
@@ -158,16 +158,16 @@ classdef Euler < Physics
                 stateR(1),stateR(2),stateR(3),0);
             flux = Euler.flux(Euler.primitiveToState([r u p]'));
         end
-        %% Riemann solver (Rusanov, a.k.a Local Lax-Friedrichs)
-        function [flux,S] = riemannRusanov(stateL,stateR)
-            this.flux1 = Euler.flux(stateL) + Euler.flux(stateR);
-            this.flux2 = stateR - stateL;
+        %% Riemann solver (local Lax-Friedrichs, a.k.a Rusanov)
+        function [flux,S] = riemannLLF(stateL,stateR)
+            flux1 = Euler.flux(stateL) + Euler.flux(stateR);
+            flux2 = stateR - stateL;
             % Wave speed estimate:
             [~,uL,~,aL,~] = Euler.getPrimitivesFromState(stateL); %%% FIXME: Woodward & Colella bursts here
             [~,uR,~,aR,~] = Euler.getPrimitivesFromState(stateR);
             S = max(abs(uL) + aL, abs(uR) + aR);
             % Numerical flux:
-            flux = 0.5*(this.flux1 - S*this.flux2);
+            flux = 0.5*(flux1 - S*flux2);
         end
         %% Riemann solver (Roe-Pike without entropy fix)
         function [flux,lambdas] = riemannRoe0(stateL,stateR)

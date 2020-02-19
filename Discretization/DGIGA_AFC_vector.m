@@ -132,12 +132,12 @@ classdef DGIGA_AFC_vector < Bspline
             D = R*abs(D)*L;
         end
         %% AFC diffusion a la Kuzmin et al. 2012, eq. 45
-        function D = diffusionRusanov(state1,state2,physics)
+        function D = diffusionScalar(state1,state2,physics) % Rusanov-like
             D = physics.getEigensystemAt(state1,state2);
             D = max(abs(D(:)))*eye(size(D));
         end
         %% AFC diffusion a la Kuzmin et al. 2012, eq. 46
-        function D = diffusionRobust(state1,state2,physics)
+        function D = diffusionRobust(state1,state2,physics) % true Rusanov (i.e. local Lax-Friedrichs)
             d1 = physics.getEigensystemAt(state1);
             d1 = max(abs(d1(:)));
             d2 = physics.getEigensystemAt(state2);
