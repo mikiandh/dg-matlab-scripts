@@ -6,7 +6,7 @@ clear
 % This script solves the Euler equations.
 
 %% Dependencies
-addpath('../../../../Extra')
+addpath('../Extra')
 addpath('../Discretization')
 addpath('../Limiters')
 addpath('../Physics')
@@ -15,19 +15,19 @@ addpath('../Grid')
 addpath('../Math')
 
 %% Parameters
-Ne = 4; % number of elements
-p = 2; % degree of the approximation space (per element)
+Ne = 5000; % number of elements
+p = 0; % degree of the approximation space (per element)
 L = [-5 5]; % domain edges
 tEnd = 1.8; % final simulation time
 dt = [];
-CFL = .01; % Courant number
-iterSkip = 10;
+CFL = 100*.01; % Courant number
+iterSkip = 500;
 
 %% Physics
-eqn = Euler('transmissive','HLLC');
+eqn = Euler('transmissive','Roe0');
 
 %% Discretization
-method = DGIGA_AFC_vector(62);
+method = DG;
 
 %% Grid
 mesh = Mesh(linspace(L(1),L(2),Ne+1),p,method);
@@ -36,13 +36,13 @@ mesh = Mesh(linspace(L(1),L(2),Ne+1),p,method);
 
 %% Limiter
 limiter = [];
-%limiter = Limiter.TVBM(eqn,0);
+limiter = Limiter.TVBM(eqn,0);
 %limiter = Limiter.TVBM(eqn,5);
 %limiter = Limiter.Biswas(eqn);
 %limiter = Limiter.Burbeau(eqn);
 %limiter = Limiter.Krivodonova(eqn);
 %limiter = Limiter.Wang(eqn); % best in this case (except for, maybe, toro5)
-limiter = Limiter.AFC(eqn);
+%limiter = Limiter.AFC(eqn);
 
 %% Initial condition/exact solution
 FUN = @shuOsher;
@@ -52,7 +52,7 @@ FUN0 = @(x) FUN(0,x);
 method.project(mesh,limiter,FUN0);
 
 %% Time-integration
-timeIntegrator = SSP_RK3(0,tEnd,eqn,limiter,CFL,dt);
+timeIntegrator = SSP_RK1(0,tEnd,eqn,limiter,CFL,dt);
 norms0 = mesh.getSolutionMass(1:3);
 tic
 timeIntegrator.launch(mesh,iterSkip,FUN);

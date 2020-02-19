@@ -14,7 +14,7 @@ classdef TVBM_vector < Limiter
             this.physics = physics;
         end
         %% TVBM limiter (simple local characteristic decomposition)
-        function apply(this,mesh)
+        function apply(this,mesh,~)
             if mesh.maxDegree == 0
                 return % nothing to limit
             end
