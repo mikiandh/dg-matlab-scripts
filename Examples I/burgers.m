@@ -6,25 +6,25 @@ clear
 % This script solves the (inviscid) Burgers' equation.
 
 %% Dependencies
-addpath('../../../../Extra')
+addpath('../Extra')
 addpath('../Discretization')
-addpath('../Limiters')
+addpath('../Limiting')
 addpath('../Physics')
 addpath('../Solver')
 addpath('../Grid')
 addpath('../Math')
 
 %% Parameters
-Ne = 1; % number of elements (!-> for 1 element, use FIXED time-step size)
+Ne = 10; % number of elements (!-> for 1 element, use FIXED time-step size)
 p = 1; % degree of the approximation space (per element)
 L = [-3 3]; % domain edges
 tEnd = .5; % final simulation time
-dt = 1e-3;
-CFL = 1; % Courant number
+dt = [];
+CFL = .1; % Courant number
 iterSkip = 1;
 
 %% Discretization
-method = DGIGA_AFC_vector(66);
+method = DG;
 
 %% Grid
 mesh = Mesh(linspace(L(1),L(2),Ne+1),p,method);
@@ -41,7 +41,7 @@ limiter = [];
 %limiter = Limiter.Burbeau(eqn);
 %limiter = Limiter.Krivodonova(eqn);
 %limiter = Limiter.Wang(eqn); % best in this case (close call)
-limiter = Limiter.AFC(eqn);
+%limiter = Limiter.AFC(eqn);
 
 %% Initial condition projection
 %method.interpolate(mesh,limiter,fun);

@@ -21,6 +21,46 @@ classdef TimeIntegrator < handle
         applyStage(this,element,stage)
     end
     methods
+        %% Constructor
+        function this = TimeIntegrator(t,tEnd,physics,limiter,CFL,dt)
+            if nargin > 0
+                this.timeNow = t;
+                this.timeStop = tEnd;
+                this.physics = physics;
+                this.limiter = limiter;
+                this.courantNumber = CFL;
+                this.timeDelta = dt;
+            end
+        end
+        %% Drive the integration
+        function STOP = launch(this,mesh,replotIters,solutionFun)
+            % Safety check:
+            if isempty(this.timeDelta)
+                this.isTimeDeltaFixed = false;
+                this.timeDelta = 0;
+            elseif ~isempty(this.timeDelta)
+                this.isTimeDeltaFixed = true;
+            else
+                error('Specify time-step size and/or CFL.')
+            end
+            % Initialize some stuff:
+            STOP = false;
+            this.iterationCount = 0;
+            this.initializePlot(mesh,solutionFun);
+            this.refreshPlot(mesh);
+            % Time marching routine:
+            if this.isTimeDeltaFixed
+                while ~STOP
+                    STOP = this.stepForward(mesh,replotIters);
+                    this.updateCourantNumber(mesh);
+                end
+            else
+                while ~STOP
+                    STOP = this.stepForward(mesh,replotIters);
+                    this.updateTimeDelta(mesh);
+                end
+            end
+        end
         %% Estimate maximum stable Courant number
         function CFL = optimizeCFL(this,space)
             % This function estimates the maximum allowable Courant number for a given
@@ -43,117 +83,62 @@ classdef TimeIntegrator < handle
             CFL = fmincon(problem);
         end
     end
-    methods
-        %% Constructor
-        function this = TimeIntegrator(t,tEnd,physics,limiter,CFL,dt)
-            if nargin > 0
-                this.timeNow = t;
-                this.timeStop = tEnd;
-                this.physics = physics;
-                this.limiter = limiter;
-                this.courantNumber = CFL;
-                this.timeDelta = dt;
-            end
-        end
-        %% Drive the integration
-        function STOP = launch(this,varargin)
-            if isempty(this.timeDelta)
-                STOP = this.launchFixedCourantNumber(varargin{:});
-            elseif ~isempty(this.timeDelta)
-                STOP = this.launchFixedTimeStep(varargin{:});
-            else
-                error('Specify time-step size and/or CFL.')
-            end
-        end
-        %% Fixed time-step size integration
-        function STOP = launchFixedTimeStep(this,mesh,replotIters,solutionFun)
+    methods (Access = protected)
+        %% Single step forward
+        function STOP = stepForward(this,mesh,replotIters)
             STOP = false;
-            this.isTimeDeltaFixed = true;
-            this.iterationCount = 0;
-            this.initializePlot(mesh,solutionFun);
-            this.refreshPlot(mesh);
-            while ~STOP
-                this.iterationCount = this.iterationCount + 1;
-                this.timeNow = this.timeNow + this.timeDelta;
-                % Check solution boundedness:
-                states = cell2mat({mesh.elements.states});
-                if any(isinf(states(:))) || any(isnan(states(:)))
-                    %warning('Infinite or NaN state(s) detected at t = %.4f.',this.timeNow)
-                    break
-                end
-                % Check stop criterion:
-                if this.timeNow >= this.timeStop
-                    this.timeDelta = this.timeStop - this.timeNow + this.timeDelta;
-                    this.timeNow = this.timeStop;
-                    STOP = true;
-                end
-                % Advance one time-step:
-                for stage = 1:this.stageCount
-                    mesh.computeResiduals(this.physics);
-                    for element = mesh.elements
-                        this.applyStage(element,stage);
-                    end
-                    % Apply limiter (if adequate):
-                    if ~isempty(this.limiter)
-                        if this.limiter.everyStage || stage == this.stageCount
-                            this.limiter.apply(mesh,this.timeDelta);
-                        end
-                    end
-                end
-                % Plot solution in time:
-                if STOP || ~mod(this.iterationCount,replotIters)
-                    this.refreshPlot(mesh);
-                end
-                % Find global Courant number (smallest local one):
-                this.courantNumber = inf;
+            this.iterationCount = this.iterationCount + 1;
+            this.timeNow = this.timeNow + this.timeDelta;
+            % Check solution boundedness:
+            states = cell2mat({mesh.elements.states});
+            if any(isinf(states(:))) || any(isnan(states(:)))
+                warning('Inf or NaN state(s) detected at t = %.4f.',this.timeNow)
+                STOP = true;
+                return
+            end
+            % Check stop criterion:
+            if this.timeNow >= this.timeStop
+                this.timeDelta = this.timeStop - this.timeNow + this.timeDelta;
+                this.timeNow = this.timeStop;
+                STOP = true;
+            end
+            % Advance one time-step:
+            for stage = 1:this.stageCount
+                mesh.computeResiduals(this.physics);
                 for element = mesh.elements
-                    this.courantNumber = min([this.courantNumber element.localTimeDelta]);
+                    this.applyStage(element,stage);
                 end
-                this.courantNumber = this.timeDelta/this.courantNumber;
+                % Apply limiter (if adequate):
+                if ~isempty(this.limiter)
+                    if this.limiter.everyStage || stage == this.stageCount
+                        this.limiter.apply(mesh,this.timeDelta);
+                    end
+                end
+            end
+            % Plot solution:
+            if STOP || ~mod(this.iterationCount,replotIters)
+                this.refreshPlot(mesh);
             end
         end
-        %% Fixed Courant number integration
-        function STOP = launchFixedCourantNumber(this,mesh,replotIters,solutionFun)
-            STOP = false;
-            this.isTimeDeltaFixed = false;
-            this.timeDelta = 0;
-            this.iterationCount = 0;
-            this.initializePlot(mesh,solutionFun);
-            this.refreshPlot(mesh);
-            while ~STOP
-                % Update iteration counters:
-                this.iterationCount = this.iterationCount + 1;
-                this.timeNow = this.timeNow + this.timeDelta;
-                % Check stop criterion:
-                if this.timeNow >= this.timeStop
-                    this.timeDelta = this.timeStop - this.timeNow + this.timeDelta;
-                    this.timeNow = this.timeStop;
-                    STOP = true;
-                end
-                % Advance one time-step:
-                for stage = 1:this.stageCount
-                    mesh.computeResiduals(this.physics);
-                    for element = mesh.elements
-                        this.applyStage(element,stage);
-                    end
-                    % Apply limiter (if adequate):
-                    if ~isempty(this.limiter)
-                        if this.limiter.everyStage || stage == this.stageCount
-                            this.limiter.apply(mesh,this.timeDelta);
-                        end
-                    end
-                end
-                % Plot solution in time:
-                if STOP || ~mod(this.iterationCount,replotIters)
-                    this.refreshPlot(mesh);
-                end
-                % Set global time-step to smallest local one:
-                this.timeDelta = inf;
-                for element = mesh.elements
-                    this.timeDelta = min([this.timeDelta element.localTimeDelta]);
-                end
-                this.timeDelta = this.courantNumber*this.timeDelta;
+        %% Update Courant number (fixed timeDelta)
+        function updateCourantNumber(this,mesh)
+            % Set global Courant number to smallest local one.
+            %
+            this.courantNumber = inf;
+            for element = mesh.elements
+                this.courantNumber = min([this.courantNumber element.localTimeDelta]);
             end
+            this.courantNumber = this.timeDelta/this.courantNumber;
+        end
+        %% Update time-step size (fixed Courant number)
+        function updateTimeDelta(this,mesh)
+            % Set global time-step size to smallest local one.
+            %
+            this.timeDelta = inf;
+            for element = mesh.elements
+                this.timeDelta = min([this.timeDelta element.localTimeDelta]);
+            end
+            this.timeDelta = this.courantNumber*this.timeDelta;
         end
         %% Initialize plot data
         function initializePlot(this,mesh,fun)
