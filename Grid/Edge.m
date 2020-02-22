@@ -1,4 +1,4 @@
-classdef Edge < handle
+classdef Edge < matlab.mixin.SetGet
     properties
         coord
         elementL
@@ -11,6 +11,8 @@ classdef Edge < handle
                 edge.coord = x;
                 edge.elementL = eL;
                 edge.elementR = eR;
+                eL.edgeR = edge;
+                eR.edgeL = edge;
             end
         end
         %% Upwind flux at interior edge

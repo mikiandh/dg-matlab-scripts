@@ -5,9 +5,7 @@ classdef RightBoundary < Edge
             if nargin > 0
                 edge.coord = x;
                 edge.elementL = eL;
-                %edge.leftNodeRelativePosition = ...
-                %    edge.coord - eL.mapFromReference(eL.DG.nodeCoords(end));
-                %edge.rightNodeRelativePosition = inf;
+                eL.edgeR = edge;
             end
         end
         %% Update local time-step size

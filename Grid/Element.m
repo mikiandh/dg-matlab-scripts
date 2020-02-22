@@ -1,10 +1,12 @@
-classdef Element < handle
+classdef Element < matlab.mixin.SetGet
     properties
         % DG:
         xL
         xR
         dx
         basis % handle to a basis sub-class
+        edgeL % handle to its left edge
+        edgeR % handle to its right edge
         states % state vector at each degree of freedom (node or mode)
         fluxes % flux vector at each degree of freedom (Fletcher's group formulation)
         stateL % state vector at left edge
@@ -15,7 +17,8 @@ classdef Element < handle
         riemannR
         residuals % residual (i.e. time derivative) vector at nodes
         dofCount % number of degrees of freedom per element, per equation
-        % AFC:
+        % Limiting:
+        isLimited % 2D logical array (row: system comp.; column: basis comp.)
         diffusions % artificial diffusion operator (cell array)
         antidiffusiveFluxes % sparse 2D array of FCT antidiffusive flux vectors along pairs of modes (with zero padding)
         maxima % 2D array of distances to local maximum state values, column: control point; row: system component
