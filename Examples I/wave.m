@@ -6,7 +6,7 @@ clear
 % This script solves the wave equation in 1D.
 
 %% Dependencies
-addpath('../../../../Extra')
+addpath('../Extra')
 addpath('../Discretization')
 addpath('../Limiters')
 addpath('../Physics')
@@ -15,8 +15,8 @@ addpath('../Grid')
 addpath('../Math')
 
 %% Parameters
-Ne = 1; % number of elements (!-> for 1 element, use FIXED time-step size)
-p = 2; % degree of the approximation space (per element)
+Ne = 4; % number of elements (!-> for 1 element, use FIXED time-step size)
+p = 1; % degree of the approximation space (per element)
 L = [0 1]; % domain edges
 tEnd = 0.0; % final simulation time
 dt = [];
@@ -35,24 +35,16 @@ eqn = Wave;
 %method = FR(1e-2);
 %method = DGIGA(28);
 %method = DGIGA_AFC(30);
-method = DGIGA_AFC_vector(67);
+method = DG;
 
 %% Initial condition
-FUN = @(x) combinedIC(x);
+FUN = @(x) hammerIC(x);
 
 %% Grid
 mesh = Mesh(linspace(L(1),L(2),Ne+1),p,method);
 
 %% Limiter
-limiter = [];
-%limiter = Limiter.TVBM(eqn,0);
-%limiter = Limiter.TVBM(eqn,20);
-%limiter = Limiter.Biswas(eqn);
-%limiter = Limiter.Burbeau(eqn);
-%limiter = Limiter.Krivodonova(eqn); % best in this case
-%limiter = Limiter.Wang(eqn);
-limiter = Limiter.AFC(eqn);
-
+limiter = TVDM(eqn);
 
 %% Initial condition projection
 % method.interpolate(mesh,limiter,FUN);

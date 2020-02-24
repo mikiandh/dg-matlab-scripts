@@ -110,9 +110,8 @@ classdef TimeIntegrator < handle
                 end
                 % Apply limiter (if adequate):
                 if ~isempty(this.limiter)
-                    if this.limiter.everyStage || stage == this.stageCount
-                        this.limiter.apply(mesh,this.timeDelta);
-                    end
+                    this.limiter.apply(mesh,...
+                        this.timeDelta,stage,this.stageCount);
                 end
             end
             % Plot solution:

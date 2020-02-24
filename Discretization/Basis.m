@@ -1,4 +1,4 @@
-classdef Basis < handle
+classdef Basis < matlab.mixin.SetGet
     properties (Abstract)
         isNodal
         isModal
