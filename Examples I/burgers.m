@@ -15,10 +15,10 @@ addpath('../Grid')
 addpath('../Math')
 
 %% Parameters
-Ne = 21; % number of elements (!-> for 1 element, use FIXED time-step size)
-p = 1; % degree of the approximation space (per element)
-L = [0 1.5]; % domain edges
-tEnd = .5; % final simulation time
+Ne = 10; % number of elements (!-> for 1 element, use FIXED time-step size)
+p = 2; % degree of the approximation space (per element)
+L = [-1 1]; % domain edges
+tEnd = .0; % final simulation time
 dt = [];
 CFL = .1; % Courant number
 iterSkip = 1;
@@ -27,7 +27,7 @@ iterSkip = 1;
 method = DG;
 
 %% Physics
-fun = @toroIC; % initial condition
+fun = @combinedIC; % initial condition
 eqn = Burgers(fun(L)); % PDE
 
 %% Limiter
@@ -62,7 +62,7 @@ eqn.displayData(rows,cols,norms0,norms,norms-norms0)
 % x = linspace(-3,3,1000);
 % y = @(x) -1 + (1+x/tEnd).*heaviside(x+tEnd) + (2-x/tEnd).*heaviside(x-2*tEnd);
 % hold all
-% h = get(gca,'Children');
+% h = get(gca,'Children');  
 % h(end).LineStyle = ':';
 % plot(x,y(x),'-.k')
 % fprintf('L2 norm of the error: %g \n',mesh.getErrorNorm(y,2));

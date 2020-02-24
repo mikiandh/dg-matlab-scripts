@@ -27,7 +27,6 @@ classdef TVDM < Limiter
         end
     end
     methods (Access = protected)
-        %% Apply (element-wise)
         function applyOnElement(this,element)
             % Interpolate solution at element edges:
             element.interpolateStateAtEdges;
@@ -39,9 +38,9 @@ classdef TVDM < Limiter
             vR = element.stateR; % unlimited right edge intercept
             % Limited edge intercepts:
             wL = u - this.minmod(u-vL,u-uL,uR-u); % left edge
-            wR = u + this.minmod(vR-u,u-uL,uR-u); % right egde
+            wR = u + this.minmod(vR-u,u-uL,uR-u); % right edge
             % Determine troubled components:
-            eqs = find(wL ~= vL & wR ~= vR);
+            eqs = find(wL ~= vL | wR ~= vR);
             % Overwrite troubled slopes with limited slopes:
             for i = eqs'
                 s = .5*(vR(i) - vL(i)); % unlimited slope
@@ -54,14 +53,14 @@ classdef TVDM < Limiter
         end
     end
     methods (Static, Access = protected)
-        %% Minmod (3 column array arguments)
+        %% Minmod (3 scalar arguments)
         function d = minmod(a,b,c)
-            d = zeros(length(a),1);
-            M = abs(horzcat(a,b,c));
-            a = sign(a);
-            ids = a == sign(b) & a == sign(c);
-            d(ids) = min(M(ids,:),[],2);
-            d = a.*d;
+            d = sign(a);
+            if d ~= sign(b) || d ~= sign(c)
+                d = 0;
+            else
+                d = d*min(abs([a b c]));
+            end
         end
     end
 end
