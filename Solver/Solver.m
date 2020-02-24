@@ -1,4 +1,4 @@
-classdef TimeIntegrator < handle
+classdef Solver < handle
     properties (Abstract,Constant)
         order
         stageCount
@@ -22,14 +22,13 @@ classdef TimeIntegrator < handle
     end
     methods
         %% Constructor
-        function this = TimeIntegrator(t,tEnd,physics,limiter,CFL,dt)
+        function this = Solver(t,tEnd,CFL,dt,limiter)
             if nargin > 0
                 this.timeNow = t;
                 this.timeStop = tEnd;
-                this.physics = physics;
-                this.limiter = limiter;
                 this.courantNumber = CFL;
                 this.timeDelta = dt;
+                this.limiter = limiter;
             end
         end
         %% Drive the integration
@@ -104,15 +103,14 @@ classdef TimeIntegrator < handle
             end
             % Advance one time-step:
             for stage = 1:this.stageCount
-                mesh.computeResiduals(this.physics);
+                % Evaluate solution residuals:
+                mesh.computeResiduals;
+                % Advance solution by one stage:
                 for element = mesh.elements
                     this.applyStage(element,stage);
                 end
-                % Apply limiter (if adequate):
-                if ~isempty(this.limiter)
-                    this.limiter.apply(mesh,...
-                        this.timeDelta,stage,this.stageCount);
-                end
+                % Apply limiter:
+                this.limiter.apply(mesh,this);
             end
             % Plot solution:
             if STOP || ~mod(this.iterationCount,replotIters)
@@ -141,12 +139,12 @@ classdef TimeIntegrator < handle
         end
         %% Initialize plot data
         function initializePlot(this,mesh,fun)
-            figDims = [800 100 700, min(this.physics.equationCount*400,800)];
+            figDims = [800 100 700, min(mesh.physics.equationCount*400,800)];
             this.plotData.fig = figure('Renderer','painters','Position',figDims);
             this.plotData.exactFun = fun;
             this.plotData.cmap = distinguishable_colors(mesh.elementCount,{'w','k'});
             this.plotData.xGlobal = linspace(mesh.elements(1).xL,mesh.elements(end).xR,1000);
-            this.plotData.ylims = repmat([0 1.2],this.physics.equationCount,1);
+            this.plotData.ylims = repmat([0 1.2],mesh.physics.equationCount,1);
             disc = mesh.bases(1);
             this.plotData.space = strrep(class(disc),'_','-');
             % Deduce method name:
@@ -186,8 +184,8 @@ classdef TimeIntegrator < handle
             aux = sprintf('; t = %.4g, %s, iter = %d',this.timeNow,aux,this.iterationCount);
             figure(this.plotData.fig)
             yGlobal = this.plotData.exactFun(this.timeNow,this.plotData.xGlobal);
-            for i = 1:this.physics.equationCount
-                subplot(this.physics.equationCount,1,i)
+            for i = 1:mesh.physics.equationCount
+                subplot(mesh.physics.equationCount,1,i)
                 plot(this.plotData.xGlobal,yGlobal(i,:),'-.k')
                 hold on
                 k = 1;
@@ -239,7 +237,7 @@ classdef TimeIntegrator < handle
                 ylim(this.plotData.ylims(i,:))
                 if i == 1
                     title({...
-                        class(this.physics),...
+                        class(mesh.physics),...
                         this.plotData.space,...
                         strcat(this.plotData.time,aux)...
                         });

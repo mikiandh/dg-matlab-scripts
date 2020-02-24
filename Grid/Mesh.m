@@ -12,10 +12,11 @@ classdef Mesh < handle
               % reference element coordinates) of a DG sub-type in
               % which the solution will be approximated
         dofCount % total number of degrees of freedom, per equation
+        physics
     end
     methods
         %% Constructor
-        function mesh = Mesh(x,p,discretization)
+        function mesh = Mesh(x,p,discretization,physics)
             % Arguments
             %  x: element edge locations
             %  p: element-wise polynomial degree
@@ -45,10 +46,12 @@ classdef Mesh < handle
                     mesh.edges...
                     RightBoundary(x(end),mesh.elements(end))
                     };
+                % Store physics handle:
+                mesh.physics = physics;
             end
         end
         %% Compute mesh residuals
-        function computeResiduals(this,physics)
+        function computeResiduals(this)
             % Updates the residuals of all cells in a mesh, using the
             % spatial discretization scheme assigned to the mesh. 
             %
@@ -66,11 +69,11 @@ classdef Mesh < handle
                 element.interpolateStateAtEdges;
             end
             for edge = this.edges{2:end-1} % interior edges only
-                edge.computeFlux(physics);
+                edge.computeFlux(this.physics);
             end
-            physics.applyBoundaryConditions(this); % boundary edges
+            this.physics.applyBoundaryConditions(this); % boundary edges
             for element = this.elements
-                element.computeResiduals(physics);
+                element.computeResiduals(this.physics);
             end
         end
         %% Extract matrices of nodal + edge values of the entire mesh

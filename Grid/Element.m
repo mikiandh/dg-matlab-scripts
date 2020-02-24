@@ -18,13 +18,12 @@ classdef Element < matlab.mixin.SetGet
         residuals % residual (i.e. time derivative) vector at nodes
         dofCount % number of degrees of freedom per element, per equation
         % Limiting:
-        isLimited % 2D logical array (row: system comp.; column: basis comp.)
+        isSensed = true % to be ignored by any limiter if set to false
+        isLimited % true if modified by a limiter (row: system comp.; column: basis comp.)
         diffusions % artificial diffusion operator (cell array)
         antidiffusiveFluxes % sparse 2D array of FCT antidiffusive flux vectors along pairs of modes (with zero padding)
         maxima % 2D array of distances to local maximum state values, column: control point; row: system component
         minima % idem, for minima
-        % Limiter:
-        limiterHistory
         % SSP RK:
         extraStates
         extraResiduals

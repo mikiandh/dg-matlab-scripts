@@ -159,10 +159,8 @@ classdef Legendre < Basis
                 U = 0.5*(2*(1:element.basis.order) - 1).*U;
                 element.states = U;
             end
-            % Apply limiter (if any):
-            if ~isempty(limiter)
-                limiter.apply(mesh);
-            end
+            % Apply limiter:
+            limiter.apply(mesh);
         end
     end
 end

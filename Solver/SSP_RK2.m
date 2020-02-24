@@ -1,4 +1,4 @@
-classdef SSP_RK2 < TimeIntegrator
+classdef SSP_RK2 < Solver
     properties (Constant)
         order = 2;
         stageCount = 2;
@@ -7,7 +7,7 @@ classdef SSP_RK2 < TimeIntegrator
     methods
         %% Constructor
         function ssp_rk2 = SSP_RK2(varargin)
-            ssp_rk2@TimeIntegrator(varargin{:});
+            ssp_rk2@Solver(varargin{:});
         end
         %% RK stage update
         function applyStage(this,element,stage)

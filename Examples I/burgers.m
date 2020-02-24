@@ -15,8 +15,8 @@ addpath('../Grid')
 addpath('../Math')
 
 %% Parameters
-Ne = 31; % number of elements (!-> for 1 element, use FIXED time-step size)
-p = 2; % degree of the approximation space (per element)
+Ne = 21; % number of elements (!-> for 1 element, use FIXED time-step size)
+p = 1; % degree of the approximation space (per element)
 L = [0 1.5]; % domain edges
 tEnd = .5; % final simulation time
 dt = [];
@@ -26,15 +26,15 @@ iterSkip = 1;
 %% Discretization
 method = DG;
 
-%% Grid
-mesh = Mesh(linspace(L(1),L(2),Ne+1),p,method);
-
 %% Physics
 fun = @toroIC; % initial condition
 eqn = Burgers(fun(L)); % PDE
 
 %% Limiter
-limiter = TVDM(eqn);
+limiter = TVDM;
+
+%% Grid
+mesh = Mesh(linspace(L(1),L(2),Ne+1),p,method,eqn);
 
 %% Initial condition projection
 %method.interpolate(mesh,limiter,fun);
@@ -42,11 +42,11 @@ method.project(mesh,limiter,fun);
 %method.projectLumped(mesh,limiter,fun);
 
 %% Time-integration
-timeIntegrator = SSP_RK3(0,tEnd,eqn,limiter,CFL,dt);
+solver = SSP_RK3(0,tEnd,CFL,dt,limiter);
 % norms0 = [mesh.getSolutionMass,mesh.getSolutionNorm(1),mesh.getSolutionNorm,mesh.getTotalVariation];
 norms0 = [mesh.getSolutionMass mesh.getTVM];
 tic
-timeIntegrator.launch(mesh,iterSkip,@(t,x) fun(x));
+solver.launch(mesh,iterSkip,@(t,x) fun(x));
 timeCPU = toc;
 disp(['   ...done. (' num2str(timeCPU) ' s)'])
 
