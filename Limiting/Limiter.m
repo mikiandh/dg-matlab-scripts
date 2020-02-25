@@ -10,21 +10,50 @@ classdef Limiter < handle
     properties (Access = protected)
         % Any limiter can be augmented with a sensor, used to exclude
         % certain elements from its action.
-        sensor = Sensor;
+        sensor = NoSensor; 
+    end
+    properties (SetAccess = protected)
+        % The activation status of the limiter is accumulated in this cell
+        % array (cell: time instant, oldest to newest; column: element; 
+        % row: equation component).
+        %
+        % To visualize, try:
+        %
+        %  b = bar3(cell2mat(limiter.snapshots')');
+        %  colorbar
+        %  for k = 1:length(b)
+        %      zdata = b(k).ZData;
+        %      b(k).CData = zdata;
+        %      b(k).FaceColor = 'interp';
+        %  end
+        %
+        snapshots;
     end
     methods
         %% Factory constructor
         function this = Limiter(varargin)
-            % Given a number of input name-value pairs, decides which
-            % limiter to instantiate (the default one, or one of its 
-            % children) and returns it.
+            % Given a list of input name-value pairs, decides which
+            % limiter to instantiate and returns it.
             %
-            %%% TO DO %%%
+            if nargin
+               
+            end
         end
-        %% Default limiting
-        function apply(this,mesh,varargin)
-            % Applies its sensor but does no limiting (empty limiter).
-            this.sensor.apply(mesh,varargin);
+        %% Accumulate activation history
+        function takeSnapshot(this,mesh)
+            % Stores the limiter activation status from a mesh and adds it
+            % to the cell array of stored "limiter snapshots".
+            aux = {mesh.elements.isLimited};
+            aux = cellfun(@(x) sum(x,2), aux);
+            this.snapshots = [this.snapshots {aux}];
         end
+    end
+    methods (Abstract)
+        % Method that applies a sensor and subsequenly performs limiting on
+        % all elements of a given mesh for which the "isSensed" property 
+        % has been  set to true. All state vector entries which have been
+        % modified by the limiting are indicated as such in their element's
+        % "isLimited" logical 2D array.
+        apply(this,mesh,solver)
     end
 end

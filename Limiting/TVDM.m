@@ -1,23 +1,22 @@
-classdef TVDM < Limiter
+classdef TVDM < NoLimiter
     %
-    % Slope limiter proposed by Cockburn and Shu in 1989. Proven to be TVD
+    % Slope limiter as reported in Cockburn and Shu, 2001. Proven to be TVD
     % in the element-wise means. Known to cause loss of accuracy at smooth
     % extrema. Only compatible with a Legendre basis, single element per 
     % patch, p > 0.
     % 
-    % For p > 1, the slope of the fictituous line joining the two edge
-    % values of the cell is used in the TVD detection step (a la Zhu et al. 
-    % 2013).
+    % For p > 1, the solution is L2-projected on a linear basis, and 
+    % the resulting slope is used as in the linear definition of this
+    % limiter (i.e. the 2nd expansion coefficient of the Legendre basis is
+    % always used as the unlimited slope, regardless of p).
     %
     methods
         %% Limiting
-        function apply(this,mesh,~)
-            % Apply base class limiter:
-            apply@Limiter(this,mesh);
-            % Discard left/right-most elements (lacking a better option):
-            set(mesh.elements([1 end]),'isSensed',false);
+        function apply(this,mesh,varargin)
+            % Apply default limiting:
+            apply@NoLimiter(this,mesh,varargin);
             % Retrieve troubled elements:
-            elements = findobj(mesh.elements,'isSensed',true);
+            elements = findobj(mesh.elements,'isTroubled',true);
             % Discard any element with a non-modal basis:
             elements(arrayfun(@(x) ~x.basis.isModal,elements)) = [];
             % Apply on every remaining element:
@@ -53,14 +52,14 @@ classdef TVDM < Limiter
         end
     end
     methods (Static, Access = protected)
-        %% Minmod (3 scalar arguments)
+        %% Minmod (3 column array arguments)
         function d = minmod(a,b,c)
-            d = sign(a);
-            if d ~= sign(b) || d ~= sign(c)
-                d = 0;
-            else
-                d = d*min(abs([a b c]));
-            end
+            d = zeros(length(a),1);
+            M = abs(horzcat(a,b,c));
+            a = sign(a);
+            ids = a == sign(b) & a == sign(c);
+            d(ids) = min(M(ids,:),[],2);
+            d = a.*d;
         end
     end
 end

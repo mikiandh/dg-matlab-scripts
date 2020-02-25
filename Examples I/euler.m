@@ -8,7 +8,7 @@ clear
 %% Dependencies
 addpath('../Extra')
 addpath('../Discretization')
-addpath('../Limiters')
+addpath('../Limiting')
 addpath('../Physics')
 addpath('../Solver')
 addpath('../Grid')
@@ -29,20 +29,13 @@ eqn = Euler('transmissive','Roe0');
 %% Discretization
 method = DG;
 
+%% Limiter
+limiter = TVDM;
+
 %% Grid
-mesh = Mesh(linspace(L(1),L(2),Ne+1),p,method);
+mesh = Mesh(linspace(L(1),L(2),Ne+1),p,method,eqn);
 %mesh = Mesh(cosspace(L(1),L(2),Ne+1,2),p,method);
 %mesh = Mesh([L(1) .05 .95 L(2)],p,method);
-
-%% Limiter
-limiter = [];
-limiter = Limiter.TVBM(eqn,0);
-%limiter = Limiter.TVBM(eqn,5);
-%limiter = Limiter.Biswas(eqn);
-%limiter = Limiter.Burbeau(eqn);
-%limiter = Limiter.Krivodonova(eqn);
-%limiter = Limiter.Wang(eqn); % best in this case (except for, maybe, toro5)
-%limiter = Limiter.AFC(eqn);
 
 %% Initial condition/exact solution
 FUN = @shuOsher;
@@ -52,10 +45,10 @@ FUN0 = @(x) FUN(0,x);
 method.project(mesh,limiter,FUN0);
 
 %% Time-integration
-timeIntegrator = SSP_RK1(0,tEnd,eqn,limiter,CFL,dt);
+solver = SSP_RK1(0,tEnd,CFL,dt,limiter);
 norms0 = mesh.getSolutionMass(1:3);
 tic
-timeIntegrator.launch(mesh,iterSkip,FUN);
+solver.launch(mesh,iterSkip,FUN);
 disp(['   ...done. (' num2str(toc) ' s)'])
 
 %% Postprocessing

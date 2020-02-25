@@ -8,20 +8,20 @@ clear
 %% Dependencies
 addpath('../Extra')
 addpath('../Discretization')
-addpath('../Limiters')
+addpath('../Limiting')
 addpath('../Physics')
 addpath('../Solver')
 addpath('../Grid')
 addpath('../Math')
 
 %% Parameters
-Ne = 1; % number of elements
-p = 50; % degree of the approximation space (per element)
+Ne = 20; % number of elements
+p = 1; % degree of the approximation space (per element)
 L = [0 1]; % domain edges
 tEnd = 1; % final simulation time
 dt = []; % time-step size (overrides CFL)
-CFL = .001; % Courant number
-iterSkip = 10;
+CFL = .1; % Courant number
+iterSkip = 25;
 
 %% Initial condition collection
 IC_linear = @(x) x;
@@ -41,25 +41,18 @@ IC_jaeschkeSquare = @(x) heaviside(x-0.25) - heaviside(x-0.75);
 IC_leveque = @(x) 2 - 2*heaviside(x);
 
 %% Physics
-FUN = IC_gauss; % initial condition
+FUN = IC_jump; % initial condition
 eqn = Advection(1,[]); % PDE + BCs
 
 %% Discretization
-method = DGSEM;
+method = DG;
+
+%% Limiter
+limiter = TVDM;
 
 %% Grid
 xEdge = linspace(L(1),L(2),Ne+1); % element end-points
-mesh = Mesh(xEdge,p,method);
-
-%% Limiter
-limiter = [];
-%limiter = Limiter.TVBM(eqn,0);
-%limiter = Limiter.TVBM(eqn,50);
-%limiter = Limiter.Biswas(eqn);
-%limiter = Limiter.Burbeau(eqn);
-%limiter = Limiter.Krivodonova(eqn);
-%limiter = Limiter.Wang(eqn);
-%limiter = AFC(eqn);
+mesh = Mesh(xEdge,p,method,eqn);
 
 %% Initial condition projection
 %method.interpolate(mesh,limiter,FUN);
@@ -68,11 +61,11 @@ method.project(mesh,limiter,FUN);
 %method.project_Matthias(mesh,limiter,FUN);
 
 %% Time-integration
-timeIntegrator = SSP_RK3(0,tEnd,eqn,limiter,CFL,dt);
+solver = SSP_RK3(0,tEnd,CFL,dt,limiter);
 %norms0 = [mesh.getSolutionMass,mesh.getSolutionNorm(1),mesh.getSolutionNorm,mesh.getTotalVariation,mesh.getErrorNorm(FUN)];
 norms0 = mesh.getSolutionMass;
 tic
-timeIntegrator.launch(mesh,iterSkip,@(t,x) FUN(x));
+solver.launch(mesh,iterSkip,@(t,x) FUN(x));
 fprintf(1,'...done. (%g s)\n',toc)
 
 %% Postprocessing

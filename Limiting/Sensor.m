@@ -4,21 +4,22 @@ classdef Sensor < handle
     % mesh containing one or more DG patches. Any valid sensor must inherit
     % this class.
     %
-    % Default sensor: all p > 0 patches are sensed as possibly troubled.
-    %
     methods
         %% Factory constructor
         function this = Sensor(varargin)
-            % Given a number of input name-value pairs, decides which
+            % Given a list of input name-value pairs, decides which
             % sensor to instantiate and returns it.
             %
-            %%% Default sensor (empty) %%%
+            if nargin
+               
+            end
         end
-        %% Default sensing
-        function apply(this,mesh,varargin) %#ok<INUSL>
-            % Turns off limiting at all p == 0 cells:
-            elements = findobj(mesh.elements,'dofCount',1);
-            set(elements,'isSensed',false);
-        end
+    end
+    methods (Abstract)
+        % Method that sets the "isTroubled" property of certain elements in a
+        % given mesh to true. Any limiter will only act on elements that
+        % trigger its sensor - i.e. for which this method has set 
+        % "isTroubled" to true.
+        apply(this,mesh,solver)
     end
 end

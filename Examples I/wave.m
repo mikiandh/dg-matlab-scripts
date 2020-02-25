@@ -8,20 +8,20 @@ clear
 %% Dependencies
 addpath('../Extra')
 addpath('../Discretization')
-addpath('../Limiters')
+addpath('../Limiting')
 addpath('../Physics')
 addpath('../Solver')
 addpath('../Grid')
 addpath('../Math')
 
 %% Parameters
-Ne = 4; % number of elements (!-> for 1 element, use FIXED time-step size)
+Ne = 64; % number of elements (!-> for 1 element, use FIXED time-step size)
 p = 1; % degree of the approximation space (per element)
 L = [0 1]; % domain edges
 tEnd = 0.0; % final simulation time
 dt = [];
-CFL = .01; % Courant number
-iterSkip = 100;
+CFL = .3; % Courant number
+iterSkip = 30;
     
 %% Physics
 eqn = Wave;
@@ -38,13 +38,13 @@ eqn = Wave;
 method = DG;
 
 %% Initial condition
-FUN = @(x) hammerIC(x);
-
-%% Grid
-mesh = Mesh(linspace(L(1),L(2),Ne+1),p,method);
+FUN = @(x) combinedIC(x);
 
 %% Limiter
-limiter = TVDM(eqn);
+limiter = TVDM;
+
+%% Grid
+mesh = Mesh(linspace(L(1),L(2),Ne+1),p,method,eqn);
 
 %% Initial condition projection
 % method.interpolate(mesh,limiter,FUN);
@@ -52,10 +52,10 @@ method.project(mesh,limiter,FUN);
 % method.projectLumped(mesh,limiter,FUN);
 
 %% Time-integration
-timeIntegrator = SSP_RK3(0,tEnd,eqn,limiter,CFL,dt);
+solver = SSP_RK3(0,tEnd,CFL,dt,limiter);
 norms0 = [mesh.getSolutionMass(1:2),mesh.getErrorNorm(FUN,2,1:2)];
 tic
-timeIntegrator.launch(mesh,iterSkip,@(t,x) FUN(x));
+solver.launch(mesh,iterSkip,@(t,x) FUN(x));
 fprintf(1,'...done. (%g s)\n',toc)
 
 %% Postprocessing

@@ -1,4 +1,4 @@
-%clc
+clc
 clear
 %close all
 %path(pathdef)
@@ -15,19 +15,19 @@ addpath('../Grid')
 addpath('../Math')
 
 %% Parameters
-Ne = 10; % number of elements (!-> for 1 element, use FIXED time-step size)
+Ne = 20; % number of elements (!-> for 1 element, use FIXED time-step size)
 p = 2; % degree of the approximation space (per element)
-L = [-1 1]; % domain edges
-tEnd = .0; % final simulation time
+L = [-3 3]; % domain edges
+tEnd = .5; % final simulation time
 dt = [];
-CFL = .1; % Courant number
+CFL = .2; % Courant number
 iterSkip = 1;
 
 %% Discretization
 method = DG;
 
 %% Physics
-fun = @combinedIC; % initial condition
+fun = @leveque1; % initial condition
 eqn = Burgers(fun(L)); % PDE
 
 %% Limiter
@@ -58,15 +58,15 @@ rows = {'Solution (mass)', 'Solution (TVM)'};
 cols = {'Norm','Start','End','Increase'};
 eqn.displayData(rows,cols,norms0,norms,norms-norms0)
 
-% %%% Plot the exact solution to Leveque1 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% x = linspace(-3,3,1000);
-% y = @(x) -1 + (1+x/tEnd).*heaviside(x+tEnd) + (2-x/tEnd).*heaviside(x-2*tEnd);
-% hold all
-% h = get(gca,'Children');  
-% h(end).LineStyle = ':';
-% plot(x,y(x),'-.k')
-% fprintf('L2 norm of the error: %g \n',mesh.getErrorNorm(y,2));
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% Plot the exact solution to Leveque1 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+x = linspace(-3,3,1000);
+y = @(x) -1 + (1+x/tEnd).*heaviside(x+tEnd) + (2-x/tEnd).*heaviside(x-2*tEnd);
+hold all
+h = get(gca,'Children');  
+h(end).LineStyle = ':';
+plot(x,y(x),'-.k')
+fprintf('L2 norm of the error: %g \n',mesh.getErrorNorm(y,2));
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% Initial conditions
 function y = riemann1A(x) % right-going shock

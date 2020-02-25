@@ -115,6 +115,9 @@ classdef Solver < handle
             % Plot solution:
             if STOP || ~mod(this.iterationCount,replotIters)
                 this.refreshPlot(mesh);
+                %%%
+                this.limiter.takeSnapshot(mesh);
+                %%%
             end
         end
         %% Update Courant number (fixed timeDelta)
@@ -207,24 +210,6 @@ classdef Solver < handle
                         set(hLine,'MarkerFaceColor',this.plotData.cmap(k,:));
                         set(hLine,'MarkerEdgeColor',this.plotData.cmap(k,:));
                     end
-%%% Plot(s) for Matthias (22/10/2019) %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                    switch 'none'
-                        case 'P'
-                        plot(element.getNodeCoords,element.limiterHistory.Pp','^','Color',this.plotData.cmap(k,:),'MarkerSize',4);
-                        plot(element.getNodeCoords,element.limiterHistory.Pm','v','Color',this.plotData.cmap(k,:),'MarkerSize',4);
-                        case 'Q'
-                            plot(element.getNodeCoords,element.limiterHistory.Qp','^','Color',this.plotData.cmap(k,:),'MarkerSize',4);
-                            plot(element.getNodeCoords,element.limiterHistory.Qm','v','Color',this.plotData.cmap(k,:),'MarkerSize',4);
-                        case 'R'
-                            plot(element.getNodeCoords,element.limiterHistory.Rp','^','Color',this.plotData.cmap(k,:),'MarkerSize',4);
-                            plot(element.getNodeCoords,element.limiterHistory.Rm','v','Color',this.plotData.cmap(k,:),'MarkerSize',4);
-                        case 'extrema'
-                            plot(element.getNodeCoords,element.limiterHistory.localMax','^','Color',this.plotData.cmap(k,:),'MarkerSize',4);
-                            plot(element.getNodeCoords,element.limiterHistory.localMin','v','Color',this.plotData.cmap(k,:),'MarkerSize',4);
-                        otherwise
-                            % ok
-                    end
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                     k = k + 1;
                 end
                 hold off

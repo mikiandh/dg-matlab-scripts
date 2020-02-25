@@ -18,7 +18,7 @@ classdef Element < matlab.mixin.SetGet
         residuals % residual (i.e. time derivative) vector at nodes
         dofCount % number of degrees of freedom per element, per equation
         % Limiting:
-        isSensed = true % to be ignored by any limiter if set to false
+        isTroubled = false % to be ignored by any limiter if set to false (set by the sensor)
         isLimited % true if modified by a limiter (row: system comp.; column: basis comp.)
         diffusions % artificial diffusion operator (cell array)
         antidiffusiveFluxes % sparse 2D array of FCT antidiffusive flux vectors along pairs of modes (with zero padding)
