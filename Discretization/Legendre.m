@@ -160,6 +160,9 @@ classdef Legendre < Basis
                 element.states = U;
             end
             % Apply limiter:
+            if nargin < 2 || isempty(limiter)
+                limiter = Limiter;
+            end
             limiter.apply(mesh);
         end
     end

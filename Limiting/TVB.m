@@ -1,20 +1,34 @@
-classdef TVDM < NoLimiter
+classdef TVB < Limiter
     %
-    % Slope limiter as reported in Cockburn and Shu, 2001. Proven to be TVD
-    % in the element-wise means. Known to cause loss of accuracy at smooth
-    % extrema. Only compatible with a Legendre basis, single element per 
-    % patch, p > 0.
+    % Slope limiter as reported in Cockburn and Shu, 2001. Proven to be TVB
+    % in the element-wise means (TVD if M = 0). Known to cause loss of 
+    % accuracy at smooth extrema unless M is set appropriately.
     % 
     % For p > 1, the solution is L2-projected on a linear basis, and 
     % the resulting slope is used as in the linear definition of this
     % limiter (i.e. the 2nd expansion coefficient of the Legendre basis is
     % always used as the unlimited slope, regardless of p).
     %
+    properties
+        M % user-definable sensitivity parameter (see Cockburn & Shu, 2001)
+    end
     methods
-        %% Limiting
-        function apply(this,mesh,varargin)
+        %% Constructor
+        function this = TVB(varargin)
+            % Superclass constructor:
+            this = this@Limiter(varargin{:});
+            % Initialize an input parser:
+            p = inputParser;
+            p.KeepUnmatched = true;
+            addParameter(p,'M',0);
+            % Parse the M parameter:
+            parse(p,varargin{:});
+            this.M = p.Results.M;
+        end
+        %% Apply
+        function apply(this,mesh,~)
             % Apply default limiting:
-            apply@NoLimiter(this,mesh,varargin);
+            apply@Limiter(this,mesh);
             % Retrieve troubled elements:
             elements = findobj(mesh.elements,'isTroubled',true);
             % Discard any element with a non-modal basis:

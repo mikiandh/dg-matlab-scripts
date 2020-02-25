@@ -15,7 +15,7 @@ addpath('../Grid')
 addpath('../Math')
 
 %% Parameters
-Ne = 20; % number of elements
+Ne = 8; % number of elements
 p = 1; % degree of the approximation space (per element)
 L = [0 1]; % domain edges
 tEnd = 1; % final simulation time
@@ -48,7 +48,7 @@ eqn = Advection(1,[]); % PDE + BCs
 method = DG;
 
 %% Limiter
-limiter = TVDM;
+limiter = TVB;
 
 %% Grid
 xEdge = linspace(L(1),L(2),Ne+1); % element end-points

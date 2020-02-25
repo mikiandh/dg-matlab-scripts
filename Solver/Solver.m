@@ -28,7 +28,11 @@ classdef Solver < handle
                 this.timeStop = tEnd;
                 this.courantNumber = CFL;
                 this.timeDelta = dt;
-                this.limiter = limiter;
+                if isempty(limiter)
+                    this.limiter = Limiter;
+                else
+                    this.limiter = limiter;
+                end
             end
         end
         %% Drive the integration
@@ -115,9 +119,7 @@ classdef Solver < handle
             % Plot solution:
             if STOP || ~mod(this.iterationCount,replotIters)
                 this.refreshPlot(mesh);
-                %%%
-                this.limiter.takeSnapshot(mesh);
-                %%%
+                this.limiter.takeSnapshot(mesh); % could be expensive
             end
         end
         %% Update Courant number (fixed timeDelta)

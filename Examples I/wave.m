@@ -15,13 +15,13 @@ addpath('../Grid')
 addpath('../Math')
 
 %% Parameters
-Ne = 64; % number of elements (!-> for 1 element, use FIXED time-step size)
-p = 1; % degree of the approximation space (per element)
+Ne = 32; % number of elements (!-> for 1 element, use FIXED time-step size)
+p = 2; % degree of the approximation space (per element)
 L = [0 1]; % domain edges
-tEnd = 0.0; % final simulation time
+tEnd = 2.0; % final simulation time
 dt = [];
-CFL = .3; % Courant number
-iterSkip = 30;
+CFL = .1; % Courant number
+iterSkip = 50;
     
 %% Physics
 eqn = Wave;
@@ -41,7 +41,7 @@ method = DG;
 FUN = @(x) combinedIC(x);
 
 %% Limiter
-limiter = TVDM;
+limiter = TVB;
 
 %% Grid
 mesh = Mesh(linspace(L(1),L(2),Ne+1),p,method,eqn);

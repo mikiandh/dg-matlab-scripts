@@ -5,21 +5,18 @@ classdef Sensor < handle
     % this class.
     %
     methods
-        %% Factory constructor
-        function this = Sensor(varargin)
-            % Given a list of input name-value pairs, decides which
-            % sensor to instantiate and returns it.
+        %% Apply (default)
+        function apply(~,mesh,~)
+            % Method that sets the "isTroubled" property of certain
+            % elements in a given mesh to true. Any limiter will only act
+            % on elements that trigger its sensor - i.e. for which this
+            % method has set "isTroubled" to true.
             %
-            if nargin
-               
-            end
+            % Mark all elements as troubled (i.e. to be limited):
+            set(mesh.elements(2:end-1),'isTroubled',true); %%% FIXME: find a better way to deal with BCs %%%
+            % Exclude any p == 0 cells:
+            elements = findobj(mesh.elements,'dofCount',1);
+            set(elements,'isTroubled',false);
         end
-    end
-    methods (Abstract)
-        % Method that sets the "isTroubled" property of certain elements in a
-        % given mesh to true. Any limiter will only act on elements that
-        % trigger its sensor - i.e. for which this method has set 
-        % "isTroubled" to true.
-        apply(this,mesh,solver)
     end
 end

@@ -30,7 +30,7 @@ eqn = Euler('transmissive','Roe0');
 method = DG;
 
 %% Limiter
-limiter = TVDM;
+limiter = TVB;
 
 %% Grid
 mesh = Mesh(linspace(L(1),L(2),Ne+1),p,method,eqn);
