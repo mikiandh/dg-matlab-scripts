@@ -165,5 +165,29 @@ classdef Legendre < Basis
             end
             limiter.apply(mesh);
         end
+        %% Identity projection (forwards)
+        function modes = getLegendre(element,j,i)
+            % Returns selected modes of the given element.
+            switch nargin               
+                case 1
+                    modes = element.states;
+                case 2
+                    modes = element.states(:,j);
+                case 3
+                    modes = element.states(i,j);
+            end
+        end
+        %% Identity projection (backwards)
+        function setLegendre(element,modes,j,i)
+            % Sets (selected) modes onto the given element.
+            switch nargin
+                case 2
+                    element.states = modes;
+                case 3
+                    element.states(:,j) = modes;
+                case 4
+                    element.states(i,j) = modes;
+            end
+        end
     end
 end

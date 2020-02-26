@@ -70,14 +70,6 @@ classdef Element < matlab.mixin.SetGet
             x = this.basis.controlCoords;
             x = this.mapFromReference(x);
         end
-        %% Convert element from Lagrange (nodal) to Legendre (modal) basis
-        function nodalToModal(this)
-            this.states = this.states*this.basis.invVandermonde;
-        end
-        %% Convert element from Legendre (modal) to Lagrange (nodal) basis
-        function modalToNodal(this)
-            this.states = this.states*this.basis.vandermonde;
-        end
         %% Interpolate state at coordinates
         function q = interpolateStateAtCoords(this,x)
             % Argument

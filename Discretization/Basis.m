@@ -24,7 +24,8 @@ classdef Basis < matlab.mixin.SetGet
         sampleAt(this,x) % sample basis components at given locations
         interpolate(mesh,limiter,fun) % sample-based projection
         project(mesh,limiter,fun) % L2 projection (conservative)
-        %%% integrateFun(fun,q) % numerically integrate a given function over the reference patch
+        getLegendre(this,element,j,i) % get chosen Legendre coefficients of an element (assumed to employ this basis)
+        setLegendre(this,element,modes,j,i) % set chosen Legendre coefficients to an element (assumed to employ this basis)
     end
     methods
         function computeSparsityGraph(this)

@@ -55,6 +55,35 @@ classdef Lagrange < Basis
             this.massMatrix = diag(this.nodeWeights); % by definition
             this.gradientMatrix = this.derivatives'.*this.nodeWeights; % idem (08/10/2019: it would be practical to redefine 'this.derivatives' as its transposed, but I don't dare change it at this stage)
         end
+        %% Lagrange to Legendre projection
+        function modes = getLegendre(this,element,j,i)
+            % Returns selected expansion coefficients from the 
+            % equal-dimensional Legendre counterpart of this basis.
+            %
+            switch nargin
+                case 2
+                    modes = element.states*this.invVandermonde;
+                case 3
+                    modes = element.states*this.invVandermonde(:,j);
+                case 4
+                    modes = element.states(i,:)*this.invVandermonde(:,j);
+            end
+        end
+        %% Legendre to Lagrange projection
+        function setLegendre(this,element,modes,j,i)
+            % Sets given Legendre expansion coefficients to selected
+            % state array entries; assumes that the Legendre and the 
+            % element's bases have the same length.
+            %
+            switch nargin
+                case 3
+                    element.states = modes*this.vandermonde;
+                case 4
+                    element.states(:,j) = modes*this.vandermonde(:,j);
+                case 5
+                    element.states(i,j) = modes*this.vandermonde(i,j);
+            end
+        end
     end
     methods (Static)
         %% Barycentric weights

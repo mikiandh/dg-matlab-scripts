@@ -15,13 +15,13 @@ addpath('../Grid')
 addpath('../Math')
 
 %% Parameters
-Ne = 8; % number of elements
-p = 1; % degree of the approximation space (per element)
-L = [0 1]; % domain edges
-tEnd = 1; % final simulation time
+Ne = 11; % number of elements
+p = 3; % degree of the approximation space (per element)
+L = [-1 1]; % domain edges
+tEnd = 0; % final simulation time
 dt = []; % time-step size (overrides CFL)
 CFL = .1; % Courant number
-iterSkip = 25;
+iterSkip = 1;
 
 %% Initial condition collection
 IC_linear = @(x) x;
@@ -39,6 +39,11 @@ IC_randomSignal = @(x) randomSignal(x,0,3,L,0);
 IC_jaeschkeHump = @(x) .25*(1+cos(pi*min(1,2*sqrt((x-.5).^2))));
 IC_jaeschkeSquare = @(x) heaviside(x-0.25) - heaviside(x-0.75);
 IC_leveque = @(x) 2 - 2*heaviside(x);
+IC_p3d0 = @(x) (x+x.^2+x.^3).*(1 - heaviside(x)) + (1+x+x.^2+x.^3).*(heaviside(x));
+IC_p3d1 = @(x) (x+x.^2+x.^3).*(1 - heaviside(x)) + (2*x+x.^2+x.^3).*(heaviside(x));
+IC_p3d2 = @(x) (x+x.^2+x.^3).*(1 - heaviside(x)) + (x+2*x.^2+x.^3).*(heaviside(x));
+IC_p3d3 = @(x) (x+x.^2+x.^3).*(1 - heaviside(x)) + (x+x.^2+2*x.^3)  .*(heaviside(x));
+IC_p3d4 = @(x) (x+x.^2+x.^3);
 
 %% Physics
 FUN = IC_jump; % initial condition

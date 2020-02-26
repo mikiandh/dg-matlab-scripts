@@ -200,6 +200,14 @@ classdef Bspline < Basis
                 ids = ids + this.degree + 1;
             end
         end
+        %% Bspline to Legendre projection (patch-wise)
+        function modes = getLegendre(this,element,j)
+            %%% TO DO %%%
+        end
+        %% Legendre to Bspline projection (patch-wise)
+        function setLegendre(this,element,modes,j)
+            %%% TO DO %%%
+        end
     end
     methods (Static)
         %% Re-scale knot vector

@@ -103,40 +103,6 @@ classdef Mesh < handle
                 q(:,element.basis.basisCount+2,k) = element.stateR;
             end
         end
-        %% Extract matrices of modal coefficients of the entire mesh
-        %%% NOT YET ADAPTED TO DGIGA %%%
-        function Q = getModalCoeffs(this,eqs)
-            % eqs: 1D array of system components to extract.
-            % Q(i,j,k): 3D array of modal coefficients. 
-            %     i: system component
-            %     j: basis component
-            %     k: element
-            %    Elements with p < max(p) have their j > p + 1 components 
-            %    padded with zeros.
-            nEqs = length(eqs);
-            Q = zeros(nEqs,this.maxDegree+1,this.elementCount);
-            k = 0;
-            for element = this.elements
-                k = k + 1;
-                if element.basis.isNodal
-                    Q(:,1:element.basis.degree+1,k) = ...
-                        element.states(eqs,:)*element.basis.invVandermonde;
-                else
-                    Q(:,1:element.basis.degree+1,k) = element.states(eqs,:);
-                end
-            end
-        end
-        %% Set matrices of modal coefficients of the entire mesh
-        function setModalCoeffs(this,Q,eqs)
-            k = 0;
-            for element = this.elements
-                k = k + 1;
-                element.states(eqs,:) = Q(:,1:element.basis.degree+1,k);
-                if element.basis.isNodal
-                    element.modalToNodal;
-                end
-            end
-        end
         %% Sample the states globally
         function states = sample(this,x)
             % x: 1D row array of sample locations
