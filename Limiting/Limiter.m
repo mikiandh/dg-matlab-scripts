@@ -47,6 +47,10 @@ classdef Limiter < handle
                 element.isLimited = false(size(element.states));
             end
         end
+        %% Information
+        function info = getInfo(~)
+            info = 'no limiting';
+        end
         %% Record status
         function takeSnapshot(this,mesh)
             % Stores the limiter activation status from a mesh and adds it

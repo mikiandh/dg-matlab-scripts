@@ -152,6 +152,7 @@ classdef Solver < handle
             this.plotData.ylims = repmat([0 1.2],mesh.physics.equationCount,1);
             disc = mesh.bases(1);
             this.plotData.space = strrep(class(disc),'_','-');
+            this.plotData.limiter = this.limiter.getInfo;
             % Deduce method name:
             if isa(disc,'FR')
                 aux = sprintf('%s(%s)',this.plotData.space,num2str(disc.param));
@@ -169,10 +170,8 @@ classdef Solver < handle
             else
                 aux = sprintf('%s',this.plotData.space);
             end
-            % Deduce limiter name:
-            if ~isempty(this.limiter)
-                aux = sprintf('%s (%s)',aux,strrep(class(this.limiter),'_',' '));
-            end
+            % Append limiter info:
+            aux = sprintf('%s; %s',aux,this.plotData.limiter);
             % Set up plot title:
             this.plotData.space =...
                 sprintf('%s;  p \\in [%d,%d], N_\\Omega = %d, N = %d',...
