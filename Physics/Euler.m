@@ -10,7 +10,7 @@ classdef Euler < Physics
         %% Constructor
         function euler = Euler(boundaryConditions,riemannSolver)
             euler.boundaryConditionsFunction = @Euler.applyTransmissiveBoundaryConditions;
-            euler.riemannSolver = @Euler.riemannLLF;
+            euler.riemannSolver = @Euler.riemannHLLC;
             if nargin > 0
                 switch boundaryConditions
                     case {'reflecting','reflective'}

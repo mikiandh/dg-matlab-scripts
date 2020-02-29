@@ -1,11 +1,14 @@
 classdef TVB < Limiter
     %
-    % Slope limiter as reported in Cockburn and Shu, 2001. Proven to be TVB
+    % Slope limiter as reported in Cockburn and Shu, 1998. Proven to be TVB
     % in the element-wise means (TVD, if M = 0). May reduce accuracy to 1st
     % order at smooth extrema (if M is not chosen properly).
     %
     properties
         M % user-definable sensitivity parameter (see Cockburn & Shu, 2001)
+    end
+    properties (Access = protected)
+        physics % necessary for the characteristic projection
     end
     methods
         %% Constructor
@@ -26,6 +29,7 @@ classdef TVB < Limiter
             apply@Limiter(this,mesh);
             % Retrieve troubled elements:
             elements = findobj(mesh.elements,'isTroubled',true)';
+            % Project troubled elements and neighbors
             % Apply on every remaining element:
             for element = elements
                 this.applyOnElement(element);
@@ -38,35 +42,33 @@ classdef TVB < Limiter
     end
     methods (Access = protected)
         function applyOnElement(this,element)
-            % Applies TVB limiting (based on the TVD limiter of Osher) a la
-            % Cockburn & Shu, 2001.
+            % Applies TVB limiting (based on the TVD limiter of Osher) to
+            % limit the gradient of the solution in this element (in local
+            % characteristic variables).
             %
-            % Minmod tolerance:
+            % Aliases:
             tol = this.M*element.dx^2;
+            basis = element.basis;
             % Cell averages:
-            uL = element.basis.getLegendre(element.edgeL.elementL,1); % left cell
-            uR = element.basis.getLegendre(element.edgeR.elementR,1); % right cell
-            u = element.basis.getLegendre(element,1); % current cell
-            % Unlimited edge intercepts:
+            v0 = basis.getLegendre(element,1);
+            % Cell slopes (finite difference approximations):
             element.interpolateStateAtEdges;
-            vL = element.stateL; % left edge
-            vR = element.stateR; % right edge
-            % Limited edge intercepts:
-            wL = u - this.modminmod([u-vL u-uL uR-u],tol); % left edge
-            wR = u + this.modminmod([vR-u u-uL uR-u],tol); % right edge
-            % Determine troubled components:
-            rows = find(wL ~= vL | wR ~= vR);
-            cols = 3:element.dofCount; % higher order modes (above linear)
-            % Overwrite troubled slopes with limited ones:
-            for i = rows'
-                s = .5*(vR(i) - vL(i)); % unlimited slope
-                sL = u(i) - uL(i); % left-limited slope
-                sR = uR(i) - u(i); % right-limited slope
-                s = this.modminmod([s sL sR],tol); % most conservative slope
-                element.basis.setLegendre(element,s,2,i); % override slope
-                element.basis.setLegendre(element,0,cols,i); % truncate to linear
-                element.isLimited(i,2:end) = true; % flag all limited modes
-            end
+            v1L = v0 - element.stateL; % unsafe, left-sided
+            v1R = element.stateR - v0; % unsafe, right-sided
+            u1L = v0 - basis.getLegendre(element.edgeL.elementL,1); % safe, left-sided
+            u1R = basis.getLegendre(element.edgeR.elementR,1) - v0; % safe, right-sided
+            % Retrieve limited slopes:
+            w1L = this.modminmod([v1L u1L u1R],tol); % left-sided
+            w1R = this.modminmod([v1R u1L u1R],tol); % right-sided
+            % Determine troubled rows and columns:
+            rows = find(w1L ~= v1L | w1R ~= v1R);
+            cols = 2:basis.basisCount;
+            % Overwrite troubled entries with limited ones:
+            vals = zeros(length(rows),basis.basisCount+1);
+            vals(:,2) = .5*(w1R(rows) + w1L(rows)); % safe slopes 
+            vals(:,3) = .5*(w1R(rows) - w1L(rows)); % safe curvatures
+            basis.setLegendre(element,vals(:,cols),cols,rows);
+            element.isLimited(rows,cols) = true; % flag all limited modes
         end
     end
     methods (Static)

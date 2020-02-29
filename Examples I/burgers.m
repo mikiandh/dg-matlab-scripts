@@ -31,7 +31,7 @@ fun = @leveque1; % initial condition
 eqn = Burgers(fun(L)); % PDE
 
 %% Limiter
-limiter = TVB;
+limiter = TVB('M',0);
 
 %% Grid
 mesh = Mesh(linspace(L(1),L(2),Ne+1),p,method,eqn);

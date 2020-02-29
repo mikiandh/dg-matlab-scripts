@@ -21,7 +21,7 @@ L = [0 1]; % domain edges
 tEnd = .125; % final simulation time
 dt = [];
 CFL = .1; % Courant number
-iterSkip = 10;
+iterSkip = 100;
 
 %% Physics
 eqn = Euler('transmissive');

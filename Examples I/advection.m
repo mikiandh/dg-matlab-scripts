@@ -15,13 +15,13 @@ addpath('../Grid')
 addpath('../Math')
 
 %% Parameters
-Ne = 22; % number of elements
-p = 1; % degree of the approximation space (per element)
+Ne = 33; % number of elements
+p = 3; % degree of the approximation space (per element)
 L = [-.5 .5]; % domain edges
-tEnd = 0; % final simulation time
+tEnd = 1; % final simulation time
 dt = []; % time-step size (overrides CFL)
 CFL = .1; % Courant number
-iterSkip = 10;
+iterSkip = 1;
 
 %% Initial condition collection
 IC_linear = @(x) x;
@@ -46,14 +46,14 @@ IC_p3d3 = @(x) (x+x.^2+x.^3).*(1 - heaviside(x)) + (x+x.^2+2*x.^3)  .*(heaviside
 IC_p3d4 = @(x) (x+x.^2+x.^3);
 
 %% Physics
-FUN = IC_gauss; % initial condition
-eqn = Advection(1,[]); % PDE + BCs
+FUN = IC_jump; % initial condition
+eqn = Advection(-1,[]); % PDE + BCs
 
 %% Discretization
 method = DG;
 
 %% Limiter
-limiter = TVB('M',100);
+limiter = TVB('M',0);
 
 %% Grid
 xEdge = linspace(L(1),L(2),Ne+1); % element end-points
