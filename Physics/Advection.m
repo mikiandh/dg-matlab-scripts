@@ -47,14 +47,14 @@ classdef Advection < Physics
             A = this.advSpeed;
         end
         %% Jacobian eigen-decomposition
-        function [A,L,R] = getEigensystemAt(this,~,~)
+        function [D,L,R] = getEigensystemAt(this,~,~)
             % Returns the eigenvalue and eigenvector matrices evaluated at,
             % either:
             %
             % A) the given state vector
             % B) the "generalized Roe average" between two given states
             %
-            A = this.advSpeed;
+            D = this.advSpeed;
             L = 1;
             R = 1;
         end

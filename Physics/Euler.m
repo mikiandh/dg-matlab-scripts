@@ -432,7 +432,7 @@ classdef Euler < Physics
             end
         end
         %% Jacobian eigen-decomposition
-        function [A,L,R] = getEigensystemAt(state1,state2)
+        function [D,L,R] = getEigensystemAt(state1,state2)
             % Returns the eigenvalue and eigenvector matrices evaluated at,
             % either:
             %
@@ -446,7 +446,7 @@ classdef Euler < Physics
             end
             R = [1 1 1; u-a u u+a; H-u*a 0.5*u^2 H+u*a];
             L = 0.2/a^2*[H+2.5*a*(u-a) -(u+2.5*a) 1; -2*H+10*a^2 2*u -2; H-2.5*a*(u+a) -u+2.5*a 1];
-            A = diag([u-a u u+a]);
+            D = diag([u-a u u+a]);
         end
         %% Return left and right eigenvectormatrices for given mean states
         function [L,R] = getLocalEigenvectors(stateL,stateR)

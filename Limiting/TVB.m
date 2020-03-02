@@ -1,11 +1,10 @@
 classdef TVB < Limiter
-    %
-    % Slope limiter as reported in Cockburn and Shu, 1998. Proven to be TVB
+    % Slope limiter by Cockburn and Shu (1998 and 2001). Proven to be TVB 
     % in the element-wise means (TVD, if M = 0). May reduce accuracy to 1st
     % order at smooth extrema (if M is not chosen properly).
     %
-    properties
-        M % user-definable sensitivity parameter (see Cockburn & Shu, 2001)
+    properties (SetAccess = immutable)
+        M % user-definable sensitivity parameter (see Cockburn & Shu, 1998)
     end
     properties (Access = protected)
         physics % necessary for the characteristic projection
@@ -19,7 +18,7 @@ classdef TVB < Limiter
             p = inputParser;
             p.KeepUnmatched = true;
             addParameter(p,'M',0);
-            % Parse the M parameter:
+            % Parse the inputs:
             parse(p,varargin{:});
             this.M = p.Results.M;
         end
@@ -29,7 +28,8 @@ classdef TVB < Limiter
             apply@Limiter(this,mesh);
             % Retrieve troubled elements:
             elements = findobj(mesh.elements,'isTroubled',true)';
-            % Project troubled elements and neighbors
+            % Retrieve physics (for projecting to local characteristics):
+            this.physics = mesh.physics;
             % Apply on every remaining element:
             for element = elements
                 this.applyOnElement(element);
@@ -41,34 +41,46 @@ classdef TVB < Limiter
         end
     end
     methods (Access = protected)
+        %% Limit an element
         function applyOnElement(this,element)
             % Applies TVB limiting (based on the TVD limiter of Osher) to
-            % limit the gradient of the solution in this element (in local
-            % characteristic variables).
+            % limit the slope (and, if p > 1, also the curvature) of the 
+            % solution in this element (in local characteristic variables).
+            %
+            % Considers a cell to be troubled when EITHER of its edge
+            % intercepts is beyond the range allowed by its neighbor's 
+            % averages (i.e. NOT a la 1998, but a la 2001 and later).
+            %
+            % For p > 1, the limited solution is the parabola with safest
+            % values at each edge, as determined in the trouble detection 
+            % step.
             %
             % Aliases:
             tol = this.M*element.dx^2;
             basis = element.basis;
-            % Cell averages:
-            v0 = basis.getLegendre(element,1);
-            % Cell slopes (finite difference approximations):
+            % Get current cell Legendre coefficients:
+            coefs = basis.getLegendre(element);
+            % Cell slopes (via finite difference approximations):
             element.interpolateStateAtEdges;
-            v1L = v0 - element.stateL; % unsafe, left-sided
-            v1R = element.stateR - v0; % unsafe, right-sided
-            u1L = v0 - basis.getLegendre(element.edgeL.elementL,1); % safe, left-sided
-            u1R = basis.getLegendre(element.edgeR.elementR,1) - v0; % safe, right-sided
+            v1L = coefs(:,1) - element.stateL; % unsafe, left-sided
+            v1R = element.stateR - coefs(:,1); % unsafe, right-sided
+            u1L = coefs(:,1) - basis.getLegendre(element.edgeL.elementL,1); % safe, left-sided
+            u1R = basis.getLegendre(element.edgeR.elementR,1) - coefs(:,1); % safe, right-sided
+            % Compute the mapping to/from local characteristic variables:
+            [~,L,R] = this.physics.getEigensystemAt(coefs(:,1));
             % Retrieve limited slopes:
-            w1L = this.modminmod([v1L u1L u1R],tol); % left-sided
-            w1R = this.modminmod([v1R u1L u1R],tol); % right-sided
+            aux = L*[u1L u1R];
+            w1L = R*this.modminmod([L*v1L aux],tol); % left-sided
+            w1R = R*this.modminmod([L*v1R aux],tol); % right-sided
             % Determine troubled rows and columns:
-            rows = find(w1L ~= v1L | w1R ~= v1R);
-            cols = 2:basis.basisCount;
-            % Overwrite troubled entries with limited ones:
-            vals = zeros(length(rows),basis.basisCount+1);
-            vals(:,2) = .5*(w1R(rows) + w1L(rows)); % safe slopes 
-            vals(:,3) = .5*(w1R(rows) - w1L(rows)); % safe curvatures
-            basis.setLegendre(element,vals(:,cols),cols,rows);
-            element.isLimited(rows,cols) = true; % flag all limited modes
+            rows = find(abs(w1L - v1L) > 1e-10 | abs(w1R - v1R) > 1e-10);
+            element.isLimited(rows,2:end) = true; % flag all limited DOFs as such
+            % Enforce safe edge intercepts in this element's solution:
+            aux = zeros(size(coefs)); % preallocate to zero
+            aux(rows,1) = .5*(w1R(rows) + w1L(rows)); % safe 2nd Legendre coefficient
+            aux(rows,2) = 0*.5*(w1R(rows) - w1L(rows)); % safe 3rd Legendre coefficient (see A5-XI, 02/03/2020)
+            coefs(:,2:end) = aux(:,1:basis.basisCount-1); % overwrite limited Legendre coefficients (only)
+            basis.setLegendre(element,coefs(rows,:),rows); % overwrite all DOFs of limited state vector components
         end
     end
     methods (Static)

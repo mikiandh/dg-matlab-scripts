@@ -15,10 +15,10 @@ addpath('../Grid')
 addpath('../Math')
 
 %% Parameters
-Ne = 33; % number of elements
+Ne = 3; % number of elements
 p = 3; % degree of the approximation space (per element)
 L = [-.5 .5]; % domain edges
-tEnd = 1; % final simulation time
+tEnd = 0; % final simulation time
 dt = []; % time-step size (overrides CFL)
 CFL = .1; % Courant number
 iterSkip = 1;
@@ -46,11 +46,11 @@ IC_p3d3 = @(x) (x+x.^2+x.^3).*(1 - heaviside(x)) + (x+x.^2+2*x.^3)  .*(heaviside
 IC_p3d4 = @(x) (x+x.^2+x.^3);
 
 %% Physics
-FUN = IC_jump; % initial condition
-eqn = Advection(-1,[]); % PDE + BCs
+FUN = IC_heaviside; % initial condition
+eqn = Advection(1,[]); % PDE + BCs
 
 %% Discretization
-method = DG;
+method = DGSEM;
 
 %% Limiter
 limiter = TVB('M',0);
@@ -67,16 +67,16 @@ method.project(mesh,limiter,FUN);
 
 %% Time-integration
 solver = SSP_RK3(0,tEnd,CFL,dt,limiter);
-%norms0 = [mesh.getSolutionMass,mesh.getSolutionNorm(1),mesh.getSolutionNorm,mesh.getTotalVariation,mesh.getErrorNorm(FUN)];
-norms0 = mesh.getSolutionMass;
+norms0 = [mesh.getSolutionMass,mesh.getSolutionNorm(1),mesh.getSolutionNorm,mesh.getTotalVariation,mesh.getErrorNorm(FUN)];
+%norms0 = mesh.getSolutionMass;
 tic
 solver.launch(mesh,iterSkip,@(t,x) FUN(x));
 fprintf(1,'...done. (%g s)\n',toc)
 
 %% Postprocessing
-% norms = [mesh.getSolutionMass,mesh.getSolutionNorm(1),mesh.getSolutionNorm,mesh.getTotalVariation,mesh.getErrorNorm(FUN)];
-% rows = {'Solution (mass)' 'Solution (L1)' 'Solution (L2)','Solution (TV)','Error (L2)'};
-norms = mesh.getSolutionMass;
-rows = {'Solution (mass)'};
+norms = [mesh.getSolutionMass,mesh.getSolutionNorm(1),mesh.getSolutionNorm,mesh.getTotalVariation,mesh.getErrorNorm(FUN)];
+rows = {'Solution (mass)' 'Solution (L1)' 'Solution (L2)','Solution (TV)','Error (L2)'};
+% norms = mesh.getSolutionMass;
+% rows = {'Solution (mass)'};
 cols = {'Norm','Start','End','Increase'};
 eqn.displayData(rows,cols,norms0,norms,norms-norms0)

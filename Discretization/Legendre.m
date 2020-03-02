@@ -178,15 +178,13 @@ classdef Legendre < Basis
             end
         end
         %% Identity projection (backwards)
-        function setLegendre(element,modes,j,i)
-            % Sets (selected) modes onto the given element.
+        function setLegendre(element,modes,i)
+            % Sets given Legendre modes into the given element.
             switch nargin
                 case 2
                     element.states = modes;
                 case 3
-                    element.states(:,j) = modes;
-                case 4
-                    element.states(i,j) = modes;
+                    element.states(i,:) = modes;
             end
         end
     end

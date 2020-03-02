@@ -15,10 +15,10 @@ addpath('../Grid')
 addpath('../Math')
 
 %% Parameters
-Ne = 100; % number of elements
+Ne = 200; % number of elements
 p = 2; % degree of the approximation space (per element)
-L = [0 1]; % domain edges
-tEnd = .125; % final simulation time
+L = [-5 5]; % domain edges
+tEnd = 1.8; % final simulation time
 dt = [];
 CFL = .1; % Courant number
 iterSkip = 100;
@@ -27,10 +27,10 @@ iterSkip = 100;
 eqn = Euler('transmissive');
 
 %% Discretization
-method = DG;
+method = DGSEM;
 
 %% Limiter
-limiter = TVB;
+limiter = TVB('M',200);
 
 %% Grid
 mesh = Mesh(linspace(L(1),L(2),Ne+1),p,method,eqn);
@@ -38,14 +38,14 @@ mesh = Mesh(linspace(L(1),L(2),Ne+1),p,method,eqn);
 %mesh = Mesh([L(1) .05 .95 L(2)],p,method);
 
 %% Initial condition/exact solution
-FUN = @leveque;
+FUN = @shuOsher;
 
 %% Initial condition projection
 FUN0 = @(x) FUN(0,x);
 method.project(mesh,limiter,FUN0);
 
 %% Time-integration
-solver = SSP_RK1(0,tEnd,CFL,dt,limiter);
+solver = SSP_RK3(0,tEnd,CFL,dt,limiter);
 norms0 = mesh.getSolutionMass(1:3);
 tic
 solver.launch(mesh,iterSkip,FUN);

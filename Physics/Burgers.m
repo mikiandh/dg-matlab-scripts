@@ -26,7 +26,7 @@ classdef Burgers < Physics
             flux = 0.5*state.^2;
         end
         %% Jacobian eigen-decomposition
-        function [A,L,R] = getEigensystemAt(state1,state2)
+        function [D,L,R] = getEigensystemAt(state1,state2)
             % Returns the eigenvalue and eigenvector matrices evaluated at,
             % either:
             %
@@ -34,9 +34,9 @@ classdef Burgers < Physics
             % B) the "generalized Roe average" between two given states
             %
             if nargin == 1
-                A = state1;
+                D = state1;
             else
-                A = .5*(state1+state2); % Roe average for Burgers' reduces to arithmetic average (see Toro 2009, section 11.2)
+                D = .5*(state1+state2); % Roe average for Burgers' reduces to arithmetic average (see Toro 2009, section 11.2)
             end
             L = 1;
             R = 1;

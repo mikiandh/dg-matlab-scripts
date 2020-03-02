@@ -110,14 +110,14 @@ classdef Wave < Physics
             A = this.jacobian;
         end
         %% Jacobian eigen-decomposition
-        function [A,L,R] = getEigensystemAt(this,~,~)
+        function [D,L,R] = getEigensystemAt(this,~,~)
             % Returns the eigenvalue and eigenvector matrices evaluated at,
             % either:
             %
             % A) the given state vector
             % B) the "generalized Roe average" between two given states
             %
-            A = this.waveSpeed*[1 0; 0 -1];
+            D = this.waveSpeed*[1 0; 0 -1];
             L = this.invEigenvectors;
             R = this.eigenvectors;
         end

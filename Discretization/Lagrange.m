@@ -70,7 +70,7 @@ classdef Lagrange < Basis
             end
         end
         %% Legendre to Lagrange projection
-        function setLegendre(this,element,modes,j,i)
+        function setLegendre(this,element,modes,i)
             % Sets given Legendre expansion coefficients to selected
             % state array entries; assumes that the Legendre and the 
             % element's bases have the same length.
@@ -79,9 +79,7 @@ classdef Lagrange < Basis
                 case 3
                     element.states = modes*this.vandermonde;
                 case 4
-                    element.states(:,j) = modes*this.vandermonde(:,j);
-                case 5
-                    element.states(i,j) = modes*this.vandermonde(i,j);
+                    element.states(i,:) = modes*this.vandermonde;
             end
         end
     end
