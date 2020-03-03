@@ -201,12 +201,76 @@ classdef Bspline < Basis
             end
         end
         %% Bspline to Legendre projection (patch-wise)
-        function modes = getLegendre(this,element,j)
-            %%% TO DO %%%
+        function modes = getLegendre(this,element,j,i)
+            % Projects the solution from a vector space with Bspline basis
+            % to one with Legendre basis, both with the same number of 
+            % dimensions. Solution continuity will not be preserved, in 
+            % general. Uses Gauss quadrature with order p+1, where p is the
+            % highest degree in the destination basis.
+            %
+            % Initialize default arguments, if necessary:
+            if nargin < 4
+                i = 1:size(element.states,1);
+            end
+            if nargin < 3
+                j = 1:this.basisCount;
+            end
+            % Quadrature data of the destination space:
+            [coords,weights,legendre] = Legendre.quadratureGaussLegendre(this.basisCount-1);
+            % Compute (exactly) the necesary Legendre mass matrix entries:
+            massLegendre = (legendre(j,:).^2*weights)';
+            % Approximate the necessary mixed mass matrix entries:
+            %
+            %  In order to get mode(s) j of the Legendre basis, one needs 
+            %  ALL basis functions of the origin basis (Bspline), yet ONLY
+            %  said j test function(s) of the destination basis (Legendre).
+            %
+            massMixed(1:this.basisCount,length(j)) = 0;
+            for id = 1:length(j) % loop over requested test functions
+                massMixed(:,id) = this.sampleAt(coords').*legendre(j(id),:)*weights;
+            end
+            % Retrieve requested legendre coefficients:
+            modes = element.states(i,:)*massMixed./massLegendre;
         end
         %% Legendre to Bspline projection (patch-wise)
-        function setLegendre(this,element,modes,j)
-            %%% TO DO %%%
+        function setLegendre(this,element,modes,i)
+            % Projects the solution from a vector space with Legendre basis
+            % to one with Bspline basis. Keeps the number of DOFs constant.
+            % Solution continuity will not be preserved, in general. Uses
+            % span-wise Gauss quadrature of order p+1, where p is the
+            % highest degree of this basis (destination).
+            %
+            % Approximate the mixed mass matrix:
+            %
+            %  The destination (Bspline) basis will have, in general, a 
+            %  lower degree than the origin basis. This can potentially 
+            %  make the quadrature used in this step innacurate. This loss
+            %  of accuracy is mitigated by the increased number of
+            %  quadrature intervals, but there is no reason why this should
+            %  compensate the loss of quadrature order entirely.
+            %
+            massMixed = zeros(this.basisCount);
+            % Loop over (non-vanishing) knot spans:
+            for l = 1:this.nonzeroSpanCount
+                % Transform span quadrature coordinates to reference patch:
+                [xi,jac] = mapFromReferenceKnotSpan(this,this.gaussCoords,this.span2knot(l));
+                % Sample origin basis (Legendre) at span quadrature points:
+                [~,legendre] =...
+                    Legendre.getLegendreAndDerivatives(this.basisCount,xi');
+                % Loop over Bspline test functions in the current span:
+                r = this.span2mode(l,:); % global test function indices
+                for id = 1:length(r) % span-local test function indices
+                    massMixed(:,r(id)) = massMixed(:,r(id)) +...
+                        jac*legendre.*this.vandermonde(id,:,l)*this.gaussWeights;
+                end
+            end
+            % Solve for the control coefficients:
+            modes = modes*massMixed / element.basis.massMatrix;
+            if nargin == 4
+                element.states(i,:) = modes;
+            else
+                element.states = modes;
+            end
         end
     end
     methods (Static)
@@ -251,7 +315,7 @@ classdef Bspline < Basis
             knots = repelem(knots,reps);
         end
         %% Consistent L2 projection (norm-preserving)
-        function project(mesh,~,fun,q)
+        function project(mesh,limiter,fun,q)
             % L2 projection onto a B-spline basis.
             for element = mesh.elements
                 basis = element.basis; % handle to current element's basis
@@ -277,6 +341,11 @@ classdef Bspline < Basis
                 % Solve for the modal coefficients:
                 element.states = b' / element.basis.massMatrix;
             end
+            % Apply limiter:
+            if nargin < 2 || isempty(limiter)
+                limiter = Limiter;
+            end
+            limiter.apply(mesh);
         end
         %% Lumped L2 projection (TVD + norm-preserving)
         function projectLumped(mesh,~,fun,q)

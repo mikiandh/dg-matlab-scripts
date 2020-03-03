@@ -10,8 +10,8 @@ classdef Basis < matlab.mixin.SetGet
         basisCount
         left
         right
-        massMatrix % inner products between every two basis functions
-        gradientMatrix % inner products between every basis function (row) and first derivative (column)
+        massMatrix % inner products between every basis function (row) and test function (column)
+        gradientMatrix % inner products between every basis function (row) and test function first derivative (column)
         nodeCoords
         gaussCoords
         gaussWeights

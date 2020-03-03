@@ -15,7 +15,7 @@ addpath('../Grid')
 addpath('../Math')
 
 %% Parameters
-Ne = 200; % number of elements
+Ne = 100; % number of elements
 p = 2; % degree of the approximation space (per element)
 L = [-5 5]; % domain edges
 tEnd = 1.8; % final simulation time
@@ -27,7 +27,7 @@ iterSkip = 100;
 eqn = Euler('transmissive');
 
 %% Discretization
-method = DGSEM;
+method = DGIGA(4);
 
 %% Limiter
 limiter = TVB('M',200);
