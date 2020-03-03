@@ -15,13 +15,13 @@ addpath('../Grid')
 addpath('../Math')
 
 %% Parameters
-Ne = 20; % number of elements
-p = 11; % degree of the approximation space (per element)
+Ne = 5; % number of elements
+p = 3; % degree of the approximation space (per element)
 L = [-.5 .5]; % domain edges
-tEnd = 1; % final simulation time
+tEnd = 0; % final simulation time
 dt = []; % time-step size (overrides CFL)
-CFL = .01; % Courant number
-iterSkip = 10;
+CFL = .1; % Courant number
+iterSkip = 1;
 
 %% Initial condition collection
 IC_linear = @(x) x;
@@ -50,7 +50,7 @@ FUN = IC_jump; % initial condition
 eqn = Advection(1,[]); % PDE + BCs
 
 %% Discretization
-method = DGSEM;
+method = DGIGA(5);
 
 %% Limiter
 limiter = TVB('M',0);
