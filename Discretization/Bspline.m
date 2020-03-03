@@ -237,7 +237,7 @@ classdef Bspline < Basis
             modes = element.states(i,:)*massMixed./massLegendre;
         end
         %% Legendre to Bspline projection (patch-wise)
-        function setLegendreOLD(this,element,modes,i)
+        function setLegendre(this,element,modes,i)
             % Projects the solution from a vector space with Legendre basis
             % to one with Bspline basis. Keeps the number of DOFs constant.
             % Solution continuity will not be preserved, in general. Uses
@@ -274,41 +274,6 @@ classdef Bspline < Basis
                 element.states(i,:) = modes;
             else
                 element.states = modes;
-            end
-        end
-        %% Legendre to Bspline projection (patch-wise)
-        function setLegendre(this,element,modes,i)
-            % Projects the solution from a vector space with Legendre basis
-            % to one with Bspline basis. Keeps the number of DOFs constant.
-            % Solution continuity will not be preserved, in general. Uses
-            % adaptive quadrature.
-            %
-            % Seems to be EXTREMELY slow (~40000% slowdown).
-            %
-            % Approximate the mixed mass matrix:
-            massMixed = zeros(this.basisCount); % preallocation
-            for r = 1:this.basisCount % test function loop
-                massMixed(:,r) = Algorithms.quadvgk(...
-                    @(x) basisFuns(x).*testFuns(r,x),...
-                    this.breakSpans,this.basisCount);
-            end
-            % Solve for the control coefficients:
-            modes = modes*massMixed / element.basis.massMatrix;
-            if nargin == 4
-                element.states(i,:) = modes;
-            else
-                element.states = modes;
-            end
-            % Nested functions:
-            function foo = basisFuns(x)
-                % Sample the orgin (Legendre) basis functions.
-                [~,foo] =...
-                    Legendre.getLegendreAndDerivatives(this.basisCount,x);
-            end
-            function bar = testFuns(r,x)
-                % Sample the destination (Bspline) test functions.
-                bar = this.sampleAt(x);
-                bar = bar(r,:);
             end
         end
     end
