@@ -6,9 +6,6 @@ classdef TVB < Limiter
     properties (SetAccess = immutable)
         M % user-definable sensitivity parameter (see Cockburn & Shu, 1998)
     end
-    properties (Access = protected)
-        physics % necessary for the characteristic projection
-    end
     methods
         %% Constructor
         function this = TVB(varargin)
@@ -22,14 +19,12 @@ classdef TVB < Limiter
             parse(p,varargin{:});
             this.M = p.Results.M;
         end
-        %% Apply
+        %% Apply (extension)
         function apply(this,mesh,~)
-            % Apply default limiting:
+            % Default limiting:
             apply@Limiter(this,mesh);
             % Retrieve troubled elements:
             elements = findobj(mesh.elements,'isTroubled',true)';
-            % Retrieve physics (for projecting to local characteristics):
-            this.physics = mesh.physics;
             % Apply on every remaining element:
             for element = elements
                 this.applyOnElement(element);
@@ -70,8 +65,8 @@ classdef TVB < Limiter
             [~,L,R] = this.physics.getEigensystemAt(coefs(:,1));
             % Retrieve limited slopes:
             aux = L*[u1L u1R];
-            w1L = R*this.modminmod([L*v1L aux],tol); % left-sided
-            w1R = R*this.modminmod([L*v1R aux],tol); % right-sided
+            w1L = R*this.minmod([L*v1L aux],tol); % left-sided
+            w1R = R*this.minmod([L*v1R aux],tol); % right-sided
             % Determine troubled rows and columns:
             rows = find(abs(w1L - v1L) > 1e-10 | abs(w1R - v1R) > 1e-10);
             element.isLimited(rows,2:end) = true; % flag all limited DOFs as such
@@ -83,23 +78,22 @@ classdef TVB < Limiter
             basis.setLegendre(element,coefs(rows,:),rows); % overwrite all DOFs of limited state vector components
         end
     end
-    methods (Static)
+    methods (Static, Access = protected)
         %% Modified minmod operator (Shu, 1987)
-        function outs = modminmod(args,tol)
+        function outs = minmod(args,tol)
             % Modified minmod function for a 2D array input of 3 columns
             % and a given tolerance (tol = M*dx^2). Returns a column array.
             %
-            % Pre-process inputs:
+            % Preliminaries:
+            outs = args(:,1);
             signs = sign(args);
             args = abs(args);
-            % Curvature check:
-            PASS = args(:,1) <= tol;
-            % Slope check:
-            FAIL = signs(:,1) ~= signs(:,2) | signs(:,1) ~= signs(:,3);
-            % Minmod operator: 
-            outs = signs(:,1).*min(args,[],2);
-            outs(FAIL) = 0;
-            outs(PASS) = signs(PASS,1).*args(PASS,1);
+            % Slopes with inconsistent sign:
+            FAIL = signs(:,1) ~= signs(:,2) | signs(:,1) ~= signs(:,2);
+            args(FAIL,3) = 0;
+            % Slopes outside TVB tolerance:
+            FAIL = args(:,1) > tol;
+            outs(FAIL) = signs(FAIL,1).*min(args(FAIL,:),[],2);
         end
     end
 end

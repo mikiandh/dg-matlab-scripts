@@ -8,6 +8,7 @@ classdef Solver < handle
         family = 'SSP RK'
         courantNumber
         iterationCount
+        wallClockTime
         timeNow
         timeDelta
         isTimeDeltaFixed
@@ -49,6 +50,7 @@ classdef Solver < handle
             % Initialize some stuff:
             STOP = false;
             this.iterationCount = 0;
+            this.wallClockTime = 0; tic
             this.initializePlot(mesh,solutionFun);
             this.refreshPlot(mesh);
             % Time marching routine:
@@ -118,6 +120,7 @@ classdef Solver < handle
             end
             % Plot solution:
             if STOP || ~mod(this.iterationCount,replotIters)
+                this.wallClockTime = toc;
                 this.refreshPlot(mesh);
                 this.limiter.takeSnapshot(mesh); % could be expensive
             end
@@ -185,7 +188,7 @@ classdef Solver < handle
             else
                 aux = sprintf('\\varsigma = %.3g (fixed), \\Deltat = %.3g',this.courantNumber,this.timeDelta);
             end
-            aux = sprintf('; t = %.4g, %s, iter = %d',this.timeNow,aux,this.iterationCount);
+            aux = sprintf('; t = %.4g, %s, iter = %d, WCT = %.2f s',this.timeNow,aux,this.iterationCount,this.wallClockTime);
             figure(this.plotData.fig)
             yGlobal = this.plotData.exactFun(this.timeNow,this.plotData.xGlobal);
             for i = 1:mesh.physics.equationCount

@@ -17,6 +17,9 @@ classdef Limiter < handle
         % array (cell: time instant, oldest to newest; column: element;
         % row: equation component).
         snapshots
+        % In order to project to/from characteristic variables, any limiter
+        % will need to be aware of the physics being solved.
+        physics
     end
     methods
         %% Constructor (default)
@@ -40,6 +43,8 @@ classdef Limiter < handle
             % entries which have been modified by the limiting are 
             % indicated as such in their element's "isLimited" property.
             %
+            % Retrieve physics:
+            this.physics = mesh.physics;
             % Apply its sensor:
             this.sensor.apply(mesh,varargin{:});
             % Reset isLimited fields:
@@ -76,6 +81,7 @@ classdef Limiter < handle
             xlabel('Time level')
             ylabel('Cell index')
             zlabel('Number of limited modes')
+            view(-90,90)
         end
     end
 end

@@ -41,7 +41,7 @@ method = DG;
 FUN = @(x) combinedIC(x);
 
 %% Limiter
-limiter = TVB;
+limiter = TVB('M',100);
 
 %% Grid
 mesh = Mesh(linspace(L(1),L(2),Ne+1),p,method,eqn);
