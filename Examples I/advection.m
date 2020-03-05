@@ -1,4 +1,4 @@
-%clc
+clc
 clear
 %close all
 %path(pathdef)
@@ -15,10 +15,10 @@ addpath('../Grid')
 addpath('../Math')
 
 %% Parameters
-Ne = 3; % number of elements
-p = 1; % degree of the approximation space (per element)
+Ne = 32; % number of elements
+p = 2; % degree of the approximation space (per element)
 L = [-.5 .5]; % domain edges
-tEnd = 0; % final simulation time
+tEnd = 1; % final simulation time
 dt = []; % time-step size (overrides CFL)
 CFL = .1; % Courant number
 iterSkip = 100;
@@ -29,7 +29,7 @@ IC_quadratic = @(x) 2*(x + x.^2);
 IC_heaviside = @(x) heaviside(2/diff(L)*(x-L(1)) - 1);
 IC_gauss = @(x) exp(-18*(.5*sqrt(2*pi))^2*(x-.5*(L(1)+L(2))).^2/(L(2)-L(1))^2);
 IC_gaussgauss = @(x) IC_gauss(2*(x-L(1))+L(1)) + IC_gauss(2*(x-.5*sum(L))+L(1));
-IC_sine = @(x) 1+sin(2*pi*(x)/diff(L));
+IC_sine = @(x) sin(2*pi*(x)/diff(L));
 IC_jump = @(x) heaviside(x-2/3*L(1)-1/3*L(2)) - heaviside(x-1/3*L(1)-2/3*L(2));
 IC_opposedJumps = @(x) IC_jump(2*(x-L(1))+L(1)) - IC_jump(2*(x-.5*sum(L))+L(1));
 IC_packet = @(x) wavePacket(x,diff(L)/2,[2],[.5]'.*IC_gauss(x),0.5); %#ok
@@ -46,7 +46,7 @@ IC_p3d3 = @(x) (x+x.^2+x.^3).*(1 - heaviside(x)) + (x+x.^2+2*x.^3)  .*(heaviside
 IC_p3d4 = @(x) (x+x.^2+x.^3);
 
 %% Physics
-FUN = IC_heaviside; % initial condition
+FUN = IC_combined; % initial condition
 eqn = Advection(1,[]); % PDE + BCs
 
 %% Discretization
@@ -55,7 +55,7 @@ method = DG;
 %% Limiter
 %limiter = [];
 %limiter = TVB('M',0);
-limiter = BDF;
+limiter = BDF('sweeps',1);
 
 %% Grid
 xEdge = linspace(L(1),L(2),Ne+1); % element end-points
