@@ -15,8 +15,8 @@ addpath('../Grid')
 addpath('../Math')
 
 %% Parameters
-Ne = 16; % number of elements
-p = 2; % degree of the approximation space (per element)
+Ne = 3; % number of elements
+p = 1; % degree of the approximation space (per element)
 L = [-.5 .5]; % domain edges
 tEnd = 0; % final simulation time
 dt = []; % time-step size (overrides CFL)
@@ -46,7 +46,7 @@ IC_p3d3 = @(x) (x+x.^2+x.^3).*(1 - heaviside(x)) + (x+x.^2+2*x.^3)  .*(heaviside
 IC_p3d4 = @(x) (x+x.^2+x.^3);
 
 %% Physics
-FUN = IC_jump; % initial condition
+FUN = IC_heaviside; % initial condition
 eqn = Advection(1,[]); % PDE + BCs
 
 %% Discretization
