@@ -1,4 +1,4 @@
-clc
+%clc
 clear
 %close all
 %path(pathdef)
@@ -15,12 +15,12 @@ addpath('../Grid')
 addpath('../Math')
 
 %% Parameters
-Ne = 32; % number of elements (!-> for 1 element, use FIXED time-step size)
+Ne = 50; % number of elements (!-> for 1 element, use FIXED time-step size)
 p = 2; % degree of the approximation space (per element)
 L = [0 1]; % domain edges
 tEnd = 2.0; % final simulation time
 dt = [];
-CFL = .1; % Courant number
+CFL = .2; % Courant number
 iterSkip = 50;
     
 %% Physics
@@ -35,13 +35,13 @@ eqn = Wave;
 %method = FR(1e-2);
 %method = DGIGA(28);
 %method = DGIGA_AFC(30);
-method = DG;
+method = DGSEM;
 
 %% Initial condition
-FUN = @(x) combinedIC(x);
+FUN = @combinedIC;
 
 %% Limiter
-limiter = TVB('M',100);
+limiter = BDF;
 
 %% Grid
 mesh = Mesh(linspace(L(1),L(2),Ne+1),p,method,eqn);

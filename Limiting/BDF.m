@@ -9,6 +9,25 @@ classdef BDF < Limiter
         % determine if limiting is required have themselves been limited.
         sweepCount
     end
+    properties (Access = protected)
+        % All the states of every troubled element and its neighbors are
+        % duplicated and stored in the form of Legendre coefficients and
+        % left/right-sided differences of characteristic variables. These
+        % are 3D arrays in which each row is an element, each column a
+        % Legendre coefficient, and each page a characteristic variable.
+        % All three have the same number of rows and pages, but coefs has 
+        % one more column than the other two.
+        coefs,difsL,difsR
+        % An additional 3D array is used to store the limited status of
+        % every element, component and equation.
+        extra
+        % The mapping from local characteristic to conservative variables
+        % (i.e. right eigenvector matrix) of each troubled element is also
+        % stored in memory.
+        R
+        % Three scalars indicate the (initial) length of the previous:
+        I,J,K
+    end
     methods
         %% Constructor
         function this = BDF(varargin)
@@ -28,68 +47,98 @@ classdef BDF < Limiter
             apply@Limiter(this,mesh);
             % Retrieve troubled elements:
             elements = findobj(mesh.elements,'isTroubled',true)';
-            % Safety check:
-            if isempty(elements)
-                return 
-            end
-            % Limiter sweeps:
-            for sweep = 1:this.sweepCount
-                % Get/set limited Legendre coefficients of each element:
-                coefs{2} = this.getLimitedLegendre(elements(1));
-                for k = 2:length(elements)
-                    coefs{1} = this.getLimitedLegendre(elements(k));
-                    this.setLimitedLegendre(elements(k-1),coefs{2});
-                    coefs{2} = coefs{1};
-                end
-                this.setLimitedLegendre(elements(end),coefs{2});
+            % Perform a number of limiter sweeps:
+            for s = 1:this.sweepCount
+                % Initialize all the stuff:
+                this.initialize(elements)
+                % Limit each characteristic component (independently):
+                this.applyNoSync;
+                % Rewrite limited coefficients into troubled elements:
+                this.rewrite(elements);
             end
         end
     end
     methods (Access = protected)
-        %% Extract and limit coefficients
-        function coefs = getLimitedLegendre(this,element)
-            % Applies hierarchical limiting a la Biswas et al., 1994, on
-            % the Legendre coefficients extracted from a given element. All
-            % Legendre coefficients are limited in a single vectorized 
-            % operation and then returned. The element's solution is not
-            % modified, but the limited components are marked as such.
+        %% Initialize auxiliary properties
+        function initialize(this,elements)
+            % Intializes various auxiliary variables necessary for the
+            % limiting procedure. This approach incurs in a significant 
+            % memory consumption penalty, but simplifies the algorithm, 
+            % and reduces computational cost overall.
             %
-            % Get unlimited legendre coefficents of current element:
-            coefs = element.basis.getLegendre(element);
-            % Aliases:
-            j = 1:element.dofCount-1; % lower-order coefficient indices
-            elementL = element.edgeL.elementL;
-            elementR = element.edgeR.elementR;
-            weights = 1./(2*j-1); % coefficient difference weights
-            % Get left-wise differences:
-            if elementL.dofCount >= j(end) % no padding
-                diffsL = coefs(:,j) - elementL.basis.getLegendre(elementL,j);
-            else % zero-padded
-                aux = 1:elementL.dofCount;
-                diffsL = coefs(:,j);
-            	diffsL(:,aux) = diffsL(:,aux) - elementL.basis.getLegendre(elementL);
-            end
-            % Get righ-wise differences:
-            if elementR.dofCount >= j(end) % no padding
-                diffsR = elementR.basis.getLegendre(elementR,j) - coefs(:,j);
-            else % zero-padded
-                aux = 1:elementR.dofCount;
-                diffsR = -coefs(:,j);
-            	diffsR(:,aux) = elementR.basis.getLegendre(elementR) + diffsR(:,aux);
-            end
-            % Get mapping operators to/from local characteristic variables:
-            [~,L,R] = this.physics.getEigensystemAt(coefs(:,1));
-            % Apply the minmod operator coefficient-wise:
-            aux = R*this.minmod(L*coefs(:,j+1),weights.*(L*diffsL),weights.*(L*diffsR));
-            % Limit down to the highest untroubled mode:
-            i = true(size(aux,1),1);
-            for r = size(aux,2):-1:1
-                i = abs(aux(i,r) - coefs(i,r+1)) > 1e-10;
-                if all(i == 0)
-                    break
+            %  elements: a row array of elements to be limited.
+            %
+            % Initialize size variables:
+            this.I = this.physics.equationCount;
+            this.J = max([elements.dofCount]) - 1; % second-highest Legendre coefficient to limit (J limits J+1)
+            this.K = length(elements);
+            % Compute coefficient difference weights:
+            weights = 1./(2*(1:this.J)-1);
+            % Preallocate arrays of Legendre coefficients and differences:
+            this.coefs = zeros(this.K,this.J+1,this.I);
+            this.difsL = zeros(this.K,this.J,this.I);
+            this.difsR = this.difsL;
+            % Preallocate inverse characteristic projection operators:
+            this.R = zeros(this.I,this.I,this.K);
+            % Populate them:
+            for k = 1:this.K
+                % Get Legendre coefficients:
+                aux = elements(k).basis.getLegendre(elements(k));
+                % Local characteristic projection:
+                [~,L,this.R(:,:,k)] = this.physics.getEigensystemAt(aux(:,1));
+                aux = L*aux;
+                % Legendre coefficients of neighbors:
+                auxL = L*elements(k).edgeL.elementL.basis.getLegendre(elements(k).edgeL.elementL);
+                auxR = L*elements(k).edgeR.elementR.basis.getLegendre(elements(k).edgeR.elementR);
+                % Reshaping + assignment + padding:
+                for page = 1:this.I
+                    % Troubled element:
+                    this.coefs(k,1:size(aux,2),page) = aux(page,:);
+                    % Left-wise differences:
+                    this.difsL(k,1:size(aux,2)-1,page) = aux(page,1:end-1);
+                    this.difsL(k,1:size(auxL,2)-1,page) = this.difsL(k,1:size(auxL,2)-1,page) - auxL(page,1:end-1);
+                    this.difsL(k,:,page) = weights.*this.difsL(k,:,page);
+                    % Right-wise differences:
+                    this.difsR(k,1:size(aux,2)-1,page) = -aux(page,1:end-1);
+                    this.difsR(k,1:size(auxR,2)-1,page) = this.difsR(k,1:size(auxR,2)-1,page) + auxR(page,1:end-1);
+                    this.difsR(k,:,page) = weights.*this.difsR(k,:,page);
                 end
-                element.isLimited(:,r) = i;
-                coefs(i,r+1) = aux(i,r);
+            end
+            % Duplicate the unlimited coefficients for later:
+            this.extra = this.coefs;
+        end
+        %% Apply equation-wise
+        function applyNoSync(this)
+            % Applies the minmod limiter asynchronously (i.e. on each
+            % characteristic variable separately).
+            %
+            % Loop over characteristic variables:
+            for i = 1:this.I
+                k = true(this.K,1); % flag every element for limiting
+                % Limit hierarchically (top to bottom):
+                for j = this.J:-1:1
+                    % Reuse left differences to store limited coefs.:
+                    this.coefs(k,j+1,i) = this.minmod(this.coefs(k,j+1,i),this.difsL(k,j,i),this.difsR(k,j,i));
+                    % Update element-wise activation flag:
+                    k(k) = abs(this.extra(k,j+1,i) - this.coefs(k,j+1,i)) > 1e-10;
+                end
+            end
+        end
+        %% Rewrite element solutions
+        function rewrite(this,elements)
+            % Replaces the state matrix of an array of elements with the
+            % projection to each's basis of the limited Legendre
+            % coefficients living in this limiter (projected back to
+            % conservative variables).
+            %
+            % Permute coefficients to the conventional arrangement:
+            this.extra = permute(this.extra,[3,2,1]);
+            this.coefs = permute(this.coefs,[3,2,1]);
+            % Loop over troubled elements:
+            for k = 1:this.K
+                elements(k).isLimited = abs(this.extra(:,:,k) - this.coefs(:,:,k)) > 1e-10;
+                i = any(elements(k).isLimited,2);
+                elements(k).basis.setLegendre(elements(k),this.R(i,:,k)*this.coefs(:,:,k),i);
             end
         end
     end
