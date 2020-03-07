@@ -16,12 +16,12 @@ addpath('../Math')
 
 %% Parameters
 Ne = 25; % number of elements
-p = 3; % degree of the approximation space (per element)
+p = [1 randi([1 3],1,23) 4]; % degree of the approximation space (per element)
 L = [0 1]; % domain edges
-tEnd = .025; % final simulation time
+tEnd = .125; % final simulation time
 dt = [];
 CFL = .1; % Courant number
-iterSkip = 18;
+iterSkip = 25;
 
 %% Physics
 eqn = Euler('transmissive');
@@ -38,7 +38,7 @@ mesh = Mesh(linspace(L(1),L(2),Ne+1),p,method,eqn);
 %mesh = Mesh([L(1) .05 .95 L(2)],p,method);
 
 %% Initial condition/exact solution
-FUN = @toro2;
+FUN = @toro1;
 
 %% Initial condition projection
 FUN0 = @(x) FUN(0,x);

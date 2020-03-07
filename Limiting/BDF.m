@@ -10,23 +10,15 @@ classdef BDF < Limiter
         sweepCount
     end
     properties (Access = protected)
-        % All the states of every troubled element and its neighbors are
-        % duplicated and stored in the form of Legendre coefficients and
-        % left/right-sided differences of characteristic variables. These
-        % are 3D arrays in which each row is an element, each column a
-        % Legendre coefficient, and each page a characteristic variable.
-        % All three have the same number of rows and pages, but coefs has 
-        % one more column than the other two.
-        coefs,difsL,difsR
-        % An additional 3D array is used to store the limited status of
-        % every element, component and equation.
-        extra
+        % For every troubled element, four 3D arrays are stored in memory
+        % (simultaneously).
+        coefs,coefs_backup,difsL,difsR
+        % Three scalars keep track of the aforementioned 3D array sizes.
+        I,J,K
         % The mapping from local characteristic to conservative variables
         % (i.e. right eigenvector matrix) of each troubled element is also
-        % stored in memory.
+        % kept in memory.
         R
-        % Three scalars indicate the (initial) length of the previous:
-        I,J,K
     end
     methods
         %% Constructor
@@ -48,6 +40,9 @@ classdef BDF < Limiter
             % Retrieve troubled elements:
             elements = findobj(mesh.elements,'isTroubled',true)';
             % Perform a number of limiter sweeps:
+            this.I = this.physics.equationCount;
+            this.J = mesh.maxBasisCount - 1; % second-highest Legendre coefficient to limit (J limits J+1)
+            this.K = length(elements);
             for s = 1:this.sweepCount
                 % Initialize all the stuff:
                 this.initialize(elements)
@@ -68,44 +63,38 @@ classdef BDF < Limiter
             %
             %  elements: a row array of elements to be limited.
             %
-            % Initialize size variables:
-            this.I = this.physics.equationCount;
-            this.J = max([elements.dofCount]) - 1; % second-highest Legendre coefficient to limit (J limits J+1)
-            this.K = length(elements);
             % Compute coefficient difference weights:
             weights = 1./(2*(1:this.J)-1);
             % Preallocate arrays of Legendre coefficients and differences:
-            this.coefs = zeros(this.K,this.J+1,this.I);
-            this.difsL = zeros(this.K,this.J,this.I);
+            this.coefs = zeros(this.I,this.J+1,this.K);
+            this.difsL = zeros(this.I,this.J,this.K);
             this.difsR = this.difsL;
             % Preallocate inverse characteristic projection operators:
             this.R = zeros(this.I,this.I,this.K);
-            % Populate them:
-            for k = 1:this.K
-                % Get Legendre coefficients:
-                aux = elements(k).basis.getLegendre(elements(k));
-                % Local characteristic projection:
-                [~,L,this.R(:,:,k)] = this.physics.getEigensystemAt(aux(:,1));
-                aux = L*aux;
-                % Legendre coefficients of neighbors:
-                auxL = L*elements(k).edgeL.elementL.basis.getLegendre(elements(k).edgeL.elementL);
-                auxR = L*elements(k).edgeR.elementR.basis.getLegendre(elements(k).edgeR.elementR);
-                % Reshaping + assignment + padding:
-                for page = 1:this.I
-                    % Troubled element:
-                    this.coefs(k,1:size(aux,2),page) = aux(page,:);
-                    % Left-wise differences:
-                    this.difsL(k,1:size(aux,2)-1,page) = aux(page,1:end-1);
-                    this.difsL(k,1:size(auxL,2)-1,page) = this.difsL(k,1:size(auxL,2)-1,page) - auxL(page,1:end-1);
-                    this.difsL(k,:,page) = weights.*this.difsL(k,:,page);
-                    % Right-wise differences:
-                    this.difsR(k,1:size(aux,2)-1,page) = -aux(page,1:end-1);
-                    this.difsR(k,1:size(auxR,2)-1,page) = this.difsR(k,1:size(auxR,2)-1,page) + auxR(page,1:end-1);
-                    this.difsR(k,:,page) = weights.*this.difsR(k,:,page);
-                end
+            % Populate Legendre coefficients:
+            for k = 1:1:this.K
+                this.coefs(:,1:elements(k).dofCount,k) = elements(k).basis.getLegendre(elements(k));
             end
-            % Duplicate the unlimited coefficients for later:
-            this.extra = this.coefs;
+            % Duplicate original Legendre coefficients "just in case":
+            this.coefs_backup = this.coefs;
+            % Populate the remaining variables:
+            for k = 1:this.K
+                % Get local characteristic projection operators:
+                [~,L,this.R(:,:,k)] = this.physics.getEigensystemAt(this.coefs(:,1,k));
+                % Apply local characteristic projection operator:
+                this.coefs(:,:,k) = L*this.coefs(:,:,k);
+                % Compute left/right-sided finite differences (zero-padded):
+                j = 1:elements(k).edgeL.elementL.dofCount-1;
+                this.difsL(:,j,k) = L*elements(k).edgeL.elementL.basis.getLegendre(elements(k).edgeL.elementL,j);
+                this.difsL(:,:,k) = weights.*(this.coefs(:,1:end-1,k) - this.difsL(:,:,k));
+                j = 1:elements(k).edgeR.elementR.dofCount-1;
+                this.difsR(:,j,k) = L*elements(k).edgeR.elementR.basis.getLegendre(elements(k).edgeR.elementR,j);
+                this.difsR(:,:,k) = weights.*(this.difsR(:,:,k) - this.coefs(:,1:end-1,k));
+            end
+            % Permute them for convenience:
+            this.coefs = permute(this.coefs,[3,2,1]);
+            this.difsL = permute(this.difsL,[3,2,1]);
+            this.difsR = permute(this.difsR,[3,2,1]);
         end
         %% Apply equation-wise
         function applyNoSync(this)
@@ -117,12 +106,11 @@ classdef BDF < Limiter
                 k = true(this.K,1); % flag every element for limiting
                 % Limit hierarchically (top to bottom):
                 for j = this.J:-1:1
-                    % Store limited coefs.:
+                    % Get limited coefs.:
+                    aux = this.coefs(k,j+1,i);
                     this.coefs(k,j+1,i) = this.minmod(this.coefs(k,j+1,i),this.difsL(k,j,i),this.difsR(k,j,i));
-                    % Exclude elements for which there was no change:
-                    k(k) = abs(this.extra(k,j+1,i) - this.coefs(k,j+1,i)) > 1e-10;
-                    %%% Store limiter activation in characteristic variables:
-                    this.difsR(:,j,i) = k;
+                    % Update list of elements flagged for limiting:
+                    k(k) = abs(this.coefs(k,j+1,i) - aux) > 1e-10 | ~aux;
                 end
             end
         end
@@ -134,19 +122,17 @@ classdef BDF < Limiter
             % conservative variables).
             %
             % Permute coefficients to the conventional arrangement:
-            this.extra = permute(this.extra,[3,2,1]);
             this.coefs = permute(this.coefs,[3,2,1]);
             % Loop over troubled elements:
             for k = 1:this.K
                 % Project back to conservative variables:
-                this.extra(:,:,k) = this.R(:,:,k)*this.extra(:,:,k);
                 this.coefs(:,:,k) = this.R(:,:,k)*this.coefs(:,:,k);
                 % Determine which conservative variables have been affected
                 % by the limiting (which was done in characteristic ones):
-                elements(k).isLimited = abs(this.extra(:,:,k) - this.coefs(:,:,k)) > 1e-10;
+                elements(k).isLimited = abs(this.coefs_backup(:,:,k) - this.coefs(:,:,k)) > 1e-10;
                 % Replace all modes of affected conservative variables:
                 i = any(elements(k).isLimited,2);
-                elements(k).basis.setLegendre(elements(k),this.coefs(i,:,k),i);
+                elements(k).basis.setLegendre(elements(k),this.coefs(i,1:elements(k).dofCount,k),i);
             end
         end
     end
@@ -170,7 +156,7 @@ classdef BDF < Limiter
         function A = minmod(A,B,C)
             % Minmod function for 3 matrix inputs. Operates entry-wise.
             % "Inlined" for speed. All three matrices are assumed to have 
-            % consistent sizes. 
+            % consistent sizes.
             %
             A = (sign(A) == sign(B) & sign(A) == sign(C)).*sign(A).*min(abs(A),min(abs(B),abs(C)));
         end
