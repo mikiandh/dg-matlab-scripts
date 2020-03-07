@@ -1,4 +1,4 @@
-%clc
+clc
 clear
 %close all
 %path(pathdef)
@@ -15,13 +15,13 @@ addpath('../Grid')
 addpath('../Math')
 
 %% Parameters
-Ne = 100; % number of elements
-p = 2; % degree of the approximation space (per element)
+Ne = 25; % number of elements
+p = 3; % degree of the approximation space (per element)
 L = [0 1]; % domain edges
-tEnd = .125; % final simulation time
+tEnd = .025; % final simulation time
 dt = [];
 CFL = .1; % Courant number
-iterSkip = 10;
+iterSkip = 18;
 
 %% Physics
 eqn = Euler('transmissive');
@@ -30,7 +30,7 @@ eqn = Euler('transmissive');
 method = DG;
 
 %% Limiter
-limiter = TVB('M',200);
+limiter = BDF;
 
 %% Grid
 mesh = Mesh(linspace(L(1),L(2),Ne+1),p,method,eqn);
@@ -38,7 +38,7 @@ mesh = Mesh(linspace(L(1),L(2),Ne+1),p,method,eqn);
 %mesh = Mesh([L(1) .05 .95 L(2)],p,method);
 
 %% Initial condition/exact solution
-FUN = @toro1;
+FUN = @toro2;
 
 %% Initial condition projection
 FUN0 = @(x) FUN(0,x);

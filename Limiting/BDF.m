@@ -117,10 +117,12 @@ classdef BDF < Limiter
                 k = true(this.K,1); % flag every element for limiting
                 % Limit hierarchically (top to bottom):
                 for j = this.J:-1:1
-                    % Reuse left differences to store limited coefs.:
+                    % Store limited coefs.:
                     this.coefs(k,j+1,i) = this.minmod(this.coefs(k,j+1,i),this.difsL(k,j,i),this.difsR(k,j,i));
-                    % Update element-wise activation flag:
+                    % Exclude elements for which there was no change:
                     k(k) = abs(this.extra(k,j+1,i) - this.coefs(k,j+1,i)) > 1e-10;
+                    %%% Store limiter activation in characteristic variables:
+                    this.difsR(:,j,i) = k;
                 end
             end
         end
@@ -136,9 +138,15 @@ classdef BDF < Limiter
             this.coefs = permute(this.coefs,[3,2,1]);
             % Loop over troubled elements:
             for k = 1:this.K
+                % Project back to conservative variables:
+                this.extra(:,:,k) = this.R(:,:,k)*this.extra(:,:,k);
+                this.coefs(:,:,k) = this.R(:,:,k)*this.coefs(:,:,k);
+                % Determine which conservative variables have been affected
+                % by the limiting (which was done in characteristic ones):
                 elements(k).isLimited = abs(this.extra(:,:,k) - this.coefs(:,:,k)) > 1e-10;
+                % Replace all modes of affected conservative variables:
                 i = any(elements(k).isLimited,2);
-                elements(k).basis.setLegendre(elements(k),this.R(i,:,k)*this.coefs(:,:,k),i);
+                elements(k).basis.setLegendre(elements(k),this.coefs(i,:,k),i);
             end
         end
     end

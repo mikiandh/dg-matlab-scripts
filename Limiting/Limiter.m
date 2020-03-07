@@ -63,7 +63,7 @@ classdef Limiter < handle
             % the 1st system component.
             %
             aux = {mesh.elements.isLimited};
-            aux = cellfun(@(x) sum(x,2), aux,'UniformOutput',false);
+            aux = cellfun(@(x) sum(x(1,:),2),aux,'UniformOutput',false);
             this.snapshots = [this.snapshots aux'];
         end
         %% Display history
