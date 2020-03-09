@@ -4,10 +4,10 @@ classdef BDF < Limiter
     % property (not even in the means).
     %
     properties (Access = protected)
-        % For every troubled element, four 3D arrays are stored in memory
-        % (simultaneously).
-        coefs,coefs_backup,difsL,difsR
-        % Three scalars keep track of the aforementioned 3D array sizes.
+        % For every troubled element, four 3D arrays of Legendre 
+        % coefficeints are stored in memory (simultaneously).
+        coefs,coefs0,coefsL,coefsR
+        % Three scalars keep track of the padded 3D array sizes.
         I,J,K
         % The mapping from local characteristic to conservative variables
         % (i.e. right eigenvector matrix) of each troubled element is also
@@ -50,38 +50,31 @@ classdef BDF < Limiter
             this.I = this.physics.equationCount;
             this.J = N - 1; % second-highest Legendre coefficient to limit (J limits J+1)
             this.K = length(elements);
-            % Compute coefficient difference weights:
-            weights = 1./(2*(1:this.J)-1);
             % Preallocate arrays of Legendre coefficients and differences:
             this.coefs = zeros(this.I,N,this.K);
-            this.difsL = zeros(this.I,this.J,this.K);
-            this.difsR = this.difsL;
+            this.coefsL = this.coefs;
+            this.coefsR = this.coefs;
             % Preallocate inverse characteristic projection operators:
             this.R = zeros(this.I,this.I,this.K);
             % Populate Legendre coefficients:
-            for k = 1:1:this.K
+            for k = 1:this.K
                 this.coefs(:,1:elements(k).dofCount,k) = elements(k).basis.getLegendre(elements(k));
             end
-            % Duplicate original Legendre coefficients "just in case":
-            this.coefs_backup = this.coefs;
-            % Populate the remaining variables:
+            % Save unlimited Legendre coefs. in cons. vars. for later:
+            this.coefs0 = this.coefs;
+            % Populate remaining stuff:
             for k = 1:this.K
                 % Get local characteristic projection operators:
                 [~,L,this.R(:,:,k)] = this.physics.getEigensystemAt(this.coefs(:,1,k));
-                % Apply local characteristic projection operator:
+                % Apply to Legendre coefficients:
                 this.coefs(:,:,k) = L*this.coefs(:,:,k);
-                % Compute left/right-sided finite differences (zero-padded):
-                j = 1:elements(k).edgeL.elementL.dofCount-1;
-                this.difsL(:,j,k) = L*elements(k).edgeL.elementL.basis.getLegendre(elements(k).edgeL.elementL,j);
-                this.difsL(:,:,k) = weights.*(this.coefs(:,1:end-1,k) - this.difsL(:,:,k));
-                j = 1:elements(k).edgeR.elementR.dofCount-1;
-                this.difsR(:,j,k) = L*elements(k).edgeR.elementR.basis.getLegendre(elements(k).edgeR.elementR,j);
-                this.difsR(:,:,k) = weights.*(this.difsR(:,:,k) - this.coefs(:,1:end-1,k));
+                this.coefsL(:,1:elements(k).edgeL.elementL.dofCount,k) = L*elements(k).edgeL.elementL.basis.getLegendre(elements(k).edgeL.elementL);
+                this.coefsR(:,1:elements(k).edgeR.elementR.dofCount,k) = L*elements(k).edgeR.elementR.basis.getLegendre(elements(k).edgeR.elementR);
             end
-            % Permute them for convenience:
+            % Permute for convenience:
             this.coefs = permute(this.coefs,[3,2,1]);
-            this.difsL = permute(this.difsL,[3,2,1]);
-            this.difsR = permute(this.difsR,[3,2,1]);
+            this.coefsL = permute(this.coefsL,[3,2,1]);
+            this.coefsR = permute(this.coefsR,[3,2,1]);
         end
         %% Apply equation-wise
         function applyNoSync(this)
@@ -90,14 +83,18 @@ classdef BDF < Limiter
             %
             % Loop over characteristic variables:
             for i = 1:this.I
-                k = true(this.K,1); % flag every element for limiting
+                % Flag every element for limiting:
+                k = true(this.K,1);
                 % Limit hierarchically (top to bottom):
                 for j = this.J:-1:1
                     % Get limited coefs.:
-                    aux = this.coefs(k,j+1,i);
-                    this.coefs(k,j+1,i) = this.minmod(this.coefs(k,j+1,i),this.difsL(k,j,i),this.difsR(k,j,i));
+                    coefs_min = this.coefs(k,j+1,i);
+                    this.coefs(k,j+1,i) = this.minmod(...
+                        (2*j-1).*this.coefs(k,j+1,i),...
+                        this.coefs(k,j,i) - this.coefsL(k,j,i),...
+                        this.coefsR(k,j,i) - this.coefs(k,j,i))./(2*j-1);
                     % Update list of elements flagged for limiting:
-                    k(k) = abs(this.coefs(k,j+1,i) - aux) > 1e-10 | ~aux;
+                    k(k) = abs(this.coefs(k,j+1,i) - coefs_min) > 1e-10 | ~coefs_min;
                 end
             end
         end
@@ -108,7 +105,7 @@ classdef BDF < Limiter
             % coefficients living in this limiter (projected back to
             % conservative variables).
             %
-            % Permute coefficients to the conventional arrangement:
+            % Return limited coefficients to their original arrangement:
             this.coefs = permute(this.coefs,[3,2,1]);
             % Loop over troubled elements:
             for k = 1:this.K
@@ -116,8 +113,8 @@ classdef BDF < Limiter
                 this.coefs(:,:,k) = this.R(:,:,k)*this.coefs(:,:,k);
                 % Determine which conservative variables have been affected
                 % by the limiting (which was done in characteristic ones):
-                elements(k).isLimited = abs(this.coefs_backup(:,:,k) - this.coefs(:,:,k)) > 1e-10;
-                % Replace all modes of affected conservative variables:
+                elements(k).isLimited = abs(this.coefs0(:,:,k) - this.coefs(:,:,k)) > 1e-10;
+                % Update all modes of each affected conservative variables:
                 i = any(elements(k).isLimited,2);
                 elements(k).basis.setLegendre(elements(k),this.coefs(i,1:elements(k).dofCount,k),i);
             end
