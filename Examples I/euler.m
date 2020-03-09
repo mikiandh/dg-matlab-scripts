@@ -1,4 +1,4 @@
-clc
+%clc
 clear
 %close all
 %path(pathdef)
@@ -15,13 +15,13 @@ addpath('../Grid')
 addpath('../Math')
 
 %% Parameters
-Ne = 25; % number of elements
-p = [1 randi([1 3],1,23) 4]; % degree of the approximation space (per element)
+Ne = 50; % number of elements
+p = [0 randi([1 3],1,48) 4]; % degree of the approximation space (per element)
 L = [0 1]; % domain edges
 tEnd = .125; % final simulation time
 dt = [];
 CFL = .1; % Courant number
-iterSkip = 25;
+iterSkip = 100;
 
 %% Physics
 eqn = Euler('transmissive');
@@ -46,14 +46,17 @@ method.project(mesh,limiter,FUN0);
 
 %% Time-integration
 solver = SSP_RK3(0,tEnd,CFL,dt,limiter);
-norms0 = mesh.getSolutionMass(1:3);
+% norms0 = mesh.getSolutionMass(1:3);
+norms0 = [mesh.getSolutionMass(1:3),mesh.getErrorNorm(FUN0,2,1:3)];
 tic
 solver.launch(mesh,iterSkip,FUN);
 disp(['   ...done. (' num2str(toc) ' s)'])
 
 %% Postprocessing
-norms = mesh.getSolutionMass(1:3);
-rows = {'Solution (mass)'};
+% norms = mesh.getSolutionMass(1:3);
+% rows = {'Solution (mass)'};
+norms = [mesh.getSolutionMass(1:3),mesh.getErrorNorm(FUN0,2,1:3)];
+rows = {'Solution (mass)','Error (L2)'};
 cols = {'Norm','Start','End','Increase'};
 eqn.displayData(rows,cols,norms0,norms,norms-norms0)
 
