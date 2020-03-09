@@ -66,22 +66,18 @@ classdef BDF < Limiter
             % Apply the minmod operator coefficient-wise:
             diffsL = this.minmod(L*coefs(:,j+1),weights.*(L*diffsL),weights.*(L*diffsR));
             diffsR = coefs(:,j+1); % backup the unlimited cons. var. modes
-            coefs(:,2:end) = L*coefs(:,2:end);
+            coefs(:,j+1) = L*coefs(:,j+1);
             % Update limited characteristic variables (independently):
             for i = 1:size(coefs,1)
                 % Find highest unlimited mode:
-                aux = find(abs(coefs(i,j+1) - diffsL(i,:)) < 1e-10,1,'last');
-                % Update only modes above it with limited values:
-                if isempty(aux)
-                    coefs(i,j+1) = diffsL(i,:);
-                else
-                    coefs(i,1+aux:end) = diffsL(i,aux:end);
-                end
+                aux = find([1 abs(coefs(i,j+1) - diffsL(i,:)) < 1e-10],1,'last');
+                % Update only higher-order modes with limited counterparts:
+                coefs(i,1+aux:end) = diffsL(i,aux:end);
             end
             % Transform back to conservative variables:
             coefs(:,j+1) = R*coefs(:,j+1);
             % Flag limited conservative variables:
-            element.isLimited(:,2:end) = abs(coefs(:,2:end) - diffsR) > 1e-10;
+            element.isLimited(:,j+1) = abs(coefs(:,j+1) - diffsR) > 1e-10;
         end
     end
     methods (Static, Access = protected)

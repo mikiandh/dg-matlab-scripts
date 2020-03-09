@@ -16,7 +16,7 @@ addpath('../Math')
 
 %% Parameters
 Ne = 50; % number of elements
-p = [0 randi([1 3],1,48) 4]; % degree of the approximation space (per element)
+p = 2; % degree of the approximation space (per element)
 L = [0 1]; % domain edges
 tEnd = .125; % final simulation time
 dt = [];
@@ -30,7 +30,7 @@ eqn = Euler('transmissive');
 method = DG;
 
 %% Limiter
-limiter = BDF;
+limiter = BSB;
 
 %% Grid
 mesh = Mesh(linspace(L(1),L(2),Ne+1),p,method,eqn);
