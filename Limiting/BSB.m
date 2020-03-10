@@ -11,7 +11,7 @@ classdef BSB < BDF
         end
     end
     methods (Access = protected)
-        %% Apply equation-wise
+        %% Apply equation-wise (override)
         function applyNoSync(this)
             % Applies the limiter asynchronously, i.e. on each 
             % characteristic variable separately.

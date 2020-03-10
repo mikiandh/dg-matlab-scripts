@@ -1,9 +1,0 @@
-{
-  "TVB.TVB":
-  {
-     "inputs":
-     [
-        {"name":"M", "kind":"optional", "type":["numeric"]}
-     ]
-  }
-}

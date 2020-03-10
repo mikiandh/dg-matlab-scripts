@@ -30,7 +30,7 @@ eqn = Euler('transmissive');
 method = DG;
 
 %% Limiter
-limiter = BSB;
+limiter = Krivodonova;
 
 %% Grid
 mesh = Mesh(linspace(L(1),L(2),Ne+1),p,method,eqn);
