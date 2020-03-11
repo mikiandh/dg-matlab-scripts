@@ -5,20 +5,7 @@ classdef APTVD < Sensor
     % smooth extrema). Implemented using Legendre coefficients in lieu of
     % cell-averaged derivatives (motivated by Krivodonova 2007).
     %
-    properties
-        beta
-    end
     methods
-        %% Constructor
-        function this = APTVD(varargin)
-            % Initialize an input parser:
-            p = inputParser;
-            p.KeepUnmatched = true;
-            addParameter(p,'beta',1.5,@(x) x >= 1 && x <= 2);
-            % Parse the inputs:
-            parse(p,varargin{:});
-            this.beta = p.Results.beta;
-        end
         %% Sensor
         function apply(this,mesh,~)
             % Apply default sensor first:
@@ -29,9 +16,8 @@ classdef APTVD < Sensor
                 avgs = [element.basis.getLegendre(element,1)...
                     element.edgeL.elementL.basis.getLegendre(element.edgeL.elementL,1)...
                     element.edgeR.elementR.basis.getLegendre(element.edgeR.elementR,1)];
-                % Get solution samples at edges:
-                element.interpolateStateAtEdges;
-                samples = [element.stateL element.stateR];
+                % Get solution samples:
+                samples = element.interpolateStateAtCoords([element.xL element.getDofCoords' element.xR]);
                 % Unmark if no local extremum is present:
                 element.isTroubled = any(any(samples > 1.001*max(avgs,[],2) | samples < 0.999*min(avgs,[],2)));
             end
@@ -40,22 +26,19 @@ classdef APTVD < Sensor
                 % Aliases:
                 elementL = element.edgeL.elementL;
                 elementR = element.edgeR.elementR;
-                % Approximate 1st and 2nd cell-averaged derivatives:
-                ders = element.basis.getLegendre(element,2:3)./[1 3];
+                % Approximate 2nd and 3rd Legendre coefficients:
+                coefs = element.basis.getLegendre(element,2:3)./[1 3];
                 if elementL.dofCount > 1
-                    dersL = elementL.basis.getLegendre(elementL,2);
+                    coefsL = elementL.basis.getLegendre(elementL,2);
                 else
-                    dersL = 0;
+                    coefsL = 0;
                 end
                 if elementR.dofCount > 1
-                    dersR = elementR.basis.getLegendre(elementR,2);
+                    coefsR = elementR.basis.getLegendre(elementR,2);
                 else
-                    dersR = 0;
+                    coefsR = 0;
                 end
-                % Compare 2nd derivative with 1st derivative differences:
-                element.isTroubled = any(ders(:,2) ~= BDF.minmod(ders(:,2),...
-                    this.beta*element.dx^2/(element.dx + elementL.dx)*(ders(:,1)/element.dx - dersL/elementL.dx),...
-                    this.beta*element.dx^2/(element.dx + elementR.dx)*(dersR/elementR.dx - ders(:,1)/element.dx)));
+                element.isTroubled = any(abs(3*coefs(:,2) - BDF.minmod(3*coefs(:,2),coefs(:,1)-coefsL,coefsR-coefs(:,1))) > 1e-10);
             end
         end
     end

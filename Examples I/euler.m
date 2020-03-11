@@ -21,7 +21,7 @@ L = [-5 5]; % domain edges
 tEnd = 1.8; % final simulation time
 dt = [];
 CFL = .1; % Courant number
-iterSkip = 100;
+iterSkip = 500;
 
 %% Physics
 eqn = Euler('transmissive');
@@ -30,7 +30,7 @@ eqn = Euler('transmissive');
 method = DG;
 
 %% Limiter
-limiter = Krivodonova;
+limiter = Limiter.get('TVD','Sensor',APTVD);
 
 %% Grid
 mesh = Mesh(linspace(L(1),L(2),Ne+1),p,method,eqn);

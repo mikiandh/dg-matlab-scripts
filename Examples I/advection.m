@@ -18,10 +18,10 @@ addpath('../Math')
 Ne = 200; % number of elements
 p = 2; % degree of the approximation space (per element)
 L = [-1 1]; % domain edges
-tEnd = 0; % final simulation time
-dt = 0; % time-step size (overrides CFL)
-CFL = .01; % Courant number
-iterSkip = 100;
+tEnd = 8; % final simulation time
+dt = []; % time-step size (overrides CFL)
+CFL = .1; % Courant number
+iterSkip = 500;
 
 %% Initial condition collection
 IC_linear = @(x) x;
@@ -46,14 +46,14 @@ IC_p3d3 = @(x) (x+x.^2+x.^3).*(1 - heaviside(x)) + (x+x.^2+2*x.^3)  .*(heaviside
 IC_p3d4 = @(x) (x+x.^2+x.^3);
 
 %% Physics
-FUN = IC_jiangShu; % initial condition
+FUN = IC_sine; % initial condition
 eqn = Advection(1,[]); % PDE + BCs
 
 %% Discretization
 method = DG;
 
 %% Limiter
-limiter = Limiter.get('none','Sensor',APTVD);
+limiter = Limiter.get('TVD','Sensor',APTVD);
 
 %% Grid
 xEdge = linspace(L(1),L(2),Ne+1); % element end-points
