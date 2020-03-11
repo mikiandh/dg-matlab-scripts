@@ -70,6 +70,11 @@ classdef Element < matlab.mixin.SetGet
             x = this.basis.controlCoords;
             x = this.mapFromReference(x);
         end
+        %% Get DOF coordinates of this element (in physical space)
+        function x = getDofCoords(this)
+            x = this.basis.dofCoords;
+            x = this.mapFromReference(x);
+        end
         %% Interpolate state at coordinates
         function q = interpolateStateAtCoords(this,x)
             % Argument

@@ -1,6 +1,6 @@
 classdef KXRCF < Sensor
     %
-    % Sensro by Krivodonova et al., 2004. Based on a superconvergence 
+    % Sensor by Krivodonova et al., 2004. Based on a superconvergence 
     % property of DG at element edges where the solution is smooth.
     %
     methods

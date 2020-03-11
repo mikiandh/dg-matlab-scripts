@@ -12,6 +12,7 @@ classdef Basis < matlab.mixin.SetGet
         right
         massMatrix % inner products between every basis function (row) and test function (column)
         gradientMatrix % inner products between every basis function (row) and test function first derivative (column)
+        dofCoords
         nodeCoords
         gaussCoords
         gaussWeights

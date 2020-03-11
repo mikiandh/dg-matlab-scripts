@@ -30,7 +30,7 @@ classdef Limiter < handle
             % Initialize an input parser:
             p = inputParser;
             p.KeepUnmatched = true;
-            addParameter(p,'Sensor',Sensor);
+            addParameter(p,'Sensor',Sensor,@(x) validateattributes(x,{'Sensor'},{}));
             % Parse the input sensor:
             parse(p,varargin{:});
             this.sensor = p.Results.Sensor;
@@ -39,7 +39,7 @@ classdef Limiter < handle
         function apply(this,mesh,varargin)
             % Method that applies a sensor and subsequenly performs 
             % limiting on all elements of a given mesh for which the 
-            % "isSensed" property has been  set to true. All state vector 
+            % "isTroubled" property has been  set to true. All state vector 
             % entries which have been modified by the limiting are 
             % indicated as such in their element's "isLimited" property.
             %
@@ -82,6 +82,31 @@ classdef Limiter < handle
             ylabel('Cell index')
             zlabel('Number of limited modes')
             view(-90,90)
+        end
+    end
+    methods (Static)
+        %% Singleton constructor
+        function limiter = get(name,varargin)
+            % Returns a limiter instance of the given class name, with the
+            % passed list of name-value argument pairs.
+            %
+            if isempty(name)
+                name = 'none';
+            end
+            switch name
+                case {'Limiter','none',''}
+                    limiter = Limiter(varargin{:});
+                case {'TVB','TVD','Shu'}
+                    limiter = TVB(varargin{:});
+                case {'BDF','Biswas'}
+                    limiter = BDF(varargin{:});
+                case {'BSB','Burbeau'}
+                    limiter = BSB(varargin{:});
+                case {'Krivodonova','Kriv'}
+                    limiter = Krivodonova(varargin{:});
+                otherwise
+                    error('Limiter name unknown.')
+            end
         end
     end
 end

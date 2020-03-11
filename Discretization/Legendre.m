@@ -14,8 +14,8 @@ classdef Legendre < Basis
                 this.degree = p;
                 this.order = p+1;
                 this.basisCount = this.order;
-                [this.gaussCoords, this.gaussWeights,this.vandermonde] = ...
-                    this.quadratureGaussLegendre(p);
+                [this.gaussCoords, this.gaussWeights,this.vandermonde] = this.quadratureGaussLegendre(p);
+                this.dofCoords = this.gaussCoords;
                 this.invVandermonde = inv(this.vandermonde);
                 [this.left,this.right] = ...
                     this.getComponentsAtEdges(this.degree);

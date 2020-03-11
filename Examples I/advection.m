@@ -16,11 +16,11 @@ addpath('../Math')
 
 %% Parameters
 Ne = 200; % number of elements
-p = 1; % degree of the approximation space (per element)
+p = 2; % degree of the approximation space (per element)
 L = [-1 1]; % domain edges
-tEnd = 8; % final simulation time
-dt = []; % time-step size (overrides CFL)
-CFL = .1; % Courant number
+tEnd = 0; % final simulation time
+dt = 0; % time-step size (overrides CFL)
+CFL = .01; % Courant number
 iterSkip = 100;
 
 %% Initial condition collection
@@ -53,11 +53,7 @@ eqn = Advection(1,[]); % PDE + BCs
 method = DG;
 
 %% Limiter
-% limiter = [];
-% limiter = TVB('M',0);
-% limiter = BDF;
-% limiter = BSB;
-limiter = Krivodonova;
+limiter = Limiter.get('none','Sensor',APTVD);
 
 %% Grid
 xEdge = linspace(L(1),L(2),Ne+1); % element end-points

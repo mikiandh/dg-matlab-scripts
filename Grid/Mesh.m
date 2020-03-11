@@ -207,11 +207,7 @@ classdef Mesh < handle
             x = cell(1,this.elementCount);
             i = 1;
             for element = this.elements
-                if element.basis.isHybrid
-                    x{i} = reshape(element.getControlCoords,1,[]);
-                else
-                    x{i} = reshape(element.getGaussCoords,1,[]);
-                end
+                x{i} = reshape(element.getDofCoords,1,[]);
                 i = i + 1;
             end
             x = cell2mat(x);

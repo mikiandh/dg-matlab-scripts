@@ -20,6 +20,7 @@ classdef Lagrange < Basis
                     Legendre.quadratureGaussLegendre(p);
                 this.gaussCoords = this.nodeCoords;
                 this.gaussWeights = this.nodeWeights;
+                this.dofCoords = this.nodeCoords;
                 this.invVandermonde = inv(this.vandermonde);
                 this.basisWeights =...
                     this.barycentricWeights(this.nodeCoords);

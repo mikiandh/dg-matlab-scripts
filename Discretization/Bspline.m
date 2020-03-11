@@ -90,6 +90,7 @@ classdef Bspline < Basis
             if this.isNodal
                 this.nodeCoords = this.controlCoords';
             end
+            this.dofCoords = this.controlCoords';
             this.knotSpans = [this.knots(1:end-1); this.knots(2:end)];
             this.breakSpans = [this.breakCoords(1:end-1); this.breakCoords(2:end)];
             % Precomputed basis samples:
