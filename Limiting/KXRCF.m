@@ -24,15 +24,27 @@ classdef KXRCF < Sensor
                 qR = element.stateR; % right edge of element k
                 qRR = element.edgeR.elementR.stateL; % left edge of element k+1
                 % Test left edge:
-                [D,L] = mesh.physics.getEigensystemAt(qLL,qL);
-                i = diag(D) > 0; % out-going characteristics
+                try
+                    [D,L] = mesh.physics.getEigensystemAt(qLL,qL);
+                catch
+                    continue
+                end
+                i = diag(D) < 0; % out-going characteristics
                 if any(L(i,:)*abs(qLL - qL)./(L(i,:)*ref) > 1)
-                    continue % leave isTroubled to true and move on
+                    continue
                 end
                 % Test right edge:
-                [D,L] = mesh.physics.getEigensystemAt(qR,qRR);
+                try
+                    [D,L] = mesh.physics.getEigensystemAt(qR,qRR);
+                catch
+                    continue
+                end
                 i = diag(D) > 0; % out-going characteristics
-                element.isTroubled = any(L(i,:)*abs(qRR - qR)./(L(i,:)*ref) > 1);
+                if any(L(i,:)*abs(qRR - qR)./(L(i,:)*ref) > 1)
+                    continue
+                end
+                % If it got this far, element is untroubled:
+                element.isTroubled = false;
             end
         end
     end

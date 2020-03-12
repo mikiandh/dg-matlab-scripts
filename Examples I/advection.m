@@ -18,7 +18,7 @@ addpath('../Math')
 Ne = 200; % number of elements
 p = 2; % degree of the approximation space (per element)
 L = [-1 1]; % domain edges
-tEnd = 2; % final simulation time
+tEnd = 0; % final simulation time
 dt = []; % time-step size (overrides CFL)
 CFL = .1; % Courant number
 iterSkip = 500;
