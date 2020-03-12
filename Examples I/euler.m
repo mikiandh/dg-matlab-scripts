@@ -15,13 +15,13 @@ addpath('../Grid')
 addpath('../Math')
 
 %% Parameters
-Ne = 300; % number of elements
-p = 3; % degree of the approximation space (per element)
-L = [-5 5]; % domain edges
-tEnd = 1.8; % final simulation time
+Ne = 51; % number of elements
+p = 2; % degree of the approximation space (per element)
+L = [0 1]; % domain edges
+tEnd = .125; % final simulation time
 dt = [];
 CFL = .1; % Courant number
-iterSkip = 500;
+iterSkip = 1;
 
 %% Physics
 eqn = Euler('transmissive');
@@ -38,7 +38,7 @@ mesh = Mesh(linspace(L(1),L(2),Ne+1),p,method,eqn);
 %mesh = Mesh([L(1) .05 .95 L(2)],p,method);
 
 %% Initial condition/exact solution
-FUN = @shuOsher;
+FUN = @toro2;
 
 %% Initial condition projection
 FUN0 = @(x) FUN(0,x);

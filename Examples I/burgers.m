@@ -15,23 +15,23 @@ addpath('../Grid')
 addpath('../Math')
 
 %% Parameters
-Ne = 20; % number of elements (!-> for 1 element, use FIXED time-step size)
+Ne = 50; % number of elements (!-> for 1 element, use FIXED time-step size)
 p = 2; % degree of the approximation space (per element)
-L = [-3 3]; % domain edges
-tEnd = .5; % final simulation time
+L = [-8 8]; % domain edges
+tEnd = 6; % final simulation time
 dt = [];
-CFL = .2; % Courant number
-iterSkip = 1;
+CFL = .1; % Courant number
+iterSkip = 5;
 
 %% Discretization
 method = DG;
 
 %% Physics
-fun = @leveque1; % initial condition
+fun = @leveque3; % initial condition
 eqn = Burgers(fun(L)); % PDE
 
 %% Limiter
-limiter = TVB('M',0);
+limiter = TVB('M',0,'Sensor',KXRCF);
 
 %% Grid
 mesh = Mesh(linspace(L(1),L(2),Ne+1),p,method,eqn);

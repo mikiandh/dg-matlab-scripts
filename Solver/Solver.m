@@ -122,7 +122,10 @@ classdef Solver < handle
             if STOP || ~mod(this.iterationCount,replotIters)
                 this.wallClockTime = toc;
                 this.refreshPlot(mesh);
-                this.limiter.takeSnapshot(mesh); % could be expensive
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                this.limiter.takeSnapshot(mesh);
+                this.limiter.sensor.takeSnapshot(mesh);
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             end
         end
         %% Update Courant number (fixed timeDelta)
