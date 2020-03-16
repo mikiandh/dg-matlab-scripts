@@ -1,5 +1,5 @@
 classdef Basis < matlab.mixin.SetGet
-    properties (Abstract)
+    properties (Constant,Abstract)
         isNodal
         isModal
         isHybrid
@@ -12,7 +12,8 @@ classdef Basis < matlab.mixin.SetGet
         right
         massMatrix % inner products between every basis function (row) and test function (column)
         gradientMatrix % inner products between every basis function (row) and test function first derivative (column)
-        dofCoords
+        dofCoords % positions associated with each degree of freedom
+        breakCoords % positions where the approximate solution experiences a reduction in smoothness
         nodeCoords
         gaussCoords
         gaussWeights
@@ -23,12 +24,29 @@ classdef Basis < matlab.mixin.SetGet
         clone(prototype,degree) % required for the prototype instantiation pattern
         computeResiduals(this,element,physics) % evaluate discrete spatial operator, i.e residual (a la Wang et al. 2013)
         sampleAt(this,x) % sample basis components at given locations
-        interpolate(mesh,limiter,fun) % sample-based projection
-        project(mesh,limiter,fun) % L2 projection (conservative)
         getLegendre(this,element,j,i) % get chosen Legendre coefficients from an element (assumed to employ this basis)
         setLegendre(this,element,modes,i) % set all Legendre coefficients of an element (assumed to employ this basis)
+        interpolate(this,element,fun0) % sample-based projection (non-conservative)
     end
     methods
+        %% L2 projection (conservative)
+        function project(this,element,fun0)
+            % Mass-preserving projection onto this basis. Inner products 
+            % between each test function and the exact function are 
+            % approximated using adaptive quadrature. All basis subclasses
+            % share this general implementation (break span based).
+            %
+            % Set up:
+            I = length(fun0(0));
+            N = this.basisCount;
+            subs = [this.breakCoords(1:end-1); this.breakCoords(2:end)];
+            % Vectorize right-hand-side integrand:
+            fv = @(xi) repmat(fun0(element.mapFromReference(xi)),N,1).*repelem(this.sampleAt(xi),I,1);
+            % Approximate integration:
+            rhs = Algorithms.quadvgk(fv,subs,I*N);
+            % Re-arrange and solve:
+            element.states = reshape(rhs,I,N)/this.massMatrix;
+        end
         function computeSparsityGraph(this)
             % Fills the properties related to the sparsity graph of the
             % discretization (i.e. nonzero entries in the mass matrix).

@@ -1,6 +1,7 @@
 classdef Element < matlab.mixin.SetGet
     properties
         % DG:
+        x
         xL
         xR
         dx
@@ -33,6 +34,7 @@ classdef Element < matlab.mixin.SetGet
         %% Constructor
         function element = Element(x1,x2,basis)
             if nargin > 0
+                element.x = .5*(x1+x2);
                 element.xL = x1;
                 element.xR = x2;
                 element.dx = x2-x1;

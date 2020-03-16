@@ -21,7 +21,7 @@ classdef BDF < Limiter
             this = this@Limiter(varargin{:});
         end
         %% Apply (extension)
-        function apply(this,mesh,~)
+        function apply(this,mesh,~,~)
             % Default limiting:
             apply@Limiter(this,mesh);
             % Retrieve troubled elements:

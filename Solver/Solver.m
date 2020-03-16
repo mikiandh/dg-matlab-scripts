@@ -1,20 +1,26 @@
-classdef Solver < handle
+classdef Solver < matlab.mixin.SetGet
     properties (Abstract,Constant)
         order
         stageCount
         amplificationFactorFun
     end
-    properties
+    properties (Constant)
         family = 'SSP RK'
-        courantNumber
-        iterationCount
-        wallClockTime
+    end
+    properties
         timeNow
-        timeDelta
-        isTimeDeltaFixed
         timeStop
         physics
+        courantNumber
+        timeDelta
         limiter
+        sensor
+        isTimeDeltaFixed
+        iterationCount
+        wallClockTime
+    end
+    properties (Access = protected)
+        exact = @(t,x) nan
         plotData
     end
     methods (Abstract)
@@ -23,18 +29,49 @@ classdef Solver < handle
     end
     methods
         %% Constructor
-        function this = Solver(t,tEnd,CFL,dt,limiter)
+        function this = Solver(timeNow,timeStop,physics,varargin)
             if nargin > 0
-                this.timeNow = t;
-                this.timeStop = tEnd;
-                this.courantNumber = CFL;
-                this.timeDelta = dt;
-                if isempty(limiter)
-                    this.limiter = Limiter;
-                else
-                    this.limiter = limiter;
-                end
+                % Initialize an input parser:
+                p = inputParser;
+                p.KeepUnmatched = true;
+                % Required arguments:
+                addRequired(p,'timeNow',@(x)validateattributes(x,{'numeric'},{'scalar','nonnegative'}))
+                addRequired(p,'timeStop',@(x)validateattributes(x,{'numeric'},{'scalar','>=',timeNow}))
+                addRequired(p,'physics',@(x)validateattributes(x,{'Physics'},{}))
+                % Optional arguments:
+                addParameter(p,'courantNumber',1,@(x)validateattributes(x,{'numeric'},{'scalar','nonnegative'}))
+                addParameter(p,'timeDelta',[],@(x)validateattributes(x,{'numeric'},{'scalar','nonnegative'}))
+                addParameter(p,'limiter',Limiter,@(x)validateattributes(x,{'Limiter'},{}))
+                addParameter(p,'sensor',Sensor,@(x)validateattributes(x,{'Sensor'},{}))
+                addParameter(p,'exact',@(t,x) nan,@(x)validateattributes(x,{'function_handle'},{}))
+                % Parse the inputs:
+                parse(p,timeNow,timeStop,physics,varargin{:})
+                set(this,fieldnames(p.Results)',struct2cell(p.Results)')
             end
+        end
+        %% Initialize approximate solution
+        function initialize(this,mesh,varargin)
+            % Initializes a given mesh by calling a given projection type
+            % (L2 projection by default) on each element. Exact solution,
+            % limiter and sensor can be overriden (those of the solver are
+            % used by default).
+            %
+            % Initialize an input parser:
+            p = inputParser;
+            % Optional arguments:
+            addParameter(p,'type','project',@(x)validateattributes(x,{'char'},{}))
+            addParameter(p,'limiter',this.limiter,@(x)validateattributes(x,{'Limiter'},{}))
+            addParameter(p,'sensor',this.sensor,@(x)validateattributes(x,{'Sensor'},{}))
+            addParameter(p,'initial',@(x) this.exact(this.timeNow,x),@(x)validateattributes(x,{'function_handle'},{}))
+            % Parse the inputs:
+            parse(p,varargin{:})
+            % Initialize element-wise:
+            for element = mesh.elements
+                element.basis.(p.Results.type)(element,p.Results.initial)
+            end
+            p.Results.limiter.apply(mesh,this,true);
+            % Initialize boundary conditions:
+            %%% TO BE DONE %%%
         end
         %% Drive the integration
         function STOP = launch(this,mesh,replotIters,solutionFun)
@@ -201,7 +238,6 @@ classdef Solver < handle
                 k = 1;
                 for element = mesh.elements
                     samples = 1+(2*element.basis.basisCount)^2;
-                    %x = sort([linspace(element.xL,element.xR,samples) element.getNodeCoords']);
                     x = sort(linspace(element.xL,element.xR,samples));
                     y = element.interpolateStateAtCoords(x);
                     plot(x,y(i,:),'-','Color',this.plotData.cmap(k,:))
@@ -218,6 +254,10 @@ classdef Solver < handle
                         set(hLine,'MarkerEdgeColor',this.plotData.cmap(k,:));
                     end
                     k = k + 1;
+                end
+                % Show sensor activation status (if any):
+                if ~strcmp(class(this.limiter.sensor),'Sensor') %#ok<STISA>
+                    plot([mesh.elements.x],[mesh.elements.isTroubled],'sr')
                 end
                 hold off
                 xlabel('x')

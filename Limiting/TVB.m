@@ -20,7 +20,7 @@ classdef TVB < Limiter
             this.M = p.Results.M;
         end
         %% Apply (extension)
-        function apply(this,mesh,~)
+        function apply(this,mesh,~,~)
             % Default limiting:
             apply@Limiter(this,mesh);
             % Retrieve troubled elements:

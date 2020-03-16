@@ -1,8 +1,10 @@
 classdef Legendre < Basis
+    properties (Constant)
+        isNodal = false
+        isModal = true
+        isHybrid = false
+    end
     properties
-        isNodal = false;
-        isModal = true;
-        isHybrid = false;
         vandermonde % matrix of basis components (rows) sampled at p+1 Gauss quadrature points (columns)
         invVandermonde % matrix of Gauss quadrature point contributions (rows) to modal components (columns)
         derivatives % matrix of first derivative of basis components (rows) sampled at p+1 Gauss quadrature points (columns)
@@ -14,6 +16,7 @@ classdef Legendre < Basis
                 this.degree = p;
                 this.order = p+1;
                 this.basisCount = this.order;
+                this.breakCoords = [-1 1];
                 [this.gaussCoords, this.gaussWeights,this.vandermonde] = this.quadratureGaussLegendre(p);
                 this.dofCoords = this.gaussCoords;
                 this.invVandermonde = inv(this.vandermonde);
@@ -50,6 +53,13 @@ classdef Legendre < Basis
                 this.massMatrix(:,r) = (this.vandermonde.*this.vandermonde(r,:))*this.gaussWeights;
                 this.gradientMatrix(:,r) = (this.vandermonde.*this.derivatives(r,:))*this.gaussWeights;
             end
+        end
+        %% Interpolatory projection
+        function interpolate(this,element,fun0)
+            % Interpolatory projection of the function onto the nodal
+            % (i.e. Lagrange) counterpart of this basis.
+            %
+            element.states = fun0(element.getGaussCoords')*this.invVandermonde;
         end
     end
     methods (Static)
@@ -139,31 +149,6 @@ classdef Legendre < Basis
             end
             weights = 2./((1-coords.^2).*dLGV.^2)*(N2/N1)^2; % compute weights
             LGVM = (LGVM(:,1:end-1))'; % clean-up the Vandermonde matrix
-        end
-        %% Project function on mesh (conservative)
-        function project(mesh,limiter,fun,q)
-            % Conservative projection onto a modal basis.
-            for element = mesh.elements
-                % Employ a projection space of degree q:
-                if nargin < 4
-                    q = max(50,2*element.basis.degree+1); % default
-                end
-                [coords,weights,LGVM] = Legendre.quadratureGaussLegendre(q);
-                % Evaluate function at Gauss-Legendre quadrature points:
-                x = element.mapFromReference(coords);
-                f = fun(x');
-                % Project onto a Legendre basis of degree p applying Gauss
-                % quadrature with degree q:
-                U = (weights'.*f)*...
-                    (LGVM(1:element.basis.order,:))';
-                U = 0.5*(2*(1:element.basis.order) - 1).*U;
-                element.states = U;
-            end
-            % Apply limiter:
-            if nargin < 2 || isempty(limiter)
-                limiter = Limiter;
-            end
-            limiter.apply(mesh);
         end
         %% Identity projection (forwards)
         function modes = getLegendre(element,j,i)

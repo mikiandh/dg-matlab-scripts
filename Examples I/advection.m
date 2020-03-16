@@ -15,7 +15,7 @@ addpath('../Grid')
 addpath('../Math')
 
 %% Parameters
-Ne = 200; % number of elements
+Ne = 1; % number of elements
 p = 2; % degree of the approximation space (per element)
 L = [-1 1]; % domain edges
 tEnd = 0; % final simulation time
@@ -46,29 +46,27 @@ IC_p3d3 = @(x) (x+x.^2+x.^3).*(1 - heaviside(x)) + (x+x.^2+2*x.^3).*(heaviside(x
 IC_p3d4 = @(x) (x+x.^2+x.^3);
 
 %% Physics
-FUN = IC_jiangShu; % initial condition
+FUN = IC_gauss; % initial condition
 eqn = Advection(1,[]); % PDE + BCs
 
 %% Discretization
-method = DG;
-
-%% Limiter
-limiter = Limiter.get('TVD','Sensor',KXRCF);
+method = DGIGA_AFC(10);
 
 %% Grid
 xEdge = linspace(L(1),L(2),Ne+1); % element end-points
 mesh = Mesh(xEdge,p,method,eqn);
 
-%% Initial condition projection
-%method.interpolate(mesh,limiter,FUN);
-method.project(mesh,limiter,FUN);
-%method.projectLumped(mesh,limiter,FUN);
-%method.project_Matthias(mesh,limiter,FUN);
+%% Solver
+solver = SSP_RK3(0,tEnd,eqn);
+
+%% Initial condition
+tic
+solver.initialize(mesh,'initial',FUN)
+fprintf(1,'all set... (%g s)\n',toc)
+% norms0 = [mesh.getSolutionMass,mesh.getSolutionNorm(1),mesh.getSolutionNorm,mesh.getTotalVariation,mesh.getErrorNorm(FUN)];
+norms0 = mesh.getSolutionMass;
 
 %% Time-integration
-solver = SSP_RK3(0,tEnd,CFL,dt,limiter);
-%norms0 = [mesh.getSolutionMass,mesh.getSolutionNorm(1),mesh.getSolutionNorm,mesh.getTotalVariation,mesh.getErrorNorm(FUN)];
-norms0 = mesh.getSolutionMass;
 tic
 solver.launch(mesh,iterSkip,@(t,x) FUN(x));
 fprintf(1,'...done. (%g s)\n',toc)

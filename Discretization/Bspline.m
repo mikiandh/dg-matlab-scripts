@@ -1,13 +1,13 @@
 classdef Bspline < Basis
+    properties (Constant)
+        isNodal = false % can be set to 'true' for debugging purposes
+        isModal = false
+        isHybrid = true % combines DG and CG elements
+    end
     properties
-        % Flags:
-        isNodal = false; % can be set to 'true' for debugging purposes
-        isModal = false;
-        isHybrid = true; % combines DG and CG elements
         % Miscellanea:
         smoothness % differentiability class for the entire patch (if applicable)
         controlCoords % abscissae of all control points in a patch (in reference patch coordinates)
-        breakCoords % abscissae of all breakpoints in a patch (in reference patch coordinates)
         nonzeroSpanCount % number of non-vansihing spans
         % B-splines:
         knots % open knot vector
@@ -85,10 +85,6 @@ classdef Bspline < Basis
                 this.controlCoords = 0;
             else
                 this.controlCoords = linspace(-1,1,this.basisCount); % any better idea?
-            end
-            this.isNodal = (this.degree < 2) || this.isNodal; % p = 0 is Godunov's and p = 1 is nodal FEM with DG coupling
-            if this.isNodal
-                this.nodeCoords = this.controlCoords';
             end
             this.dofCoords = this.controlCoords';
             this.knotSpans = [this.knots(1:end-1); this.knots(2:end)];
@@ -277,6 +273,15 @@ classdef Bspline < Basis
                 element.states = modes;
             end
         end
+        %% Quasi-interpolatory projection
+        function interpolate(~,element,fun0)
+            % Assign control point values from exact function samples. 
+            % B-spline function at control locations will, in general, not
+            % coincide with the exact one; also, the projection will not be
+            % norm-preserving (in general). It will, nevertheless, be TVD.
+            %
+            element.states = fun0(element.getControlCoords);
+        end
     end
     methods (Static)
         %% Re-scale knot vector
@@ -319,39 +324,6 @@ classdef Bspline < Basis
             reps = [degree+1 reps degree+1]; % edge knots also
             knots = repelem(knots,reps);
         end
-        %% Consistent L2 projection (norm-preserving)
-        function project(mesh,limiter,fun,q)
-            % L2 projection onto a B-spline basis.
-            for element = mesh.elements
-                basis = element.basis; % handle to current element's basis
-                % Employ a projection space of degree q:
-                if nargin < 4
-                    q = max(50,2*element.basis.degree+1); % default
-                end
-                [sigmas,w,~] = Legendre.quadratureGaussLegendre(q);
-                % Preallocation:
-                b = zeros(element.basis.basisCount,length(fun(0)));
-                % Assemble vector of initial condition inner products:
-                for l = basis.span2knot % loop over non-vanishing knot spans
-                    [x,spanToElem] = basis.mapFromReferenceKnotSpan(sigmas,l); % from reference knot span to reference patch coordinates
-                    B = basis.sampleSpan(basis.knots,basis.degree,l,x);
-                    x = element.mapFromReference(x); % from reference patch to physical patch (i.e. mesh) coordinates
-                    f = fun(x');
-                    % Inner product between basis functions and the function
-                    % being projected, over the range of the current knot
-                    % span:
-                    r = (l-basis.degree):l; % indices of non-zero basis functions in the current knot span
-                    b(r,:) = b(r,:) + B*(w.*f')*spanToElem; % the "elemToMesh" Jacobian cancels out, but "spanToElem" doesn't!
-                end
-                % Solve for the modal coefficients:
-                element.states = b' / element.basis.massMatrix;
-            end
-            % Apply limiter:
-            if nargin < 2 || isempty(limiter)
-                limiter = Limiter;
-            end
-            limiter.apply(mesh);
-        end
         %% Lumped L2 projection (TVD + norm-preserving)
         function projectLumped(mesh,~,fun,q)
             % Lumped L2 projection onto a B-spline basis. From Kuzmin et
@@ -382,23 +354,6 @@ classdef Bspline < Basis
                 % Solve for the modal coefficients:
                 element.states = b' ./ lumpedMass;
             end
-        end
-        %% Quasi-interpolatory projection
-        function interpolate(mesh,~,fun)
-            % Assign control point values from exact function samples. 
-            % B-spline function at control locations will, in general, not
-            % coincide with the exact one; also, the projection will not be
-            % norm-preserving (in general). Thanks to B-spline properties,
-            % it will be TVD.
-            %
-            for element = mesh.elements
-                x = element.mapFromReference(element.basis.controlCoords);
-                element.states = fun(x);
-            end
-%             % Apply limiter (if any):
-%             if ~isempty(limiter)
-%                 limiter.apply(mesh);
-%             end
         end
         %% Sample an arbitrary knot vector
         function B = samplePatch(degree,knots,samples)

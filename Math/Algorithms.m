@@ -1,14 +1,14 @@
 classdef Algorithms < handle
     methods (Static)
         %% Adaptive quadrature (Shampine, 2008)
-        function Q = quadvgk(fv, Subs, NF)
-            %QUADVGK: Vectorised adaptive G7,K15 Gaussian quadrature on vector of integrals
+        function Q = quadvgk(fv,Subs,NF)
+            % QUADVGK: Vectorised adaptive G7,K15 Gaussian quadrature on vector of integrals
             %
             %	This function calculates the integration of a vector of functions via adaptive G7,K15
             %	Gaussian quadrature. The procedure follows that of Shampine [1]. This function is
             %	similar to quadv, but uses the quadgk algorithm.
             %
-            %Usage:
+            % Usage:
             %	Q = quadvgk(fv, Subs, NF)
             %
             %	Q		= Returned vector of numerical approximations to the integrals
@@ -16,7 +16,7 @@ classdef Algorithms < handle
             %	Subs	= Matrix of intervals (see below)
             %	NF		= Number of functions to be calculated (see below)
             %
-            %Example:
+            % Example:
             %	Y = @(x,n) 1./((1:n)+x);
             %	Qv = quadvgk(@(x) Y(x,10), [0;1], 10);
             %
@@ -75,7 +75,7 @@ classdef Algorithms < handle
                 if all(Q < eps)
                     return
                 end
-                % Avoid memory overflow (assume that a singluar point is causing an infinite refinement)
+                % Avoid memory overflow (assume that a singular point is causing an infinite refinement)
                 if size(Subs,2) > 10000
                     return
                 end

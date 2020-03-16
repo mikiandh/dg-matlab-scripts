@@ -7,7 +7,7 @@ classdef APTVD < Sensor
     %
     methods
         %% Sensor
-        function apply(this,mesh,~)
+        function apply(this,mesh,~,~)
             % Apply default sensor first:
             apply@Sensor(this,mesh);
             % Mark all cells containing one or more local extrema:

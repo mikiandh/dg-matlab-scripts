@@ -8,7 +8,7 @@ classdef KXRCF < Sensor
     %
     methods
         %% Sensor
-        function apply(this,mesh,~)
+        function apply(this,mesh,~,~)
             % Apply default sensor first:
             apply@Sensor(this,mesh);
             % Evaluate state at all edges:

@@ -36,7 +36,7 @@ classdef Limiter < handle
             this.sensor = p.Results.Sensor;
         end
         %% Apply (default)
-        function apply(this,mesh,varargin)
+        function apply(this,mesh,solver,isInitial)
             % Method that applies a sensor and subsequenly performs 
             % limiting on all elements of a given mesh for which the 
             % "isTroubled" property has been  set to true. All state vector 
@@ -46,7 +46,7 @@ classdef Limiter < handle
             % Retrieve physics:
             this.physics = mesh.physics;
             % Apply its sensor:
-            this.sensor.apply(mesh,varargin{:});
+            this.sensor.apply(mesh,solver,isInitial);
             % Reset isLimited fields:
             for element = mesh.elements
                 element.isLimited = false(size(element.states));

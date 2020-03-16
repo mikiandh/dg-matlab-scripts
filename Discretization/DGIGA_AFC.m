@@ -1,6 +1,8 @@
 classdef DGIGA_AFC < Bspline
     properties
-        lumpedMassMatrixDiagonal % non-zero entries of the lumped mass matrix
+        lumpedMassMatrixDiagonal % non-zero entries of the lumped mass matrix (in reference element space)
+        mode2fluxes % connectivity matrix between a control point (row: control point index) and all other control points within shared support, excluding itself (column: edge linear index)
+        diffusionFun = @DGIGA_AFC.diffusionRoeHartenHyman1;
     end
     methods
         %% Constructor
@@ -14,388 +16,154 @@ classdef DGIGA_AFC < Bspline
         function this = clone(prototype,degree)
             this = DGIGA_AFC(prototype.knots,degree,prototype.smoothness);
         end
-        %% DGIGA-AFC (low order) operator
+        %% DGIGA-AFC operator (low-order predictor)
         function computeResiduals(this,element,physics)
-            this.computePredictorResiduals(element,physics);
-            element.residuals = element.residuals - element.riemannR.*this.right' - element.riemannL.*this.left';
-            element.residuals = 2/element.dx * element.residuals ./ this.lumpedMassMatrixDiagonal;
+            element.computeFluxesFromStates(physics);
+            element.residuals = ...
+                element.fluxes*this.gradientMatrix...
+                - element.riemannR.*this.right'...
+                - element.riemannL.*this.left';
+            this.diffuseResiduals(element,physics)
+            element.residuals = 2/element.dx*element.residuals/this.lumpedMassMatrixDiagonal;
         end
-        %% IGA-AFC (low order) predictor
-        function computePredictorResiduals(this,element,physics)
-            % Computes the low-order version of the residual vectors at all
-            % interior modes. Employs the most appropriate approach,
-            % according to the physics given.
+        %% Low-order predictor residuals
+        function diffuseResiduals(this,element,physics)
+            % Applies AFC diffusion to the residual matrix, a la Möller &
+            % Jaeschke, 2018 (eq. 16). Saves the diffusion block matrix
+            % into the given element as a cell array.
             %
-            if physics.equationCount == 1
-                % Scalar PDE; eq. 37, Kuzmin (2012)
-                %%% element.computeFluxesFromStates(physics); % no need (?)
-                convection = physics.getConvectionMatrix(element.states,this);
-                convection = this.applyDiffusion_scalar(convection); % TO DO: implement inside Physics's children (+ find a proper predictor for Burgers')
-                element.residuals = element.states*convection;
-            else
-                % System of PDEs
-                element.computeFluxesFromStates(physics);
-                element.residuals = element.fluxes*this.gradientMatrix;
-                physics.applyArtificialDiffusion(element);
+            % Precompute the "gradient differences" (Kuzmin et al. 2012, eq. 27):
+            eAbs = .5*abs(element.basis.gradientMatrix - element.basis.gradientMatrix');
+            % Loop over edges:
+            for edge = element.basis.edges
+                % Aliases:
+                r = edge(1); j = edge(2);
+                % Compute a diffusion matrix block:
+                element.diffusions{r,j} = eAbs(r,j)*this.diffusionFun(element.states(:,r),element.states(:,j),physics);
+                % Accumulate diffusion into the residuals:
+                element.residuals(:,r) = element.residuals(:,r) + element.diffusions{r,j}*(element.states(:,j) - element.states(:,r));
             end
         end
-%%% DEPRECATED %%%
-%         %% Dissipation matrix (Roe average)
-%         function D = getRoeDissipation(this,element,physics)
-%             % Returns the dissipation matrix to be added to the high-order 
-%             % residual matrix when constructing the low-order predictor in
-%             % AFC. 
-%             %
-%             % Roe-averaged tensorial dissipation a la eq. 42, Kuzmin et 
-%             % al. (2012).
-%             %
-%             
-%         end
-%         %% Dissipation matrix (arithmetic mean)
-%         function D = getArithmeticDissipation(this,element,physics)
-%             % Returns the dissipation matrix to be added to the high-order 
-%             % residual matrix when constructing the low-order predictor in
-%             % AFC.
-%             %
-%             % Arithmetic-averaged tensorial dissipation, a la eq. 44,
-%             % Kuzmin et al. (2012).
-%             %
-%             
-%         end
-%         %% Dissipation matrix (Rusanov)
-%         function D = getRusanovDissipation(this,element,physics)
-%             % Returns the dissipation matrix to be added to the high-order 
-%             % residual matrix when constructing the low-order predictor in
-%             % AFC. 
-%             %
-%             % Rusanov-like scalar dissipation, a la eq. 45, Kuzmin et al. 
-%             % (2012).
-%             %
-%             
-%         end
-%         
-%         %% Dissipation matrix (robust Rusanov)
-%         function R = getRobustDissipation(this,element,physics)
-%             % Returns the dissipation matrix to be added to the high-order 
-%             % residual matrix when constructing the low-order predictor in
-%             % AFC.
-%             %
-%             % Robust (Rusanov-like) scalar dissipation, a la eq. 46, Kuzmin 
-%             % et al. (2012).
-%             %
-%             % Preallocate contributions to the residuals:
-%             R = zeros(physics.equationCount,element.basis.basisCount);
-%             % Precompute shared support among modes:
-%             [rows,cols] = find(element.basis.massMatrix);
-%             % Loop over test functions:
-%             for r = 1:element.basis.basisCount
-%                 % Loop over basis functions (within support):
-%                 for j = cols(rows == r)
-%                     
-%                 end
-%             end
-%         end
-%%%%%%%%%%%%%%%%%%
+        %% L2 projection (lumped or constrained)
+        function project(this,element,fun0)
+            % Lumped projection of a function into a finite-dimensional
+            % space using a DGIGA basis. Initializes any quantities that
+            % the AFC limiter requires to correct the result to its
+            % constrained counterpart.
+            %
+            % Unconstrained L2 projection:
+            this.project@Bspline(element,fun0);
+            % Store unconstrained projection (high order candidate):
+            element.residuals = element.states;
+            % Override solution with the lumped projection (predictor):
+            element.states = element.states*element.basis.massMatrix./element.basis.lumpedMassMatrixDiagonal;
+            % Initialize diffusion matrix blocks to zero:
+            [I,N] = size(element.states);
+            rj = element.basis.edges(3,:);
+            element.diffusions = cell(N);
+            element.diffusions(rj) = {sparse(I,I)};
+            % Preallocate antidiffusive fluxes:
+            element.antidiffusiveFluxes = spalloc(I,N^2,I*length(rj));
+        end
     end
     methods (Static)
-        %% Diffuse the convection operator
-        function convectionMatrix = applyDiffusion_scalar(convectionMatrix)
-            % Applies artificial diffusion to the discrete convection 
-            % operator (SCALAR PHYSICS ONLY)
+        %% AFC diffusion a la Kuzmin et al. 2012, eq. 42
+        function D = diffusionRoe(state1,state2,physics)
+            % Computes a tensorial numerical diffusion matrix block via AFC
+            % a la Kuzmin et al. 2012, eq. 42. No entropy fix.
             %
-            diffusionMatrix = full(max(-convectionMatrix,-convectionMatrix')); %%% OUT OF IDEAS
-            diffusionMatrix = max(diffusionMatrix,0);
-            mask = logical(eye(size(diffusionMatrix)));
-            % Discrete upwinding (i.e. adding artificial diffusion):
-            diffusionMatrix(mask) = -sum(diffusionMatrix,2) + diffusionMatrix(mask);
-            convectionMatrix = convectionMatrix + sparse(diffusionMatrix);
+            [D,L,R] = physics.getEigensystemAt(state1,state2);
+            D = R*abs(D)*L;
         end
-        %% Constrained L2 projection (vector)
-        function project(mesh,~,fun,q)
-            % Projects a function into a finite-dimensional approximation space
-            % using AFC and FCT flux limiting (Zalesak's approach) to constrain
-            % the approaximate solution to be L2-preserving and LED, while
-            % maintaining a higher order than a lumped projection.
+        %% AFC diffusion: Roe + Harten-Hyman(1)
+        function D = diffusionRoeHartenHyman1(state1,state2,physics)
+            % Computes a tensorial numerical diffusion matrix block via AFC
+            % a la Kuzmin et al. 2012, eq. 42; additionally, applies the
+            % 1st entropy fix of Harten and Hyman a la Kermani and Plett 
+            % 2001, eq. 8.
             %
-            % DG coupling: candidate local extrema in non-interior modes
-            % include the closest mode across the closest patch interface.
-            %
-            % Initialize mesh via unconstrained L2 projection:
-            if nargin < 4
-                Bspline.project(mesh,[],fun);
-            else
-                Bspline.project(mesh,[],fun,q);
-            end
-            % Preallocate memory for low order solutions within DG range:
-            statesL = cell(1,3);
-            statesL{2} = mesh.elements(1).states*...
-                mesh.elements(1).basis.massMatrix./...
-                mesh.elements(1).basis.lumpedMassMatrixDiagonal; % low order projection
-            % Apply AFC patch-wise, with inter-patch coupling:
-            k = 0;
-            for element = mesh.elements
-                k = k + 1;
-                [~,nB] = size(element.states);
-                % Anti-diffusive fluxes (row: recieving mode; column: contributing mode):
-                f = element.basis.massMatrix.*(element.states' - element.states);
-                % Pre-limiting:
-                f(f.*(statesL{2}-statesL{2}') > 0) = 0;
-                % Net antidiffusive fluxes:
-                Pp = full(sum(max(0,f),2));
-                Pm = full(sum(min(-0,f),2));
-                Pm(Pm == 0) = -0; % signed zeros to avoid -Inf later
-                % Local extrema (within patch):
-                extrema = repmat(statesL{2},nB,1);
-                extrema(element.basis.massMatrix == 0) = nan;
-                Qp = max(extrema,[],2);
-                Qm = min(extrema,[],2);
-                % Local extrema (across patch interfaces):
-                if k > 1
-                    i = 1:element.basis.degree; % left-most mode of right patch might be an extremum of the first p modes of this patch
-                    Qp(i) = max(Qp(i),statesL{1}(end));
-                    Qm(i) = min(Qm(i),statesL{1}(end));
-                end
-                if k < mesh.elementCount
-                    statesL{3} = mesh.elements(k+1).states*mesh.elements(k+1).basis.massMatrix./mesh.elements(k+1).basis.lumpedMassMatrixDiagonal; % next patch's low order predictor
-                    i = nB - (element.basis.degree-1:-1:0); % right-most mode of left patch might be an extremum of the last p modes of this patch
-                    Qp(i) = max(Qp(i),statesL{3}(1));
-                    Qm(i) = min(Qm(i),statesL{3}(1));
-                end
-                % Distances to local extrema:
-                Qp = element.basis.lumpedMassMatrixDiagonal'.*(Qp-statesL{2}');
-                Qm = element.basis.lumpedMassMatrixDiagonal'.*(Qm-statesL{2}');
-                % Modal correction factors:
-                Rp = min(1,Qp./Pp);
-                Rm = min(1,Qm./Pm);
-                % Disable AFC at boundaries (Kuzmin et al, 2012; remark 5, pp. 163, bottom):
-                if k == 1
-                    Rp(1) = 1;
-                    Rm(1) = 1;
-                end
-                if k == mesh.elementCount
-                    Rp(end) = 1;
-                    Rm(end) = 1;
-                end
-                % Limit the antidiffusive fluxes:
-                [i,j] = find(f > 0); ids = sub2ind([nB nB],i,j); % indices of positive fluxes
-                f(ids) = min(Rp(i),Rm(j)).*f(ids);
-                [i,j] = find(f < 0); ids = sub2ind([nB nB],i,j); % indices of negative fluxes
-                f(ids) = min(Rm(i),Rp(j)).*f(ids);
-                % Use low-order predictor and limited antidiffusive fluxes:
-                element.states = statesL{2} + sum(f,2)'./element.basis.lumpedMassMatrixDiagonal;
-                % Cycle low order solutions along their cell array:
-                statesL(1:2) = statesL(2:3);
-            end
+            [D,L,R] = physics.getEigensystemAt(state1,state2);
+            D12 = diag(D);
+            D = abs(D12);
+            % Fix:
+            D1 = diag(physics.getEigensystemAt(state1));
+            D2 = diag(physics.getEigensystemAt(state2));
+            epsilon = max(0,max(D12-D1,D2-D12));
+            i = D < epsilon;
+            D(i) = (D(i).^2+epsilon(i).^2)./(2*epsilon(i));
+            % AFC:
+            D = R*(D.*L);
         end
-        %% Constrained L2 projection (scalar)
-        function projectScalar(mesh,~,fun,q)
-            % Projects a function into a finite-dimensional approximation space
-            % using AFC and FCT flux limiting (Zalesak's approach) to constrain
-            % the approaximate solution to be L2-preserving and LED, while
-            % maintaining a higher order than a lumped projection.
+        %% AFC diffusion: Roe + Harten-Hyman(2)
+        function D = diffusionRoeHartenHyman2(state1,state2,physics)
+            % Computes a tensorial numerical diffusion matrix block via AFC
+            % a la Kuzmin et al. 2012, eq. 42; additionally, applies the
+            % 2nd entropy fix of Harten and Hyman a la Kermani and Plett 
+            % 2001, eq. 9.
             %
-            % DG coupling: candidate local extrema in non-interior modes
-            % include the closest mode across the closest patch interface.
-            %
-            % Limitations (so far):
-            %  - scalar physics only (nEqs = 1)
-            %
-            % Initialize mesh via unconstrained L2 projection:
-            if nargin < 4
-                Bspline.project(mesh,[],fun);
-            else
-                Bspline.project(mesh,[],fun,q);
-            end
-            % Preallocate memory for low order solutions within DG range:
-            statesL = cell(1,3);
-            statesL{2} = mesh.elements(1).states*mesh.elements(1).basis.massMatrix./mesh.elements(1).basis.lumpedMassMatrixDiagonal;
-            % Apply AFC patch-wise, with inter-patch coupling:
-            k = 0;
-            for element = mesh.elements
-                k = k + 1;
-                [nEqs,nB] = size(element.states);
-                if nEqs ~= 1
-                    error('Vector physics not supported. Yet.')
-                end
-                % Anti-diffusive fluxes (row: recieving mode; column: contributing mode):
-                f = element.basis.massMatrix.*(element.states' - element.states);
-                % Pre-limiting:
-                f(f.*(statesL{2}-statesL{2}') > 0) = 0;
-                % Net antidiffusive fluxes:
-                Pp = full(sum(max(0,f),2));
-                Pm = full(sum(min(-0,f),2));
-                Pm(Pm == 0) = -0; % signed zeros to avoid -Inf later
-                % Local extrema (within patch):
-                extrema = repmat(statesL{2},nB,1);
-                extrema(element.basis.massMatrix == 0) = nan;
-                Qp = max(extrema,[],2);
-                Qm = min(extrema,[],2);
-                % Local extrema (across patch interfaces):
-                if k > 1
-                    i = 1:element.basis.degree; % left-most mode of right patch might be an extremum of the first p modes of this patch
-                    Qp(i) = max(Qp(i),statesL{1}(end));
-                    Qm(i) = min(Qm(i),statesL{1}(end));
-                end
-                if k < mesh.elementCount
-                    statesL{3} = mesh.elements(k+1).states*mesh.elements(k+1).basis.massMatrix./mesh.elements(k+1).basis.lumpedMassMatrixDiagonal; % next patch's low order predictor
-                    i = nB - (element.basis.degree-1:-1:0); % right-most mode of left patch might be an extremum of the last p modes of this patch
-                    Qp(i) = max(Qp(i),statesL{3}(1));
-                    Qm(i) = min(Qm(i),statesL{3}(1));
-                end
-                %%% DEBUGGING %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                element.limiterHistory.localMax = Qp;
-                element.limiterHistory.localMin = Qm;
-                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                % Distances to local extrema:
-                Qp = element.basis.lumpedMassMatrixDiagonal'.*(Qp-statesL{2}');
-                Qm = element.basis.lumpedMassMatrixDiagonal'.*(Qm-statesL{2}');
-                % Modal correction factors:
-                Rp = min(1,Qp./Pp);
-                Rm = min(1,Qm./Pm);
-                % Disable AFC at boundaries (Kuzmin et al, 2012; remark 5, pp. 163, bottom):
-                if k == 1
-                    Rp(1) = 1;
-                    Rm(1) = 1;
-                end
-                if k == mesh.elementCount
-                    Rp(end) = 1;
-                    Rm(end) = 1;
-                end
-                
-                %%% DEBUGGING %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                element.limiterHistory.Pp = Pp;
-                element.limiterHistory.Pm = Pm;
-                element.limiterHistory.Qp = Qp;
-                element.limiterHistory.Qm = Qm;
-                element.limiterHistory.Rp = Rp;
-                element.limiterHistory.Rm = Rm;
-                element.limiterHistory.Alpha = ones(nB,nB);
-                [i,j] = find(f > 0); ids = sub2ind([nB nB],i,j);
-                element.limiterHistory.Alpha(ids) = min(Rp(i),Rm(j));
-                [i,j] = find(f < 0); ids = sub2ind([nB nB],i,j);
-                element.limiterHistory.Alpha(ids) = min(Rm(i),Rp(j));
-                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                
-                % Limit the antidiffusive fluxes:
-                [i,j] = find(f > 0); ids = sub2ind([nB nB],i,j); % indices of positive fluxes
-                f(ids) = min(Rp(i),Rm(j)).*f(ids);
-                [i,j] = find(f < 0); ids = sub2ind([nB nB],i,j); % indices of negative fluxes
-                f(ids) = min(Rm(i),Rp(j)).*f(ids);
-                % Use low-order predictor and limited antidiffusive fluxes:
-                element.states = statesL{2} + sum(f,2)'./element.basis.lumpedMassMatrixDiagonal;
-                % Cycle low order solutions along their cell array:
-                statesL(1:2) = statesL(2:3);
-            end
+            [D,L,R] = physics.getEigensystemAt(state1,state2);
+            D12 = diag(D);
+            D = abs(D12);
+            % Fix:
+            D1 = diag(physics.getEigensystemAt(state1));
+            D2 = diag(physics.getEigensystemAt(state2));
+            epsilon = max(0,max(D12-D1,D2-D12));
+            i = D < epsilon;
+            D(i) = epsilon(i);
+            % AFC:
+            D = R*(D.*L);
         end
-        function project_Matthias(mesh,~,fun,q)
-            % Projects a function into a finite-dimensional approximation space
-            % using AFC and FCT flux limiting (Zalesak's approach) to constrain
-            % the approaximate solution to be L2-preserving and LED, while
-            % maintaining a higher order than a lumped projection.
+        %% AFC diffusion: Roe + Hoffmann-Chiang (NOT RECOMMENDED)
+        function D = diffusionRoeHoffmannChiang(state1,state2,physics)
+            % Computes a tensorial numerical diffusion matrix block via AFC
+            % a la Kuzmin et al. 2012, eq. 42; additionally, applies the
+            % entropy fix of Hoffmaann and Chiang a la Kermani and Plett 
+            % 2001, eq. 10.
             %
-            % Does the DG coupling such that P and Q are unique at patch
-            % interfaces (and, therefore, so is R).
+            [D,L,R] = physics.getEigensystemAt(state1,state2);
+            D = abs(diag(D));
+            % Fix:
+            epsilon = .1; % usual range: 0 < epsilon < .125 (problem-dependent)
+            i = D < epsilon;
+            D(i) = (D(i).^2+epsilon.^2)./(2*epsilon);
+            % AFC:
+            D = R*(D.*L);
+        end
+        %% AFC diffusion: Roe + Kermani-Plett
+        function D = diffusionRoeKermaniPlett(state1,state2,physics)
+            % Computes a tensorial numerical diffusion matrix block via AFC
+            % a la Kuzmin et al. 2012, eq. 42; additionally, applies the
+            % entropy fix of Kermani and Plett 2001, eq. 11 (version 2).
             %
-            % Limitations (so far):
-            %  - scalar physics only (nEqs = 1)
-            %
-            % Initialize mesh via unconstrained L2 projection:
-            if nargin < 4
-                Bspline.project(mesh,[],fun);
-            else
-                Bspline.project(mesh,[],fun,q);
-            end
-            % Preallocate some memory:
-            f = cell(1,mesh.elementCount);
-            statesL = cell(1,mesh.elementCount);
-            Pp = cell(1,mesh.elementCount);
-            Pm = cell(1,mesh.elementCount);
-            Qp = cell(1,mesh.elementCount);
-            Qm = cell(1,mesh.elementCount);
-            % Sart Zalesak's algorithm patch-wise:
-            k = 0;
-            for element = mesh.elements
-                k = k + 1;
-                [nEqs,nB] = size(element.states);
-                if nEqs ~= 1
-                    error('Vector physics not supported. Yet.')
-                end
-                % Anti-diffusive fluxes (row: recieving mode; column: contributing mode):
-                f{k} = element.basis.massMatrix.*(element.states' - element.states);
-                % Pre-limiting:
-                statesL{k} = element.states*element.basis.massMatrix./element.basis.lumpedMassMatrixDiagonal; % low order predictor
-                f{k}(f{k}.*(statesL{k}-statesL{k}') > 0) = 0;
-                % Net antidiffusive fluxes:
-                Pp{k} = full(sum(max(0,f{k}),2));
-                Pm{k} = full(sum(min(-0,f{k}),2));
-                Pm{k}(Pm{k} == 0) = -0; % signed zeros to avoid -Inf later
-                % Local extrema (within patch):
-                extrema = repmat(statesL{k},nB,1);
-                extrema(element.basis.massMatrix == 0) = nan;
-                % Distances to local extrema:
-                Qp{k} = element.basis.lumpedMassMatrixDiagonal'.*(max(extrema,[],2)-statesL{k}');
-                Qm{k} = element.basis.lumpedMassMatrixDiagonal'.*(min(extrema,[],2)-statesL{k}');
-                
-                %%% DEBUGGING %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                %             element.limiterHistory.localMax = max(extrema,[],2);
-                %             element.limiterHistory.localMin = min(extrema,[],2);
-                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                
-            end
-            % Perform inter-patch coupling of P and Q variables:
-            k = 1; % skip 1st patch
-            for element = mesh.elements(2:end)
-                k = k + 1;
-                % P+-:
-                Pp{k}(1) = max(Pp{k-1}(end),Pp{k}(1));
-                Pp{k-1}(end) = Pp{k}(1); % left interface of patch k <-> right of patch k-1
-                Pm{k}(1) = min(Pm{k-1}(end),Pm{k}(1));
-                Pm{k-1}(end) = Pm{k}(1);
-                % Q+-:
-                Qp{k}(1) = max(Qp{k-1}(end),Qp{k}(1));
-                Qp{k-1}(end) = Qp{k}(1);
-                Qm{k}(1) = min(Qm{k-1}(end),Qm{k}(1));
-                Qm{k-1}(end) = Qm{k}(1);
-            end
-            % Finish with Zalesak patch-wise:
-            k = 0;
-            for element = mesh.elements
-                k = k + 1;
-                % Modal correction factors:
-                Rp = min(1,Qp{k}./Pp{k});
-                Rm = min(1,Qm{k}./Pm{k});
-                % Disable AFC at boundaries (Kuzmin et al, 2012; remark 5, pp. 163, bottom):
-                if k == 1
-                    Rp(1) = 1;
-                    Rm(1) = 1;
-                end
-                if k == mesh.elementCount
-                    Rp(end) = 1;
-                    Rm(end) = 1;
-                end
-                
-                %%% DEBUGGING %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                %             element.limiterHistory.Pp = Pp{k};
-                %             element.limiterHistory.Pm = Pm{k};
-                %             element.limiterHistory.Qp = Qp{k};
-                %             element.limiterHistory.Qm = Qm{k};
-                %             element.limiterHistory.Rp = Rp;
-                %             element.limiterHistory.Rm = Rm;
-                %             element.limiterHistory.Alpha = ones(nB,nB);
-                %             [i,j] = find(f{k} > 0); ids = sub2ind([nB nB],i,j);
-                %             element.limiterHistory.Alpha(ids) = min(Rp(i),Rm(j));
-                %             [i,j] = find(f{k} < 0); ids = sub2ind([nB nB],i,j);
-                %             element.limiterHistory.Alpha(ids) = min(Rm(i),Rp(j));
-                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                
-                % Limit the antidiffusive fluxes:
-                [i,j] = find(f{k} > 0); ids = sub2ind([nB nB],i,j); % indices of positive fluxes
-                f{k}(ids) = min(Rp(i),Rm(j)).*f{k}(ids);
-                [i,j] = find(f{k} < 0); ids = sub2ind([nB nB],i,j); % indices of negative fluxes
-                f{k}(ids) = min(Rm(i),Rp(j)).*f{k}(ids);
-                % Use low-order predictor and limited antidiffusive fluxes:
-                element.states = statesL{k} + sum(f{k},2)'./element.basis.lumpedMassMatrixDiagonal;
-            end
+            [D,L,R] = physics.getEigensystemAt(state1,state2);
+            D12 = diag(D);
+            D = abs(D12);
+            % Fix:
+            D1 = diag(physics.getEigensystemAt(state1));
+            D2 = diag(physics.getEigensystemAt(state2));
+            epsilon = 4*max(0,max(D12-D1,D2-D12));
+            i = D < epsilon;
+            D(i) = (D(i).^2+epsilon(i).^2)./(2*epsilon(i));
+            % AFC:
+            D = R*(D.*L);
+        end
+        %% AFC diffusion a la Kuzmin et al. 2012, eq. 44
+        function D = diffusionArithmetic(state1,state2,physics)
+            [D,L,R] = physics.getEigensystemAt(.5*(state1+state2));
+            D = R*abs(D)*L;
+        end
+        %% AFC diffusion a la Kuzmin et al. 2012, eq. 45
+        function D = diffusionScalar(state1,state2,physics) % Rusanov-like
+            D = physics.getEigensystemAt(state1,state2);
+            D = max(abs(D(:)))*eye(size(D));
+        end
+        %% AFC diffusion a la Kuzmin et al. 2012, eq. 46
+        function D = diffusionRobust(state1,state2,physics) % true Rusanov (i.e. local Lax-Friedrichs)
+            d1 = physics.getEigensystemAt(state1);
+            d1 = max(abs(d1(:)));
+            d2 = physics.getEigensystemAt(state2);
+            d2 = max(abs(d2(:)));
+            D = max(d1,d2)*eye(physics.equationCount);
         end
     end
 end

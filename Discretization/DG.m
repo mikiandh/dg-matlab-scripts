@@ -27,20 +27,4 @@ classdef DG < Legendre
             element.residuals = - this.norms./element.dx.*element.residuals;
         end
     end
-    methods (Static)
-        %% Interpolate function onto mesh
-        function interpolate(mesh,limiter,fun)
-            % Interpolatory projection of the function onto a MODAL basis.
-            for element = mesh.elements
-                x = element.mapFromReference(element.basis.gaussCoords');
-                element.states = fun(x);
-                element.nodalToModal;
-            end
-            % Apply limiter (if any):
-            if ~isempty(limiter)
-                limiter.apply(mesh);
-            end
-        end
-    end
-    
 end
