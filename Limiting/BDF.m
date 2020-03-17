@@ -21,11 +21,11 @@ classdef BDF < Limiter
             this = this@Limiter(varargin{:});
         end
         %% Apply (extension)
-        function apply(this,mesh,~,~)
+        function apply(this,mesh,solver,isInitial)
             % Default limiting:
-            apply@Limiter(this,mesh);
+            apply@Limiter(this,mesh,solver,isInitial);
             % Retrieve troubled elements:
-            elements = findobj(mesh.elements,'isTroubled',true)';
+            elements = mesh.elements([mesh.elements.isTroubled]);
             % Initialize all the stuff:
             this.initialize(elements,mesh.maxBasisCount)
             % Limit each characteristic component (independently):

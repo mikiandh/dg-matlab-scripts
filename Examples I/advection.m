@@ -19,9 +19,9 @@ Ne = 1; % number of elements
 p = 2; % degree of the approximation space (per element)
 L = [-1 1]; % domain edges
 tEnd = 0; % final simulation time
-dt = []; % time-step size (overrides CFL)
-CFL = .1; % Courant number
-iterSkip = 500;
+dt = nan; % time-step size (overrides CFL)
+CFL = .01; % Courant number
+iterSkip = 1;
 
 %% Initial condition collection
 IC_linear = @(x) x;
@@ -50,25 +50,28 @@ FUN = IC_gauss; % initial condition
 eqn = Advection(1,[]); % PDE + BCs
 
 %% Discretization
-method = DGIGA_AFC(10);
+method = DGIGA_AFC(50);
 
 %% Grid
 xEdge = linspace(L(1),L(2),Ne+1); % element end-points
-mesh = Mesh(xEdge,p,method,eqn);
+mesh = Mesh(xEdge,p,method);
 
 %% Solver
-solver = SSP_RK3(0,tEnd,eqn);
+solver = SSP_RK3(0,tEnd,eqn,...
+    'courantNumber',CFL,'timeDelta',dt,...
+    'limiter',AFC,...
+    'exact',@(t,x) FUN(x),'replotIters',iterSkip);
 
 %% Initial condition
 tic
-solver.initialize(mesh,'initial',FUN)
-fprintf(1,'all set... (%g s)\n',toc)
+solver.initialize(mesh)
+fprintf(1,'All set... (%g s)\n',toc)
 % norms0 = [mesh.getSolutionMass,mesh.getSolutionNorm(1),mesh.getSolutionNorm,mesh.getTotalVariation,mesh.getErrorNorm(FUN)];
 norms0 = mesh.getSolutionMass;
 
 %% Time-integration
 tic
-solver.launch(mesh,iterSkip,@(t,x) FUN(x));
+solver.launch(mesh);
 fprintf(1,'...done. (%g s)\n',toc)
 
 %% Postprocessing

@@ -11,7 +11,7 @@ classdef APTVD < Sensor
             % Apply default sensor first:
             apply@Sensor(this,mesh);
             % Mark all cells containing one or more local extrema:
-            for element = findobj(mesh.elements,'isTroubled',true)'
+            for element = mesh.elements([mesh.elements.isTroubled])
                 % Get min/max cell average array:
                 avgs = [element.basis.getLegendre(element,1)...
                     element.edgeL.elementL.basis.getLegendre(element.edgeL.elementL,1)...
@@ -22,7 +22,7 @@ classdef APTVD < Sensor
                 element.isTroubled = any(any(samples > 1.001*max(avgs,[],2) | samples < 0.999*min(avgs,[],2)));
             end
             % Unmark p > 1 cells if their extrema are smooth:
-            for element = findobj(mesh.elements,'isTroubled',true,'-not','dofCount',2)'
+            for element = [mesh.elements.isTroubled] & [mesh.elements.dofCount] > 2
                 % Aliases:
                 elementL = element.edgeL.elementL;
                 elementR = element.edgeR.elementR;

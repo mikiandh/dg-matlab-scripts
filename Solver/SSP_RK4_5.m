@@ -10,8 +10,8 @@ classdef SSP_RK4_5 < Solver
             ssp_rk4_5@Solver(varargin{:});
         end
         %% RK stage update
-        function applyStage(this,element,stage)
-            switch stage
+        function applyStage(this,element)
+            switch this.stageNow
                 case 1
                     element.extraStates{2} = element.states;
                     element.states = ...

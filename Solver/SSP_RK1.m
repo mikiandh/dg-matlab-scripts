@@ -10,7 +10,7 @@ classdef SSP_RK1 < Solver
             ssp_rk1@Solver(varargin{:});
         end
         %% RK stage update
-        function applyStage(this,element,~)
+        function applyStage(this,element)
             element.states = element.states + this.timeDelta * element.residuals;
         end
     end

@@ -16,7 +16,7 @@ classdef KXRCF < Sensor
                 element.interpolateStateAtEdges;
             end
             % Check all possibly troubled elements:
-            for element = findobj(mesh.elements,'isTroubled',true)'
+            for element = mesh.elements([mesh.elements.isTroubled])
                 % Precompute some stuff:
                 ref = abs(element.basis.getLegendre(element,1))*element.dx^(.5*element.dofCount);
                 qL = element.stateL; % left edge of element k

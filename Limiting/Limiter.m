@@ -44,7 +44,7 @@ classdef Limiter < handle
             % indicated as such in their element's "isLimited" property.
             %
             % Retrieve physics:
-            this.physics = mesh.physics;
+            this.physics = solver.physics;
             % Apply its sensor:
             this.sensor.apply(mesh,solver,isInitial);
             % Reset isLimited fields:

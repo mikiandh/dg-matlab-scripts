@@ -16,8 +16,10 @@ classdef Solver < matlab.mixin.SetGet
         limiter
         sensor
         isTimeDeltaFixed
+        replotIters
         iterationCount
         wallClockTime
+        stageNow
     end
     properties (Access = protected)
         exact = @(t,x) nan
@@ -39,14 +41,20 @@ classdef Solver < matlab.mixin.SetGet
                 addRequired(p,'timeStop',@(x)validateattributes(x,{'numeric'},{'scalar','>=',timeNow}))
                 addRequired(p,'physics',@(x)validateattributes(x,{'Physics'},{}))
                 % Optional arguments:
-                addParameter(p,'courantNumber',1,@(x)validateattributes(x,{'numeric'},{'scalar','nonnegative'}))
-                addParameter(p,'timeDelta',[],@(x)validateattributes(x,{'numeric'},{'scalar','nonnegative'}))
+                addParameter(p,'courantNumber',1,@(x)validateattributes(x,{'numeric'},{'scalar','nonnegative','nonempty'}))
+                addParameter(p,'timeDelta',nan,@(x)validateattributes(x,{'numeric'},{'scalar','nonnegative'}))
                 addParameter(p,'limiter',Limiter,@(x)validateattributes(x,{'Limiter'},{}))
-                addParameter(p,'sensor',Sensor,@(x)validateattributes(x,{'Sensor'},{}))
                 addParameter(p,'exact',@(t,x) nan,@(x)validateattributes(x,{'function_handle'},{}))
+                addParameter(p,'replotIters',0,@(x)validateattributes(x,{'numeric'},{'scalar','nonnegative','nonnan'}))
                 % Parse the inputs:
                 parse(p,timeNow,timeStop,physics,varargin{:})
                 set(this,fieldnames(p.Results)',struct2cell(p.Results)')
+                % Use fixed time-step size, if provided:
+                if isnan(this.timeDelta) || isinf(this.timeDelta)
+                    this.isTimeDeltaFixed = false;
+                else
+                    this.isTimeDeltaFixed = true;
+                end
             end
         end
         %% Initialize approximate solution
@@ -65,40 +73,42 @@ classdef Solver < matlab.mixin.SetGet
             addParameter(p,'initial',@(x) this.exact(this.timeNow,x),@(x)validateattributes(x,{'function_handle'},{}))
             % Parse the inputs:
             parse(p,varargin{:})
-            % Initialize element-wise:
+            % Initialize some monitoring stuff:
+            this.initializePlot(mesh);
+            this.iterationCount = 0;
+            this.wallClockTime = 0; tic
+            % Initialize boundary conditions:
+            %%% TO BE DONE %%%
+            % Initialize solution:
             for element = mesh.elements
                 element.basis.(p.Results.type)(element,p.Results.initial)
             end
             p.Results.limiter.apply(mesh,this,true);
-            % Initialize boundary conditions:
-            %%% TO BE DONE %%%
-        end
-        %% Drive the integration
-        function STOP = launch(this,mesh,replotIters,solutionFun)
-            % Safety check:
-            if isempty(this.timeDelta)
-                this.isTimeDeltaFixed = false;
-                this.timeDelta = 0;
-            elseif ~isempty(this.timeDelta)
-                this.isTimeDeltaFixed = true;
+            % Initialize residuals:
+            mesh.computeResiduals(this.physics);
+            % Initialize time-step size:
+            if this.isTimeDeltaFixed
+                this.updateCourantNumber(mesh);
             else
-                error('Specify time-step size and/or CFL.')
+                this.updateTimeDelta(mesh);
             end
-            % Initialize some stuff:
-            STOP = false;
-            this.iterationCount = 0;
-            this.wallClockTime = 0; tic
-            this.initializePlot(mesh,solutionFun);
+            % Display approximate initial condition:
             this.refreshPlot(mesh);
-            % Time marching routine:
+        end
+        %% Time marching
+        function STOP = launch(this,mesh)
+            % Start and drive the time marching routine, from timeNow
+            % until timeStop of this solver instance.
+            %
+            STOP = false;
             if this.isTimeDeltaFixed
                 while ~STOP
-                    STOP = this.stepForward(mesh,replotIters);
+                    STOP = this.stepForward(mesh);
                     this.updateCourantNumber(mesh);
                 end
             else
                 while ~STOP
-                    STOP = this.stepForward(mesh,replotIters);
+                    STOP = this.stepForward(mesh);
                     this.updateTimeDelta(mesh);
                 end
             end
@@ -127,7 +137,7 @@ classdef Solver < matlab.mixin.SetGet
     end
     methods (Access = protected)
         %% Single step forward
-        function STOP = stepForward(this,mesh,replotIters)
+        function STOP = stepForward(this,mesh)
             STOP = false;
             this.iterationCount = this.iterationCount + 1;
             this.timeNow = this.timeNow + this.timeDelta;
@@ -145,18 +155,21 @@ classdef Solver < matlab.mixin.SetGet
                 STOP = true;
             end
             % Advance one time-step:
-            for stage = 1:this.stageCount
+            this.stageNow = 0;
+            while this.stageNow < this.stageCount
+                % Update stage counter:
+                this.stageNow = this.stageNow + 1;
                 % Evaluate solution residuals:
-                mesh.computeResiduals;
+                mesh.computeResiduals(this.physics);
                 % Advance solution by one stage:
                 for element = mesh.elements
-                    this.applyStage(element,stage);
+                    this.applyStage(element);
                 end
                 % Apply limiter:
-                this.limiter.apply(mesh,this);
+                this.limiter.apply(mesh,this,false);
             end
             % Plot solution:
-            if STOP || ~mod(this.iterationCount,replotIters)
+            if STOP || ~mod(this.iterationCount,this.replotIters)
                 this.wallClockTime = toc;
                 this.refreshPlot(mesh);
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -186,13 +199,12 @@ classdef Solver < matlab.mixin.SetGet
             this.timeDelta = this.courantNumber*this.timeDelta;
         end
         %% Initialize plot data
-        function initializePlot(this,mesh,fun)
-            figDims = [800 100 700, min(mesh.physics.equationCount*400,800)];
+        function initializePlot(this,mesh)
+            figDims = [800 100 700, min(this.physics.equationCount*400,800)];
             this.plotData.fig = figure('Renderer','painters','Position',figDims);
-            this.plotData.exactFun = fun;
             this.plotData.cmap = distinguishable_colors(mesh.elementCount,{'w','k'});
             this.plotData.xGlobal = linspace(mesh.elements(1).xL,mesh.elements(end).xR,1000);
-            this.plotData.ylims = repmat([0 1.2],mesh.physics.equationCount,1);
+            this.plotData.ylims = repmat([0 1.2],this.physics.equationCount,1);
             disc = mesh.bases(1);
             this.plotData.space = strrep(class(disc),'_','-');
             this.plotData.limiter = this.limiter.getInfo;
@@ -230,9 +242,9 @@ classdef Solver < matlab.mixin.SetGet
             end
             aux = sprintf('; t = %.4g, %s, iter = %d, WCT = %.2f s',this.timeNow,aux,this.iterationCount,this.wallClockTime);
             figure(this.plotData.fig)
-            yGlobal = this.plotData.exactFun(this.timeNow,this.plotData.xGlobal);
-            for i = 1:mesh.physics.equationCount
-                subplot(mesh.physics.equationCount,1,i)
+            yGlobal = this.exact(this.timeNow,this.plotData.xGlobal);
+            for i = 1:this.physics.equationCount
+                subplot(this.physics.equationCount,1,i)
                 plot(this.plotData.xGlobal,yGlobal(i,:),'-.k')
                 hold on
                 k = 1;
@@ -269,7 +281,7 @@ classdef Solver < matlab.mixin.SetGet
                 ylim(this.plotData.ylims(i,:))
                 if i == 1
                     title({...
-                        class(mesh.physics),...
+                        class(this.physics),...
                         this.plotData.space,...
                         strcat(this.plotData.time,aux)...
                         });

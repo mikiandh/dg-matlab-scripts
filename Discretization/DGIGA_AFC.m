@@ -18,13 +18,13 @@ classdef DGIGA_AFC < Bspline
         end
         %% DGIGA-AFC operator (low-order predictor)
         function computeResiduals(this,element,physics)
-            element.computeFluxesFromStates(physics);
+            element.computeFluxesFromStates(physics)
             element.residuals = ...
                 element.fluxes*this.gradientMatrix...
                 - element.riemannR.*this.right'...
                 - element.riemannL.*this.left';
             this.diffuseResiduals(element,physics)
-            element.residuals = 2/element.dx*element.residuals/this.lumpedMassMatrixDiagonal;
+            element.residuals = 2/element.dx*element.residuals./this.lumpedMassMatrixDiagonal;
         end
         %% Low-order predictor residuals
         function diffuseResiduals(this,element,physics)
