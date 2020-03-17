@@ -26,24 +26,6 @@ classdef DGIGA_AFC < Bspline
             this.diffuseResiduals(element,physics)
             element.residuals = 2/element.dx*element.residuals./this.lumpedMassMatrixDiagonal;
         end
-        %% Low-order predictor residuals
-        function diffuseResiduals(this,element,physics)
-            % Applies AFC diffusion to the residual matrix, a la Möller &
-            % Jaeschke, 2018 (eq. 16). Saves the diffusion block matrix
-            % into the given element as a cell array.
-            %
-            % Precompute the "gradient differences" (Kuzmin et al. 2012, eq. 27):
-            eAbs = .5*abs(element.basis.gradientMatrix - element.basis.gradientMatrix');
-            % Loop over edges:
-            for edge = element.basis.edges
-                % Aliases:
-                r = edge(1); j = edge(2);
-                % Compute a diffusion matrix block:
-                element.diffusions{r,j} = eAbs(r,j)*this.diffusionFun(element.states(:,r),element.states(:,j),physics);
-                % Accumulate diffusion into the residuals:
-                element.residuals(:,r) = element.residuals(:,r) + element.diffusions{r,j}*(element.states(:,j) - element.states(:,r));
-            end
-        end
         %% L2 projection (lumped or constrained)
         function project(this,element,fun0)
             % Lumped projection of a function into a finite-dimensional
@@ -64,6 +46,26 @@ classdef DGIGA_AFC < Bspline
             element.diffusions(rj) = {sparse(I,I)};
             % Preallocate antidiffusive fluxes:
             element.antidiffusiveFluxes = spalloc(I,N^2,I*length(rj));
+        end
+    end
+    methods (Access = protected)
+        %% Low-order predictor residuals
+        function diffuseResiduals(this,element,physics)
+            % Applies AFC diffusion to the residual matrix, a la Möller &
+            % Jaeschke, 2018 (eq. 16). Saves the diffusion block matrix
+            % into the given element as a cell array.
+            %
+            % Precompute the "gradient differences" (Kuzmin et al. 2012, eq. 27):
+            eAbs = .5*abs(element.basis.gradientMatrix - element.basis.gradientMatrix');
+            % Loop over edges:
+            for edge = element.basis.edges
+                % Aliases:
+                r = edge(1); j = edge(2);
+                % Compute a diffusion matrix block:
+                element.diffusions{r,j} = eAbs(r,j)*this.diffusionFun(element.states(:,r),element.states(:,j),physics);
+                % Accumulate diffusion into the residuals:
+                element.residuals(:,r) = element.residuals(:,r) + element.diffusions{r,j}*(element.states(:,j) - element.states(:,r));
+            end
         end
     end
     methods (Static)

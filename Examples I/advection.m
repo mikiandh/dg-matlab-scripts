@@ -15,7 +15,7 @@ addpath('../Grid')
 addpath('../Math')
 
 %% Parameters
-Ne = 1; % number of elements
+Ne = 10; % number of elements
 p = 2; % degree of the approximation space (per element)
 L = [-1 1]; % domain edges
 tEnd = 0; % final simulation time
@@ -46,11 +46,11 @@ IC_p3d3 = @(x) (x+x.^2+x.^3).*(1 - heaviside(x)) + (x+x.^2+2*x.^3).*(heaviside(x
 IC_p3d4 = @(x) (x+x.^2+x.^3);
 
 %% Physics
-FUN = IC_gauss; % initial condition
+FUN = IC_combined; % initial condition
 eqn = Advection(1,[]); % PDE + BCs
 
 %% Discretization
-method = DGIGA_AFC(50);
+method = DGIGA_AFC(10);
 
 %% Grid
 xEdge = linspace(L(1),L(2),Ne+1); % element end-points
@@ -59,7 +59,7 @@ mesh = Mesh(xEdge,p,method);
 %% Solver
 solver = SSP_RK3(0,tEnd,eqn,...
     'courantNumber',CFL,'timeDelta',dt,...
-    'limiter',AFC,...
+    'limiter',AFC_2010('Sensor',APTVD),...
     'exact',@(t,x) FUN(x),'replotIters',iterSkip);
 
 %% Initial condition

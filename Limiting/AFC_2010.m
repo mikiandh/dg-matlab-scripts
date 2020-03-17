@@ -1,75 +1,52 @@
-classdef AFC < Limiter
+classdef AFC_2010 < Limiter
     % Sub-cell a priori limiting for DG bases that satisfy the "partition 
     % of unity" requirement (e.g. Bspline). AFC approach to linearized FCT,
-    % a la Kuzmin et al., 2010. Includes prelimiting. Applied to control 
-    % variables. Full inter-patch coupling.
+    % a la Kuzmin et al., 2010. Includes prelimiting and failsafe. Applied
+    % to control variables. Full inter-patch coupling.
     %
     properties (Access = protected)
         % Synchronizing functions:
-        syncStatesFun = @AFC.sync_skip
-        syncFluxesFun = @AFC.sync_skip
-        invSyncStatesFun = @AFC.sync_skip
-        invSyncFluxesFun = @AFC.sync_skip
+        syncStatesFun = @AFC_2010.sync_skip
+        syncFluxesFun = @AFC_2010.sync_skip
+        invSyncStatesFun = @AFC_2010.sync_skip
+        invSyncFluxesFun = @AFC_2010.sync_skip
     end
     methods
         %% Constructor
-        function this = AFC(varargin)
+        function this = AFC_2010(varargin)
             % Superclass constructor:
             this = this@Limiter(varargin{:});
-            % Euler sync functions:
-            if isa(this.physics,'Euler')
-                this.syncStatesFun = @AFC.syncStates_euler;
-                this.syncFluxesFun = @AFC.syncFluxes_euler;
-                this.invSyncStatesFun = @AFC.invSyncStates_euler;
-                this.invSyncFluxesFun = @AFC.invSyncFluxes_euler;
-            end
         end
-        %% Apply (extension)
-        function apply(this,mesh,solver,isInitial)
-            % Employs AFC-based FCT a priori limiting a la Kuzmin et al.,
-            % 2010 on a "quasi-nodal" DGIGA discretization. Interpatch
-            % coupling is made via "stitching" of basis function supports
-            % across breakpoints.
+        %% Apply (each stage, override)
+        function applyStage(~,varargin)
+            % Intentionally does nothing.
+        end
+        %% Apply (full time-step, override)
+        function applyStep(this,mesh,solver)
+            % Corrects a low-order predictor (assumes AFC-supported basis
+            % has been used in each mesh element).
             %
-            % Assumes that the mesh contains the low order solution at the
-            % next time-step ("transported and diffused"). It then 
-            % reconstructs a limited high order solution (which is LED) via
-            % an AFC-based, sequential, synchronized FCT procedure applied
-            % to the antidiffusive flux components associated to each
-            % combination of two control points. Additionally, a failsafe
-            % check is carried out.
+            mesh.computeResiduals(this.physics) % extra residual evaluation (linearized high-order predictor)
+            this.computeAntidiffusiveFluxes(mesh.elements,solver.timeDelta)
+            this.applyAFC(mesh,solver) % linearised AFC
+        end
+        %% Apply (initialization, override)
+        function applyInitial(this,mesh,solver)
+            % Corrects a lumped (low-order) projection to make it 
+            % constrained (high resolution). Same as step-wise (see above).
             %
-            % Apply on each time-step (not stage):
-            if solver.stageNow < solver.stageCount
-                return
+            % Physics:
+            this.physics = solver.physics;
+            % Sync functions:
+            if isa(this.physics,'Euler')
+                this.syncStatesFun = @AFC_2010.syncStates_euler;
+                this.syncFluxesFun = @AFC_2010.syncFluxes_euler;
+                this.invSyncStatesFun = @AFC_2010.invSyncStates_euler;
+                this.invSyncFluxesFun = @AFC_2010.invSyncFluxes_euler;
             end
-            % Default limiting:
-            apply@Limiter(this,mesh,solver,isInitial)
-            % Activate in edge elements:
-            set(mesh.elements([1 end]),'isTroubled',true) %%% better boundary treatment! %%%
-            % Retrieve time-step size:
-            if isInitial
-                timeDelta = 1;
-            else
-                timeDelta = solver.timeDelta;
-            end
-            % Extra residual evaluation (future predictor estimate):
-            mesh.computeResiduals(this.physics)
-            % Retrieve troubled elements:
-            elements = mesh.elements([mesh.elements.isTroubled]);
-            % Set some AFC quantities:
-            for element = elements
-                % Compute antidiffusive fluxes (conservative variables):
-                this.computeAntidiffusiveFluxes(element,timeDelta)
-                % Prelimit them:
-                this.applyPrelimiting(element)
-            end
-            % Convert to control variables and determine local extrema:
-            this.findExtrema(mesh)
-            % FCT limiting (in control variables):
-            this.applySynchronizedFCT(elements)
-            % Failsafe limiting (in control variables):
-            this.applyFailsafe(elements)
+            % Constrained initialization:
+            this.computeAntidiffusiveFluxes(mesh.elements,1)
+            this.applyAFC(mesh,solver)
         end
     end
     methods (Static)
@@ -80,24 +57,26 @@ classdef AFC < Limiter
     end
     methods (Static, Access = protected)
         %% Compute antidiffusive fluxes
-        function computeAntidiffusiveFluxes(element,timeDelta)
-            % Function that evaluates the antidiffusive fluxes of a given
-            % element. They are stored as a sparse 2D array with each 
-            % column being associated to a control point pair. All
-            % non-edge pairs are padded with zeros.
+        function computeAntidiffusiveFluxes(elements,timeDelta)
+            % Function that evaluates the antidiffusive fluxes of an array
+            % of elements. They are stored as a sparse 2D array with each 
+            % column being associated to a control point pair. All non-edge
+            % pairs are padded with zeros.
             %
             % These fluxes are normalized by the jacobian of the mapping to
             % reference element space; this means that they are to be
             % divided by the lumped mass matrix IN REFERENCE SPACE.
             %
-            for edge = element.basis.edges
-                r = edge(1);
-                j = edge(2);
-                rj = edge(3);
-                element.antidiffusiveFluxes(:,rj) = timeDelta*(...
-                    element.basis.massMatrix(r,j).*(element.residuals(:,r) - element.residuals(:,j)) +...
-                    2/element.dx*element.diffusions{r,j}*(element.states(:,r) - element.states(:,j))...
-                    );
+            for element = elements
+                for edge = element.basis.edges
+                    r = edge(1);
+                    j = edge(2);
+                    rj = edge(3);
+                    element.antidiffusiveFluxes(:,rj) = timeDelta*(...
+                        element.basis.massMatrix(r,j).*(element.residuals(:,r) - element.residuals(:,j)) +...
+                        2/element.dx*element.diffusions{r,j}*(element.states(:,r) - element.states(:,j))...
+                        );
+                end
             end
         end
         %% Zalesak's algorithm (vectorized)
@@ -219,18 +198,68 @@ classdef AFC < Limiter
         end
     end
     methods (Access = protected)
+        %% Apply (AFC)
+        function applyAFC(this,mesh,solver)
+            % Employs AFC a priori limiting a la Kuzmin et al., 2010 on a
+            % "quasi-nodal" DGIGA discretization. Interpatch coupling is 
+            % made via "stitching" of basis function supports across 
+            % breakpoints.
+            %
+            % Assumes that the mesh contains the low-order predictor at the
+            % next time-step ("transported and diffused") as well as some 
+            % antidiffusive fluxes to constrain. It then reconstructs a 
+            % limited high order solution (which is LED) via an AFC-based,
+            % sequential, synchronized, linearized FCT procedure applied
+            % to the antidiffusive flux components associated to each
+            % combination of two control points. Additionally, a failsafe
+            % check is carried out afterwards.
+            %
+            % Apply sensor to (linearized) high-order solutions:
+            this.applySensor(mesh,solver)
+            % Retrieve troubled elements:
+            elements = mesh.elements([mesh.elements.isTroubled]);
+            % Prelimiting (in conserved variables):
+            this.applyPrelimiting(elements)
+            % Determine local extrema (in control variables):
+            this.findExtrema(mesh)
+            % FCT limiting (in control variables):
+            this.applySynchronizedFCT(elements)
+            % Failsafe limiting (in control variables):
+            this.applyFailsafe(elements,1)
+        end
+        %% Apply sensor
+        function applySensor(this,mesh,solver)
+            % The predictor-corrector nature of AFC makes it necessary to 
+            % apply the sensor as follows. It is assumed that antidiffusive
+            % fluxes and low-order predictors exist in each element of the
+            % given mesh.
+            %
+            % Apply raw antidiffusive fluxes to each element:
+            for element = mesh.elements
+                element.applyAntidiffusiveFluxes;
+                element.isLimited = true(size(element.states)); % linearized AFC will always "pollute" any high-order solution
+            end
+            % Detect troubled cells in the linearised high-order solution:
+            this.sensor.apply(mesh,solver)
+            % Recover low-order predictors of troubled patches:
+            for element = mesh.elements([mesh.elements.isTroubled])
+                element.removeAntidiffusiveFluxes(1);
+            end
+        end
         %% Prelimiting, conservative variables
-        function applyPrelimiting(this,element)
+        function applyPrelimiting(this,elements)
             % Prelimiting (a la Kuzmin 2012, eq. 79). Applied to
             % antidiffusive fluxes of conservative variables.
             %
-            N = element.basis.basisCount;
-            M = N^2;
-            % Loop over PDE components:
-            for i = this.physics.equationCount
-                fluxes = reshape(element.antidiffusiveFluxes(i,:),N,N);
-                fluxes(fluxes.*(element.states(i,:) - element.states(i,:)') > 0) = 0;
-                element.antidiffusiveFluxes(i,:) = reshape(fluxes,1,M);
+            for element = elements
+                N = element.basis.basisCount;
+                M = N^2;
+                % Loop over PDE components:
+                for i = this.physics.equationCount
+                    fluxes = reshape(element.antidiffusiveFluxes(i,:),N,N);
+                    fluxes(fluxes.*(element.states(i,:) - element.states(i,:)') > 0) = 0;
+                    element.antidiffusiveFluxes(i,:) = reshape(fluxes,1,M);
+                end
             end
         end
         %% Deduce local extrema (full support across patch boundaries)
@@ -294,12 +323,13 @@ classdef AFC < Limiter
             for element = mesh.elements(~mask)
                 this.invSyncStatesFun(element)
             end
-            % Override extrema of control points closest to mesh boundaries
-            % (Kuzmin et al, 2012; remark 5, pp. 163, bottom):
-            mesh.elements(1).maxima(:,1) = inf;
-            mesh.elements(1).minima(:,1) = -inf;
-            mesh.elements(end).maxima(:,end) = inf;
-            mesh.elements(end).minima(:,end) = -inf;
+%%% These elements are never troubled anyway (BC limitations) %%%%%%%%%%%%%
+%             % Override extrema of control points closest to mesh boundaries
+%             % (Kuzmin et al, 2012; remark 5, pp. 163, bottom):
+%             mesh.elements(1).maxima(:,1) = inf;
+%             mesh.elements(1).minima(:,1) = -inf;
+%             mesh.elements(end).maxima(:,end) = inf;
+%             mesh.elements(end).minima(:,end) = -inf;
         end
         %% Linearized FCT, synchronized
         function applySynchronizedFCT(this,elements)
@@ -323,7 +353,7 @@ classdef AFC < Limiter
                     % Convert antidiffusive fluxes to control variables:
                     this.syncFluxesFun(element)
                     % Zalesak's scalar algorithm (single control variable):
-                    alphas = AFC.zalesak(...
+                    alphas = AFC_2010.zalesak(...
                         element.basis.lumpedMassMatrixDiagonal,...
                         element.antidiffusiveFluxes(i,:),...
                         element.states(i,:),...
@@ -333,6 +363,7 @@ classdef AFC < Limiter
                     this.invSyncFluxesFun(element)
                     % Limit conservative antidiffusive fluxes:
                     element.antidiffusiveFluxes = alphas.*element.antidiffusiveFluxes;
+                    %%%element.isLimited(i,:) = any(reshape(alphas,element.dofCount,element.dofCount) ~= 1,1);
                 end
             end
             % Finalize:
@@ -354,9 +385,6 @@ classdef AFC < Limiter
             % the mesh contains the corrected solution states 
             % (conservative variables).
             %
-            if nargin < 3
-                M = 1; % default: single stage
-            end
             % Loop over elements:
             for element = elements
                 % Precompute some stuff:

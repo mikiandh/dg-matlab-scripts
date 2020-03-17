@@ -20,9 +20,9 @@ classdef TVB < Limiter
             this.M = p.Results.M;
         end
         %% Apply (extension)
-        function apply(this,mesh,solver,isInitial)
+        function applyStage(this,mesh,solver)
             % Default limiting:
-            apply@Limiter(this,mesh,solver,isInitial);
+            applyStage@Limiter(this,mesh,solver);
             % Retrieve troubled elements:
             elements = mesh.elements([mesh.elements.isTroubled]);
             % Apply on every remaining element:

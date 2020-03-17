@@ -8,7 +8,7 @@ classdef KXRCF < Sensor
     %
     methods
         %% Sensor
-        function apply(this,mesh,~,~)
+        function apply(this,mesh,solver)
             % Apply default sensor first:
             apply@Sensor(this,mesh);
             % Evaluate state at all edges:
@@ -25,7 +25,7 @@ classdef KXRCF < Sensor
                 qRR = element.edgeR.elementR.stateL; % left edge of element k+1
                 % Test left edge:
                 try
-                    [D,L] = mesh.physics.getEigensystemAt(qLL,qL);
+                    [D,L] = solver.physics.getEigensystemAt(qLL,qL);
                 catch
                     continue
                 end
@@ -35,7 +35,7 @@ classdef KXRCF < Sensor
                 end
                 % Test right edge:
                 try
-                    [D,L] = mesh.physics.getEigensystemAt(qR,qRR);
+                    [D,L] = solver.physics.getEigensystemAt(qR,qRR);
                 catch
                     continue
                 end

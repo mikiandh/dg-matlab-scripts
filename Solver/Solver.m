@@ -19,9 +19,9 @@ classdef Solver < matlab.mixin.SetGet
         replotIters
         iterationCount
         wallClockTime
-        stageNow
     end
     properties (Access = protected)
+        stageNow
         exact = @(t,x) nan
         plotData
     end
@@ -83,7 +83,7 @@ classdef Solver < matlab.mixin.SetGet
             for element = mesh.elements
                 element.basis.(p.Results.type)(element,p.Results.initial)
             end
-            p.Results.limiter.apply(mesh,this,true);
+            p.Results.limiter.applyInitial(mesh,this);
             % Initialize residuals:
             mesh.computeResiduals(this.physics);
             % Initialize time-step size:
@@ -155,9 +155,9 @@ classdef Solver < matlab.mixin.SetGet
                 STOP = true;
             end
             % Advance one time-step:
-            this.stageNow = 0;
+            this.stageNow = 0; % reset stage counter
             while this.stageNow < this.stageCount
-                % Update stage counter:
+                % Advance stage counter:
                 this.stageNow = this.stageNow + 1;
                 % Evaluate solution residuals:
                 mesh.computeResiduals(this.physics);
@@ -165,9 +165,11 @@ classdef Solver < matlab.mixin.SetGet
                 for element = mesh.elements
                     this.applyStage(element);
                 end
-                % Apply limiter:
-                this.limiter.apply(mesh,this,false);
+                % Apply limiter after each stage:
+                this.limiter.applyStage(mesh,this);
             end
+            % Apply limiter after a full time step (one additional time):
+            this.limiter.applyStep(mesh,this);
             % Plot solution:
             if STOP || ~mod(this.iterationCount,this.replotIters)
                 this.wallClockTime = toc;

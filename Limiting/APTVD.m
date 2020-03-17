@@ -7,7 +7,7 @@ classdef APTVD < Sensor
     %
     methods
         %% Sensor
-        function apply(this,mesh,~,~)
+        function apply(this,mesh,~)
             % Apply default sensor first:
             apply@Sensor(this,mesh);
             % Mark all cells containing one or more local extrema:
@@ -22,7 +22,7 @@ classdef APTVD < Sensor
                 element.isTroubled = any(any(samples > 1.001*max(avgs,[],2) | samples < 0.999*min(avgs,[],2)));
             end
             % Unmark p > 1 cells if their extrema are smooth:
-            for element = [mesh.elements.isTroubled] & [mesh.elements.dofCount] > 2
+            for element = mesh.elements([mesh.elements.isTroubled] & [mesh.elements.dofCount] > 2)
                 % Aliases:
                 elementL = element.edgeL.elementL;
                 elementR = element.edgeR.elementR;

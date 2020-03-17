@@ -11,7 +11,7 @@ classdef Sensor < handle
     end
     methods
         %% Apply (default)
-        function apply(~,mesh,~,~)
+        function apply(~,mesh,~)
             % Method that sets the "isTroubled" property of certain
             % elements in a given mesh to true. Any limiter will only act
             % on elements that trigger its sensor - i.e. for which this
