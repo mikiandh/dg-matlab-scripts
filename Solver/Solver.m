@@ -14,7 +14,6 @@ classdef Solver < matlab.mixin.SetGet
         courantNumber
         timeDelta
         limiter
-        sensor
         isTimeDeltaFixed
         replotIters
         iterationCount
@@ -22,7 +21,7 @@ classdef Solver < matlab.mixin.SetGet
     end
     properties (Access = protected)
         stageNow
-        exact = @(t,x) nan
+        exactSolution = @(t,x) nan
         plotData
     end
     methods (Abstract)
@@ -35,7 +34,6 @@ classdef Solver < matlab.mixin.SetGet
             if nargin > 0
                 % Initialize an input parser:
                 p = inputParser;
-                p.KeepUnmatched = true;
                 % Required arguments:
                 addRequired(p,'timeNow',@(x)validateattributes(x,{'numeric'},{'scalar','nonnegative'}))
                 addRequired(p,'timeStop',@(x)validateattributes(x,{'numeric'},{'scalar','>=',timeNow}))
@@ -44,7 +42,7 @@ classdef Solver < matlab.mixin.SetGet
                 addParameter(p,'courantNumber',1,@(x)validateattributes(x,{'numeric'},{'scalar','nonnegative','nonempty'}))
                 addParameter(p,'timeDelta',nan,@(x)validateattributes(x,{'numeric'},{'scalar','nonnegative'}))
                 addParameter(p,'limiter',Limiter,@(x)validateattributes(x,{'Limiter'},{}))
-                addParameter(p,'exact',@(t,x) nan,@(x)validateattributes(x,{'function_handle'},{}))
+                addParameter(p,'exactSolution',@(t,x) nan,@(x)validateattributes(x,{'function_handle'},{}))
                 addParameter(p,'replotIters',0,@(x)validateattributes(x,{'numeric'},{'scalar','nonnegative','nonnan'}))
                 % Parse the inputs:
                 parse(p,timeNow,timeStop,physics,varargin{:})
@@ -67,10 +65,9 @@ classdef Solver < matlab.mixin.SetGet
             % Initialize an input parser:
             p = inputParser;
             % Optional arguments:
-            addParameter(p,'type','project',@(x)validateattributes(x,{'char'},{}))
+            addParameter(p,'method','project',@(x)validateattributes(x,{'char'},{}))
             addParameter(p,'limiter',this.limiter,@(x)validateattributes(x,{'Limiter'},{}))
-            addParameter(p,'sensor',this.sensor,@(x)validateattributes(x,{'Sensor'},{}))
-            addParameter(p,'initial',@(x) this.exact(this.timeNow,x),@(x)validateattributes(x,{'function_handle'},{}))
+            addParameter(p,'initialCondition',@(x) this.exactSolution(this.timeNow,x),@(x)validateattributes(x,{'function_handle'},{}))
             % Parse the inputs:
             parse(p,varargin{:})
             % Initialize some monitoring stuff:
@@ -81,7 +78,7 @@ classdef Solver < matlab.mixin.SetGet
             %%% TO BE DONE %%%
             % Initialize solution:
             for element = mesh.elements
-                element.basis.(p.Results.type)(element,p.Results.initial)
+                element.basis.(p.Results.method)(element,p.Results.initialCondition)
             end
             p.Results.limiter.applyInitial(mesh,this);
             % Initialize residuals:
@@ -244,7 +241,7 @@ classdef Solver < matlab.mixin.SetGet
             end
             aux = sprintf('; t = %.4g, %s, iter = %d, WCT = %.2f s',this.timeNow,aux,this.iterationCount,this.wallClockTime);
             figure(this.plotData.fig)
-            yGlobal = this.exact(this.timeNow,this.plotData.xGlobal);
+            yGlobal = this.exactSolution(this.timeNow,this.plotData.xGlobal);
             for i = 1:this.physics.equationCount
                 subplot(this.physics.equationCount,1,i)
                 plot(this.plotData.xGlobal,yGlobal(i,:),'-.k')

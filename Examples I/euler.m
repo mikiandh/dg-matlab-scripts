@@ -14,51 +14,32 @@ addpath('../Solver')
 addpath('../Grid')
 addpath('../Math')
 
-%% Parameters
-Ne = 99; % number of elements
-p = 2; % degree of the approximation space (per element)
-L = [0 1]; % domain edges
-tEnd = 0.125; % final simulation time
-dt = [];
-CFL = .1; % Courant number
-iterSkip = 100;
+%% Discretization (equation + solution + domain)
+xEdge = linspace(0,1,49+1); % element end-points
+mesh = Mesh(xEdge,2,DG);
 
-%% Physics
-eqn = Euler('transmissive');
-
-%% Discretization
-method = DG;
-
-%% Limiter
-limiter = Limiter.get('Kriv','Sensor',KXRCF);
-
-%% Grid
-mesh = Mesh(linspace(L(1),L(2),Ne+1),p,method,eqn);
-%mesh = Mesh(cosspace(L(1),L(2),Ne+1,2),p,method);
-%mesh = Mesh([L(1) .05 .95 L(2)],p,method);
-
-%% Initial condition/exact solution
+%% Solver
 FUN = @toro2;
-
-%% Initial condition projection
 FUN0 = @(x) FUN(0,x);
-method.project(mesh,limiter,FUN0);
+solver = SSP_RK3(0,.125,Euler('transmissive'),...
+    'courantNumber',.1,...
+    'limiter',TVB('sensor',KXRCF),...
+    'exactSolution',FUN,'replotIters',1);
+
+%% Initial condition
+solver.initialize(mesh)
+norms0 = [mesh.getSolutionMass(1:3),mesh.getErrorNorm(FUN0,2,1:3)];
 
 %% Time-integration
-solver = SSP_RK3(0,tEnd,CFL,dt,limiter);
-% norms0 = mesh.getSolutionMass(1:3);
-norms0 = [mesh.getSolutionMass(1:3),mesh.getErrorNorm(FUN0,2,1:3)];
-tic
-solver.launch(mesh,iterSkip,FUN);
-disp(['   ...done. (' num2str(toc) ' s)'])
+solver.launch(mesh);
 
 %% Postprocessing
 % norms = mesh.getSolutionMass(1:3);
 % rows = {'Solution (mass)'};
-norms = [mesh.getSolutionMass(1:3),mesh.getErrorNorm(FUN0,2,1:3)];
+norms = [mesh.getSolutionMass(1:3),mesh.getErrorNorm(@(x) FUN(solver.timeNow,x),2,1:3)];
 rows = {'Solution (mass)','Error (L2)'};
 cols = {'Norm','Start','End','Increase'};
-eqn.displayData(rows,cols,norms0,norms,norms-norms0)
+solver.physics.displayData(rows,cols,norms0,norms,norms-norms0)
 
 %% Exact solutions and/or initial conditions
 % Simple density jump:

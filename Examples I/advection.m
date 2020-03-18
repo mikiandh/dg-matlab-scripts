@@ -15,13 +15,7 @@ addpath('../Grid')
 addpath('../Math')
 
 %% Parameters
-Ne = 10; % number of elements
-p = 2; % degree of the approximation space (per element)
 L = [-1 1]; % domain edges
-tEnd = 0; % final simulation time
-dt = nan; % time-step size (overrides CFL)
-CFL = .01; % Courant number
-iterSkip = 1;
 
 %% Initial condition collection
 IC_linear = @(x) x;
@@ -45,34 +39,23 @@ IC_p3d2 = @(x) (x+x.^2+x.^3).*(1 - heaviside(x)) + (x+2*x.^2+x.^3).*(heaviside(x
 IC_p3d3 = @(x) (x+x.^2+x.^3).*(1 - heaviside(x)) + (x+x.^2+2*x.^3).*(heaviside(x));
 IC_p3d4 = @(x) (x+x.^2+x.^3);
 
-%% Physics
-FUN = IC_combined; % initial condition
-eqn = Advection(1,[]); % PDE + BCs
-
-%% Discretization
-method = DGIGA_AFC(10);
-
-%% Grid
-xEdge = linspace(L(1),L(2),Ne+1); % element end-points
-mesh = Mesh(xEdge,p,method);
+%% Discretization (equation + solution + domain)
+xEdge = linspace(L(1),L(2),10+1); % element end-points
+mesh = Mesh(xEdge,2,DGIGA_AFC(10));
 
 %% Solver
-solver = SSP_RK3(0,tEnd,eqn,...
-    'courantNumber',CFL,'timeDelta',dt,...
+solver = SSP_RK3(0,0,Advection(1,[]),...
+    'courantNumber',.01,...
     'limiter',AFC_2010('Sensor',APTVD),...
-    'exact',@(t,x) FUN(x),'replotIters',iterSkip);
+    'exactSolution',@(t,x) IC_combined(x),'replotIters',1);
 
 %% Initial condition
-tic
 solver.initialize(mesh)
-fprintf(1,'All set... (%g s)\n',toc)
 % norms0 = [mesh.getSolutionMass,mesh.getSolutionNorm(1),mesh.getSolutionNorm,mesh.getTotalVariation,mesh.getErrorNorm(FUN)];
 norms0 = mesh.getSolutionMass;
 
 %% Time-integration
-tic
 solver.launch(mesh);
-fprintf(1,'...done. (%g s)\n',toc)
 
 %% Postprocessing
 % norms = [mesh.getSolutionMass,mesh.getSolutionNorm(1),mesh.getSolutionNorm,mesh.getTotalVariation,mesh.getErrorNorm(FUN)];
@@ -80,4 +63,4 @@ fprintf(1,'...done. (%g s)\n',toc)
 norms = mesh.getSolutionMass;
 rows = {'Solution (mass)'};
 cols = {'Norm','Start','End','Increase'};
-eqn.displayData(rows,cols,norms0,norms,norms-norms0)
+solver.physics.displayData(rows,cols,norms0,norms,norms-norms0)
