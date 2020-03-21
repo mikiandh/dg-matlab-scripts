@@ -47,6 +47,16 @@ classdef Mesh < handle
                     };
             end
         end
+        %% Discretization summary
+        function info = getInfo(this)
+            % Provides concise information about the discretization of the
+            % domain and the solution space (in one line).
+            info = this.bases(1).getName;
+            if numel(this.bases) > 1
+                info = sprintf('%s... (%d more), p \\in [%d,%d]',info,numel(this.bases)-1,this.minDegree,this.maxDegree);
+            end
+            info = sprintf('%s; N_\\Omega = %d, N = %d',info,this.elementCount,this.dofCount);
+        end
         %% Compute mesh residuals
         function computeResiduals(this,physics)
             % Updates the residuals of all cells in a mesh, using the
@@ -160,7 +170,7 @@ classdef Mesh < handle
             end
             varargout = num2cell(varargout,[1 2]);
         end
-        %% Retrieve element centroid locations
+        %% Retrieve element centroid locations globally
         function x = getElementLocations(this)
             % Preallocate, then fill:
             x = zeros(1,this.elementCount);
@@ -168,6 +178,28 @@ classdef Mesh < handle
             for element = this.elements
                 n = n + 1;
                 x(n) = 0.5*(element.xL + element.xR);
+            end
+        end
+        %% Retrieve breakpoint locations globally
+        function x = getBreakLocations(this,makeUnique)
+            % Remove duplicated element edge breakpoints?
+            if nargin > 1 && makeUnique
+                l = 0; % yes
+            else
+                l = 1; % no (default)
+            end
+            N = 1;
+            % Count the total number of breakpoints:
+            for element = this.elements
+                N = N + length(element.basis.breakCoords) - 1;
+            end
+            % Preallocate, then fill:
+            x = zeros(1,N);
+            n = 1;
+            for element = this.elements
+                m = n + length(element.basis.breakCoords) - 1;
+                x(n:m) = element.getBreakCoords;
+                n = m + l;
             end
         end
         %% Retrieve nodal locations globally

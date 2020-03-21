@@ -45,6 +45,14 @@ classdef FR < Lagrange
                 (element.riemannR - element.fluxR)*this.correctionsR;
             element.residuals = -2/element.dx*element.residuals;
         end
+        %% Oneliner info (extension)
+        function name = getName(this)
+            % Adds the VCJH correction function parameter to this basis's
+            % one line descriptor.
+            name = getName@Lagrange(this);
+            aux = sprintf('%s(%s)',class(this),num2str(this.param));
+            name = strrep(name,class(this),aux);
+        end
     end
     methods (Static)
         %% Right VCJH function

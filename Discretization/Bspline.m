@@ -282,6 +282,21 @@ classdef Bspline < Basis
             %
             element.states = fun0(element.getControlCoords);
         end
+        %% Oneliner info (extension)
+        function name = getName(this)
+            % Appends number of breakspans and smoothness class to this
+            % basis's one line descriptor.
+            name = getName@Basis(this);
+            varkappa = this.smoothness;
+            if isnan(varkappa) || isinf(varkappa)
+                varkappa = this.degree - 1;
+            end
+            if isempty(varkappa)
+                name = sprintf('%s, N_\\Sigma = %d',name,this.nonzeroSpanCount);
+            else
+                name = sprintf('%s, N_\\Sigma = %d, C^{%d}',name,this.nonzeroSpanCount,varkappa);
+            end
+        end
     end
     methods (Static)
         %% Re-scale knot vector

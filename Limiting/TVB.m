@@ -30,9 +30,10 @@ classdef TVB < Limiter
                 this.applyOnElement(element);
             end
         end
-        %% Information
+        %% Information (extension)
         function info = getInfo(this)
-            info = sprintf('TVB, M = %g',this.M);
+            info = getInfo@Limiter(this);
+            info = sprintf('%s, M = %g',info,this.M);
         end
     end
     methods (Access = protected)

@@ -61,35 +61,44 @@ classdef Limiter < handle
             this.applyStage(mesh,solver);
         end
         %% Information
-        function info = getInfo(~)
-            info = 'no limiting';
+        function info = getInfo(this)
+            info = sprintf('%s + %s',class(this.sensor),class(this));
+            info = strrep(info,'Sensor','no sensor');
+            info = strrep(info,'Limiter','no limiter');
         end
         %% Record status
         function takeSnapshot(this,mesh)
             % Stores the limiter activation status from a mesh and adds it
             % to the cell array of stored "limiter snapshots". Only stores
-            % the 1st system component.
+            % the 1st system component. Also calls its sensor's analogue.
             %
             aux = {mesh.elements.isLimited};
             aux = cellfun(@(x) sum(x(1,:),2),aux,'UniformOutput',false);
             this.snapshots = [this.snapshots aux'];
+            this.sensor.takeSnapshot(mesh);
         end
         %% Display history
         function viewTimeline(this)
-            % Visualizes, in a 3D bar chart, every snapshot of the limiter
-            % at once. Quick and dirty.
+            % Visualizes, in a 3D bar chart, every snapshot of this limiter
+            % and its sensor at once. Quick and dirty.
             %
+            subplot(2,1,1)
             b = bar3(cell2mat(this.snapshots')');
-            colorbar
             for k = 1:length(b)
                 zdata = b(k).ZData;
                 b(k).CData = zdata;
                 b(k).FaceColor = 'interp';
             end
-            xlabel('Time level')
+            xlabel('Iteration')
+            set(gca,'XTickLabel',xticks-1)
             ylabel('Cell index')
             zlabel('Number of limited modes')
             view(-90,90)
+            colormap(distinguishable_colors(max(zlim),{'w','k'}))
+            title('Limiter')
+            subplot(2,1,2)
+            this.sensor.viewTimeline
+            title('Sensor')
         end
     end
     methods (Static)

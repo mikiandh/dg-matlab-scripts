@@ -32,19 +32,19 @@ classdef Sensor < handle
         end
         %% Display history
         function viewTimeline(this)
-            % Visualizes, in a 3D bar chart, every snapshot of the sensor
+            % Visualizes, in a 3D bar chart, every snapshot of this sensor
             % at once. Quick and dirty.
             %
             b = bar3(cell2mat(this.snapshots')');
-            colorbar
             for k = 1:length(b)
                 zdata = b(k).ZData;
                 b(k).CData = zdata;
                 b(k).FaceColor = 'interp';
             end
-            xlabel('Time level')
+            xlabel('Iteration')
+            set(gca,'XTickLabel',xticks-1)
             ylabel('Cell index')
-            zlabel('Is troubled?')
+            zlabel('Cell is troubled')
             view(-90,90)
         end
     end

@@ -1,4 +1,4 @@
-%clc
+clc
 clear
 %close all
 %path(pathdef)
@@ -15,16 +15,19 @@ addpath('../Grid')
 addpath('../Math')
 
 %% Discretization (equation + solution + domain)
-xEdge = linspace(0,1,49+1); % element end-points
+xEdge = linspace(-5,5,99+1); % element end-points
+%%%mesh = Mesh(xEdge,randi([1 4],size(xEdge)-[0 1]),DG);
 mesh = Mesh(xEdge,2,DG);
 
 %% Solver
-FUN = @toro2;
+FUN = @shuOsher;
 FUN0 = @(x) FUN(0,x);
-solver = SSP_RK3(0,.125,Euler('transmissive'),...
-    'courantNumber',.1,...
-    'limiter',TVB('sensor',KXRCF),...
-    'exactSolution',FUN,'replotIters',1);
+solver = SSP_RK3(0,1.8,Euler('transmissive'),...
+    'limiter',TVB,...
+    'exactSolution',FUN,'iterSkip',100,...
+    'showSensor',true,'showLimiter',true,...
+    'norms',Norm("Mass"),...
+    'courantNumber',.1);
 
 %% Initial condition
 solver.initialize(mesh)

@@ -47,6 +47,7 @@ classdef Basis < matlab.mixin.SetGet
             % Re-arrange and solve:
             element.states = reshape(rhs,I,N)/this.massMatrix;
         end
+        %% DOF sparsity graph
         function computeSparsityGraph(this)
             % Fills the properties related to the sparsity graph of the
             % discretization (i.e. nonzero entries in the mass matrix).
@@ -57,11 +58,18 @@ classdef Basis < matlab.mixin.SetGet
             this.edges = this.pairs(:,r~=j);
             %%% this.edges = [this.edges; 1:size(this.edges,2)];
         end
+        %% Quadrature coordinates
         function x = getGaussCoords(this)
             % Retrieves quadrature point locations in reference patch 
             % coordinates. Default implementation (override as necessary).
             x = this.gaussCoords;
         end
+        %% Oneliner info
+        function name = getName(this)
+            % Returns the name of this basis and its degree.
+            name = sprintf('%s, p = %d',strrep(class(this),'_','-'),this.degree);
+        end
+        %% Verbose info
         function getInfo(this,varargin)
             % Prints information about the discretization.
             % Set up name-value input argument list:

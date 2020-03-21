@@ -33,10 +33,4 @@ classdef Krivodonova < BDF
             end
         end
     end
-    methods (Static)
-        %% Information
-        function info = getInfo
-            info = 'Krivodonova';
-        end
-    end
 end

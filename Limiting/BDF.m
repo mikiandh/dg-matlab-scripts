@@ -121,10 +121,6 @@ classdef BDF < Limiter
         end
     end
     methods (Static)
-        %% Information
-        function info = getInfo
-            info = 'BDF';
-        end
         %% Minmod operator (Osher, 1984)
         function A = minmod(A,B,C)
             % Minmod function for 3 matrix inputs. Operates entry-wise.

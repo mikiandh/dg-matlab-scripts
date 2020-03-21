@@ -39,10 +39,6 @@ classdef BSB < BDF
         end
     end
     methods (Static)
-        %% Information
-        function info = getInfo
-            info = 'BSB';
-        end
         %% Maxmod operator (Roe, 1985)
         function A = maxmod(A,B)
             % Maxmod function for 2 matrix inputs. Operates entry-wise.
