@@ -15,27 +15,21 @@ addpath('../Grid')
 addpath('../Math')
 
 %% Discretization (equation + solution + domain)
-xEdge = linspace(0,1,50+1); % element end-points
-mesh = Mesh(xEdge,2,DGSEM);
+mesh = Mesh(DGSEM(2),[0 1],99);
 
 %% Solver
-FUN = @combinedIC;
+norms = Norm(["Mass","ErrorL2"]);
 solver = SSP_RK3(0,2,Wave,...
     'courantNumber',.2,...
-    'exactSolution',FUN,'replotIters',50);
-
-%% Initial condition
-solver.initialize(mesh)
-norms0 = [mesh.getSolutionMass(1:2),mesh.getErrorNorm(@(x) FUN(solver.timeNow,x),2,1:2)];
+    'norms',norms,...
+    'exactSolution',@combinedIC,'iterSkip',25);
 
 %% Time-integration
+solver.initialize(mesh)
 solver.launch(mesh);
 
 %% Postprocessing
-norms = [mesh.getSolutionMass(1:2),mesh.getErrorNorm(@(x) FUN(solver.timeNow,x),2,1:2)];
-rows = {'Solution (Mass)','Error (L2)'};
-cols = {'Norm','Start','End'};
-solver.physics.displayData(rows,cols,norms0,norms)
+solver.physics.displayData(num2cell(norms),{'Norm','tEnd'},[norms.vals])
 
 %% Auxiliary functions
 function y = constantIC(~,x)

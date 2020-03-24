@@ -16,30 +16,20 @@ addpath('../Math')
 
 %% Discretization (equation + solution + domain)
 L = [-3 3];
-xEdge = linspace(L(1),L(2),50+1); % element end-points
-mesh = Mesh(xEdge,2,DG);
+fun = @leveque1;
+mesh = Mesh(DG(2),L,50);
 
 %% Solver
-fun = @leveque1; % initial condition
 solver = SSP_RK3(0,.5,Burgers(fun(0,L)),...
     'courantNumber',.1,...
-    'exactSolution',fun,'replotIters',5);
+    'norms',Norm.TVM,...
+    'exactSolution',fun,'iterSkip',5);
 
 %% Initial condition
 solver.initialize(mesh)
-% norms0 = [mesh.getSolutionMass,mesh.getSolutionNorm(1),mesh.getSolutionNorm,mesh.getTotalVariation];
-norms0 = [mesh.getSolutionMass mesh.getTVM];
 
 %% Time-integration
 solver.launch(mesh);
-
-%% Postprocessing
-% norms = [mesh.getSolutionMass,mesh.getSolutionNorm(1),mesh.getSolutionNorm,mesh.getTotalVariation];
-% rows = {'Solution (mass)' 'Solution (L1)' 'Solution (L2)','Solution (TV)'};
-norms = [mesh.getSolutionMass mesh.getTVM];
-rows = {'Solution (mass)', 'Solution (TVM)'};
-cols = {'Norm','Start','End','Increase'};
-solver.physics.displayData(rows,cols,norms0,norms,norms-norms0)
 
 %% Initial conditions
 function y = riemann1A(~,x) % right-going shock

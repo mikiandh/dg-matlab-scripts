@@ -4,7 +4,7 @@ classdef Monitor < handle
     % solution and/or error norms.
     properties (Constant)
         colorSkip = {'w','k'}
-        nPerDof = 2
+        nPerDof = 6
     end
     properties (SetAccess = immutable)
         solver
@@ -43,6 +43,7 @@ classdef Monitor < handle
             addParameter(p,'norms',[],@(x)validateattributes(x,{'Norm'},{'vector'}))
             addParameter(p,'showSensor',false,@(x)validateattributes(x,{'logical'},{'scalar'}))
             addParameter(p,'showLimiter',false,@(x)validateattributes(x,{'logical'},{'scalar'}))
+            addParameter(p,'equations',1:solver.physics.equationCount,@(x)validateattributes(x,{'numeric'},{'vector','integer','>',0,'<=',solver.physics.equationCount}))
             p.parse(solver,varargin{:});
             % Set properties from parser:
             this.solver = p.Results.solver;
@@ -50,7 +51,7 @@ classdef Monitor < handle
             this.showSensor = p.Results.showSensor;
             this.showLimiter = p.Results.showLimiter;
             % Subplot indices:
-            this.rows = 1:solver.physics.equationCount;
+            this.rows = p.Results.equations;
             this.cols = 1:1 + ~isempty(this.norms);
         end
         %% Initialize
@@ -69,7 +70,7 @@ classdef Monitor < handle
             % cross markers.
             %
             % Initialize a figure:
-            this.hFigure = figure('Renderer','painters','Position',[400 100 700*this.cols(end), min(this.rows(end)*400,800)]);
+            this.hFigure = figure('Renderer','painters','Position',[400 100 700*this.cols(end), min(400*this.rows(end),800)]);
             % Initialize a "supertitle" annotation:
             this.hTitle = annotation(this.hFigure,'textbox',[0 0.9 1 0.1],...
                 'String',{[class(this.solver.physics) '; ' mesh.getInfo '; ' this.solver.limiter.getInfo],this.solver.getInfo},...
@@ -89,6 +90,10 @@ classdef Monitor < handle
                 for j = this.cols
                     k = k + 1;
                     this.hAxes(i,j) = subplot(this.rows(end),this.cols(end),k);
+                    % Push downwards (make room for the title):
+                    if numel(this.rows) == 1
+                        set(this.hAxes(i,j),'OuterPosition',get(this.hAxes(i,j),'OuterPosition').*[1 1 1 .9])
+                    end
                     % Add labels:
                     if j == 1
                         xlabel('x')
@@ -103,8 +108,8 @@ classdef Monitor < handle
                 end
             end
             % Initialize colormaps:
-            %%%this.cLimiters = distinguishable_colors(mesh.maxBasisCount-1,this.colorSkip);
-            this.cLimiters = jet(mesh.maxBasisCount-1);
+            this.cLimiters = distinguishable_colors(mesh.maxBasisCount-1,this.colorSkip);
+            %%%this.cLimiters = jet(mesh.maxBasisCount-1);
             this.cDiscrete = distinguishable_colors(mesh.elementCount,this.colorSkip);
             this.cNorms = distinguishable_colors(numel(this.norms),this.colorSkip);
             % Initialize sensor bar charts (if requested):
@@ -126,7 +131,7 @@ classdef Monitor < handle
             % Initialize solution vs. space plots:
             for k = 1:mesh.elementCount
                 % Sample coordinates:
-                x1 = mesh.elements(k).getNodeCoords;
+                x1 = mesh.elements(k).getNodeCoords';
                 x2 = mesh.elements(k).getBreakCoords;
                 x3 = linspace(mesh.elements(k).xL,mesh.elements(k).xR,mesh.elements(k).dofCount*this.nPerDof);
                 x = unique([x3 x2 x1],'sorted');
@@ -136,7 +141,7 @@ classdef Monitor < handle
                 y = mesh.elements(k).interpolateStateAtCoords(x);
                 z = this.solver.exactSolution(this.solver.timeNow,x);
                 for i = this.rows
-                    this.hExact(i,k) = plot(this.hAxes(i,1),x,z(i,:),'--k');
+                    this.hExact(i,k) = plot(this.hAxes(i,1),x,z(i,:),'LineStyle','--','Color','k');
                     this.hDiscrete(i,k) = plot(this.hAxes(i,1),x,y(i,:),'LineStyle','-','Color',this.cDiscrete(k,:));
                     this.hBreaks(i,k) = plot(this.hAxes(i,1),x2,y(i,j{2}),'LineStyle','none','Marker','+','Color',this.cDiscrete(k,:));
                     this.hNodes(i,k) = plot(this.hAxes(i,1),[nan x1],[nan y(i,j{1})],'LineStyle','none','Marker','.','Color',this.cDiscrete(k,:));
@@ -175,7 +180,7 @@ classdef Monitor < handle
             % Refresh solution line plots:
             for k = 1:mesh.elementCount
                 % Coordinates:
-                x1 = mesh.elements(k).getNodeCoords;
+                x1 = mesh.elements(k).getNodeCoords';
                 set(this.hNodes(:,k),'XData',x1)
                 x2 = mesh.elements(k).getBreakCoords;
                 set(this.hBreaks(:,k),'XData',x2)
@@ -186,11 +191,11 @@ classdef Monitor < handle
                 % Samples:
                 j = cellfun(@(b) arrayfun(@(a) find(x == a,1),b),{x1 x2 x3},'UniformOutput',false);
                 y = mesh.elements(k).interpolateStateAtCoords(x);
-                set(this.hNodes(:,k),{'YData'},num2cell(y(:,j{1}),2))
-                set(this.hBreaks(:,k),{'YData'},num2cell(y(:,j{2}),2))
-                set(this.hDiscrete(:,k),{'YData'},num2cell(y,2))
+                set(this.hNodes(:,k),{'YData'},num2cell(y(this.rows,j{1}),2))
+                set(this.hBreaks(:,k),{'YData'},num2cell(y(this.rows,j{2}),2))
+                set(this.hDiscrete(:,k),{'YData'},num2cell(y(this.rows,:),2))
                 y = this.solver.exactSolution(this.solver.timeNow,x);
-                set(this.hExact(:,k),{'YData'},num2cell(y,2))
+                set(this.hExact(:,k),{'YData'},num2cell(y(this.rows,:),2))
             end
             % Append new norm samples to animated line plots:
             if ~isempty(this.norms)

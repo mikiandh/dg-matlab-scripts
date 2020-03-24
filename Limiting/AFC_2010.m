@@ -4,6 +4,9 @@ classdef AFC_2010 < Limiter
     % a la Kuzmin et al., 2010. Includes prelimiting and failsafe. Applied
     % to control variables. Full inter-patch coupling.
     %
+    % For this version of AFC, the isLimited property is ill-defined, so it
+    % is left set to false.
+    %
     properties (Access = protected)
         % Synchronizing functions:
         syncStatesFun = @AFC_2010.sync_skip
@@ -48,11 +51,10 @@ classdef AFC_2010 < Limiter
             this.computeAntidiffusiveFluxes(mesh.elements,1)
             this.applyAFC(mesh,solver)
         end
-    end
-    methods (Static)
         %% Information
-        function info = getInfo
-            info = 'AFC + failsafe (2010)';
+        function info = getInfo(this)
+            info = getInfo@Limiter(this);
+            info = strrep(info,'_2010',' (2010)');
         end
     end
     methods (Static, Access = protected)
@@ -237,7 +239,7 @@ classdef AFC_2010 < Limiter
             % Apply raw antidiffusive fluxes to each element:
             for element = mesh.elements
                 element.applyAntidiffusiveFluxes;
-                element.isLimited = true(size(element.states)); % linearized AFC will always "pollute" any high-order solution
+                element.isLimited = false(size(element.states));
             end
             % Detect troubled cells in the linearised high-order solution:
             this.sensor.apply(mesh,solver)
@@ -324,12 +326,12 @@ classdef AFC_2010 < Limiter
                 this.invSyncStatesFun(element)
             end
 %%% These elements are never troubled anyway (BC limitations) %%%%%%%%%%%%%
-%             % Override extrema of control points closest to mesh boundaries
-%             % (Kuzmin et al, 2012; remark 5, pp. 163, bottom):
-%             mesh.elements(1).maxima(:,1) = inf;
-%             mesh.elements(1).minima(:,1) = -inf;
-%             mesh.elements(end).maxima(:,end) = inf;
-%             mesh.elements(end).minima(:,end) = -inf;
+            % Override extrema of control points closest to mesh boundaries
+            % (Kuzmin et al, 2012; remark 5, pp. 163, bottom):
+            mesh.elements(1).maxima(:,1) = inf;
+            mesh.elements(1).minima(:,1) = -inf;
+            mesh.elements(end).maxima(:,end) = inf;
+            mesh.elements(end).minima(:,end) = -inf;
         end
         %% Linearized FCT, synchronized
         function applySynchronizedFCT(this,elements)
@@ -363,7 +365,7 @@ classdef AFC_2010 < Limiter
                     this.invSyncFluxesFun(element)
                     % Limit conservative antidiffusive fluxes:
                     element.antidiffusiveFluxes = alphas.*element.antidiffusiveFluxes;
-                    %%%element.isLimited(i,:) = any(reshape(alphas,element.dofCount,element.dofCount) ~= 1,1);
+                    %%%element.isLimited(i,:) = sum(reshape(1-alphas,element.dofCount,element.dofCount),2)';
                 end
             end
             % Finalize:

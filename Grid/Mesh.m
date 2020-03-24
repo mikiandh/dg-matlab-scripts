@@ -1,51 +1,87 @@
 classdef Mesh < handle
+    % Class that groups an arbitrary number of elements/patches and couples
+    % them with a (possibly different) number of unique bases. Interface to
+    % many mesh-wide methods and properties.
+    %
     properties
         maxDegree
         minDegree
         maxBasisCount
         minBasisCount
+        dofCount % total number of degrees of freedom, per equation
         edgeCount
         edges
         elementCount
         elements
-        bases % collection of unique finite-dimensional spaces (in
-              % reference element coordinates) of a DG sub-type in
-              % which the solution will be approximated
-        dofCount % total number of degrees of freedom, per equation
+        % Row array of finite-dimensional spaces (in reference element
+        % coordinates) in which the approximate solution lives
+        bases
     end
     methods
         %% Constructor
-        function mesh = Mesh(x,p,discretization)
-            % Arguments
-            %  x: element edge locations
-            %  p: element-wise polynomial degree
-            %  discretization: spatial discretization instance
-            if nargin > 0
-                mesh.edgeCount = length(x);
-                mesh.elementCount = mesh.edgeCount-1;
-                if length(p) ~= mesh.elementCount
-                    p = p(1)*ones(1,mesh.elementCount);
-                end
-                mesh.minDegree = min(p);
-                mesh.maxDegree = max(p);
-                % Initialize collection of discretization instances:
-                [p,~,collectionIds] = unique(p);
-                mesh.bases = arrayfun(@discretization.clone,p);
-                mesh.minBasisCount = min(cell2mat({mesh.bases.basisCount}));
-                mesh.maxBasisCount = max(cell2mat({mesh.bases.basisCount}));
-                % Initialize array of elements:
-                mesh.elements = arrayfun(@Element,x(1:end-1),x(2:end),...
-                    mesh.bases(collectionIds'));
-                mesh.dofCount = sum(cell2mat({mesh.elements.dofCount}));
-                % Set connectivity:
-                mesh.edges = arrayfun(@Edge,x(2:end-1),...
-                    mesh.elements(1:end-1),mesh.elements(2:end));
-                mesh.edges = {
-                    LeftBoundary(x(1),mesh.elements(1))...
-                    mesh.edges...
-                    RightBoundary(x(end),mesh.elements(end))
-                    };
+        function this = Mesh(varargin)
+            % Intantiates a mesh instance according to parsed name-value
+            % argument pairs. All arguments are self-explanatory.
+            %
+            % Check:
+            if nargin < 2
+                return % default constructor
             end
+            % Input parser:
+            p = inputParser;
+            addRequired(p,'bases',@this.validate_bases)
+            addRequired(p,'edgeCoords',@this.validate_edgeCoords)
+            addOptional(p,'elementCount',numel(varargin{2})-1,@this.validate_elementCount)
+            addOptional(p,'edgeDistribution',"uniform",@this.validate_edgeDistribution)
+            addOptional(p,'clusteringFactor',0,@this.validate_clusteringFactor)
+            addParameter(p,'degrees',[varargin{1}.degree],@this.validate_degrees)
+            parse(p,varargin{:});
+            % Initialize array of distinct bases:
+            if numel(p.Results.bases) == 1 % smallest set of bases with specified degrees
+                [degrees,~,element2basis] = unique(p.Results.degrees);
+                this.bases = arrayfun(@(x) p.Results.bases.clone(x),degrees);
+            else % specified set of bases (possibly repeated)
+                element2basis = 1:numel(p.Results.bases);
+                if numel(p.Results.degrees) == 1 % enforce specified degree for all bases
+                    this.bases = arrayfun(@(x) x.clone(p.Results.degrees),p.Results.bases);
+                elseif numel(p.Results.bases) == numel(p.Results.degrees) % overwrite each basis' degree
+                    this.bases = p.Results.bases;
+                    for k = 1:numel(this.bases)
+                        this.bases(k) = p.Results.bases(k).clone(p.Results.degrees(k));
+                    end
+                else % ignore degrees
+                    warning('Specified degrees will be ignored.')
+                    this.bases = p.Results.bases;
+                end
+            end
+            % Initialize array of edge coordinates:
+            this.edgeCount = numel(p.Results.edgeCoords);
+            this.elementCount = p.Results.elementCount;
+            if this.edgeCount ~= this.elementCount+1 % generate edge coordinates
+                this.edgeCount = p.Results.elementCount + 1;
+                switch this.validate_edgeDistribution(p.Results.edgeDistribution)
+                    case "uniform"
+                        x = linspace(p.Results.edgeCoords(1),p.Results.edgeCoords(end),this.edgeCount);
+                    case "cosine"
+                        x = cosspace(p.Results.edgeCoords(1),p.Results.edgeCoords(end),this.edgeCount,p.Results.clusteringFactor);
+                    case "sine"
+                        x = sinspace(p.Results.edgeCoords(1),p.Results.edgeCoords(end),this.edgeCount,p.Results.clusteringFactor);
+                    case "logarithmic"
+                        x = logspace(p.Results.edgeCoords(1),p.Results.edgeCoords(end),this.edgeCount);
+                end
+            else % use given coordinates (ignore distribution)
+                x = p.Results.edgeCoords;
+            end
+            % Initialize array of elements (with circular repetition, if necessary):
+            this.elements = arrayfun(@Element,x(1:end-1),x(2:end),this.bases(element2basis(mod(0:this.elementCount-1,numel(element2basis))+1)));
+            % Initialize cell array of element edges:
+            this.edges = {LeftBoundary(x(1),this.elements(1)) arrayfun(@Edge,x(2:end-1),this.elements(1:end-1),this.elements(2:end)) RightBoundary(x(end),this.elements(end))};
+            % Initialize all remaining properties:    
+            this.minDegree = min([this.bases.degree]);
+            this.maxDegree = max([this.bases.degree]);
+            this.minBasisCount = min([this.bases.basisCount]);
+            this.maxBasisCount = max([this.bases.basisCount]);    
+            this.dofCount = sum([this.elements.dofCount]);
         end
         %% Discretization summary
         function info = getInfo(this)
@@ -444,6 +480,45 @@ classdef Mesh < handle
             ids = ~ids; % new entries
             x(ids) = .5*(x0(2:end) + x0(1:end-1));
             q(:,ids) = this.sample(x(ids));
+        end
+    end
+    methods (Static,Access = protected)
+        %% Custom validation functions
+        function validate_edgeCoords(x)
+            % Throws an error if the input is not a valid set of edge 
+            % coordinates, i.e. an array of 2 or more finite real values,
+            % in increasing order.
+            validateattributes(x,{'numeric'},{'nonempty','finite','increasing'})
+            if isscalar(x)
+                error('Expected input to be non-scalar.')
+            end
+        end
+        function validate_bases(x)
+            % Throws an error if the input is not a valid set of bases.
+            validateattributes(x,{'Basis'},{'nonempty','vector'})
+        end
+        function validate_elementCount(x)
+            % Throws an error if the input is not a valid number of
+            % elements.
+            validateattributes(x,{'numeric'},{'integer','scalar'})
+        end
+        function varargout = validate_edgeDistribution(x)
+            % Throws an error of the input is not a valid kind of edge
+            % distribution. If an output is requested, returns the full 
+            % name of the matching distribution.
+            %
+            name = validatestring(x,["uniform","cosine","sine","logarithmic"]);
+            if nargout > 0
+                varargout{1} = name;
+            end
+        end
+        function validate_clusteringFactor(x)
+            % Throws an error if input is not a valid clustering factor.
+            validateattributes(x,{'numeric'},{'finite','scalar'})
+        end
+        function validate_degrees(x)
+            % Throws an error if the input is not a valid set of degrees.
+            validateattributes(x,{'numeric'},{'integer'})
         end
     end
 end

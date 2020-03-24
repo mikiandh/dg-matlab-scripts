@@ -40,27 +40,17 @@ IC_p3d3 = @(x) (x+x.^2+x.^3).*(1 - heaviside(x)) + (x+x.^2+2*x.^3).*(heaviside(x
 IC_p3d4 = @(x) (x+x.^2+x.^3);
 
 %% Discretization (equation + solution + domain)
-xEdge = linspace(L(1),L(2),10+1); % element end-points
-mesh = Mesh(xEdge,2,DGIGA_AFC(10));
+mesh = Mesh(DGIGA_AFC(3,2),L,5);
 
 %% Solver
-solver = SSP_RK3(0,0,Advection(1,[]),...
+solver = SSP_RK3(0,2,Advection(1,[]),...
     'courantNumber',.01,...
     'limiter',AFC_2010('Sensor',APTVD),...
-    'exactSolution',@(t,x) IC_combined(x),'replotIters',1);
+    'showSensor',true,...
+    'exactSolution',@(t,x) IC_jump(x),'iterSkip',1);
 
 %% Initial condition
 solver.initialize(mesh)
-% norms0 = [mesh.getSolutionMass,mesh.getSolutionNorm(1),mesh.getSolutionNorm,mesh.getTotalVariation,mesh.getErrorNorm(FUN)];
-norms0 = mesh.getSolutionMass;
 
 %% Time-integration
-solver.launch(mesh);
-
-%% Postprocessing
-% norms = [mesh.getSolutionMass,mesh.getSolutionNorm(1),mesh.getSolutionNorm,mesh.getTotalVariation,mesh.getErrorNorm(FUN)];
-% rows = {'Solution (mass)' 'Solution (L1)' 'Solution (L2)','Solution (TV)','Error (L2)'};
-norms = mesh.getSolutionMass;
-rows = {'Solution (mass)'};
-cols = {'Norm','Start','End','Increase'};
-solver.physics.displayData(rows,cols,norms0,norms,norms-norms0)
+solver.launch(mesh)

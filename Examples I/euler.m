@@ -15,34 +15,19 @@ addpath('../Grid')
 addpath('../Math')
 
 %% Discretization (equation + solution + domain)
-xEdge = linspace(-5,5,99+1); % element end-points
-%%%mesh = Mesh(xEdge,randi([1 4],size(xEdge)-[0 1]),DG);
-mesh = Mesh(xEdge,2,DG);
+%%%mesh = Mesh(DG,[-5 5],99,'degree',randi([1 4],[1 99]));
+mesh = Mesh(DGSEM(2),[0 1],99);
 
 %% Solver
-FUN = @shuOsher;
-FUN0 = @(x) FUN(0,x);
-solver = SSP_RK3(0,1.8,Euler('transmissive'),...
+solver = SSP_RK3(0,.125,Euler('transmissive'),...
     'limiter',TVB,...
-    'exactSolution',FUN,'iterSkip',100,...
-    'showSensor',true,'showLimiter',true,...
-    'norms',Norm("Mass"),...
+    'exactSolution',@toro1,'iterSkip',100,...
+    'showSensor',true,'showLimiter',true,'equations',[1 2 3],...
     'courantNumber',.1);
 
-%% Initial condition
-solver.initialize(mesh)
-norms0 = [mesh.getSolutionMass(1:3),mesh.getErrorNorm(FUN0,2,1:3)];
-
 %% Time-integration
-solver.launch(mesh);
-
-%% Postprocessing
-% norms = mesh.getSolutionMass(1:3);
-% rows = {'Solution (mass)'};
-norms = [mesh.getSolutionMass(1:3),mesh.getErrorNorm(@(x) FUN(solver.timeNow,x),2,1:3)];
-rows = {'Solution (mass)','Error (L2)'};
-cols = {'Norm','Start','End','Increase'};
-solver.physics.displayData(rows,cols,norms0,norms,norms-norms0)
+solver.initialize(mesh)
+solver.launch(mesh)
 
 %% Exact solutions and/or initial conditions
 % Simple density jump:
