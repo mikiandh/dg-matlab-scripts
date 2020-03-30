@@ -68,8 +68,8 @@ classdef BDF < Limiter
                 [~,L,this.R(:,:,k)] = this.physics.getEigensystemAt(this.coefs(:,1,k));
                 % Apply to Legendre coefficients:
                 this.coefs(:,:,k) = L*this.coefs(:,:,k);
-                this.coefsL(:,1:elements(k).edgeL.elementL.dofCount,k) = L*elements(k).edgeL.elementL.basis.getLegendre(elements(k).edgeL.elementL);
-                this.coefsR(:,1:elements(k).edgeR.elementR.dofCount,k) = L*elements(k).edgeR.elementR.basis.getLegendre(elements(k).edgeR.elementR);
+                this.coefsL(:,1:elements(k).elementL.dofCount,k) = L*elements(k).elementL.basis.getLegendre(elements(k).elementL);
+                this.coefsR(:,1:elements(k).elementR.dofCount,k) = L*elements(k).elementR.basis.getLegendre(elements(k).elementR);
             end
             % Permute for convenience:
             this.coefs = permute(this.coefs,[3,2,1]);

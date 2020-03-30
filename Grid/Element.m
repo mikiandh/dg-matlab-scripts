@@ -1,4 +1,6 @@
 classdef Element < matlab.mixin.SetGet
+    % Class that represents the fundamental geometrical unit in which the
+    % solution lives: the (DG) element, a.k.a patch.
     properties
         % DG:
         x
@@ -6,8 +8,6 @@ classdef Element < matlab.mixin.SetGet
         xR
         dx
         basis % handle to a basis sub-class
-        edgeL % handle to its left edge
-        edgeR % handle to its right edge
         states % state vector at each degree of freedom (node or mode)
         fluxes % flux vector at each degree of freedom (Fletcher's group formulation)
         stateL % state vector at left edge
@@ -16,6 +16,10 @@ classdef Element < matlab.mixin.SetGet
         fluxR
         riemannL % Riemann (upwind) flux vector at left edge
         riemannR
+        edgeL % handle to its left edge
+        edgeR
+        elementR % handle to the closest element to its right
+        elementL
         residuals % residual (i.e. time derivative) vector at nodes
         dofCount % number of degrees of freedom per element, per equation
         % Limiting:
@@ -31,15 +35,19 @@ classdef Element < matlab.mixin.SetGet
         localTimeDelta
     end
     methods
-        %% Constructor
-        function element = Element(x1,x2,basis)
+        %% Constructor (vector)
+        function these = Element(bases,x)
             if nargin > 0
-                element.x = .5*(x1+x2);
-                element.xL = x1;
-                element.xR = x2;
-                element.dx = x2-x1;
-                element.basis = basis;
-                element.dofCount = basis.basisCount;
+                validateattributes(x,"numeric",{'numel',numel(bases)+1})
+                if numel(bases) > 1
+                    these(1,numel(bases)) = Element;
+                end
+                [these.dofCount] = bases.basisCount;
+                aux = num2cell(bases); [these.basis] = aux{:};
+                aux = num2cell(x(1:end-1)); [these.xL] = aux{:};
+                aux = num2cell(x(2:end)); [these.xR] = aux{:};
+                aux = num2cell(mean([x(1:end-1);x(2:end)])); [these.x] = aux{:};
+                aux = num2cell(diff(x)); [these.dx] = aux{:};
             end
         end
         %% Affine map (from physical to reference element space)

@@ -1,4 +1,4 @@
-classdef Basis < matlab.mixin.SetGet
+classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
     properties (Constant,Abstract)
         isNodal
         isModal
@@ -148,6 +148,15 @@ classdef Basis < matlab.mixin.SetGet
                 fprintf(1, '%s\t\t%s\t\t%s\n', VarNames{:});
                 fprintf(1, '%.5g\t\t\t\t%.5g\t\t\t\t\t%.5g\n', Data');
             end
+        end
+    end
+    methods (Static, Access = protected, Sealed)
+        %% Default type (Override)
+        function default_object = getDefaultScalarElement
+            % When an array of basis children is preallocated (e.g.
+            % bases(2) = DGSEM) any non-specified elements are filled
+            % with DG instances (e.g. class(bases(1)) == 'DG').
+            default_object = DG;
         end
     end
 end

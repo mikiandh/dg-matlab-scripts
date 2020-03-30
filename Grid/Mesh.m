@@ -1,4 +1,4 @@
-classdef Mesh < handle
+classdef Mesh < matlab.mixin.Copyable
     % Class that groups an arbitrary number of elements/patches and couples
     % them with a (possibly different) number of unique bases. Interface to
     % many mesh-wide methods and properties.
@@ -13,6 +13,7 @@ classdef Mesh < handle
         edges
         elementCount
         elements
+        boundaries % array of 2 boundaries (left and right)
         % Row array of finite-dimensional spaces (in reference element
         % coordinates) in which the approximate solution lives
         bases
@@ -34,6 +35,9 @@ classdef Mesh < handle
             addOptional(p,'elementCount',numel(varargin{2})-1,@this.validate_elementCount)
             addOptional(p,'edgeDistribution',"uniform",@this.validate_edgeDistribution)
             addOptional(p,'clusteringFactor',0,@this.validate_clusteringFactor)
+            addParameter(p,'boundaries',Periodic(2),@(x) this.validate_boundaries(x,2))
+            addParameter(p,'leftBoundary',Periodic,@(x) this.validate_boundaries(x,1))
+            addParameter(p,'rightBoundary',Periodic,@(x) this.validate_boundaries(x,1))
             addParameter(p,'degrees',[varargin{1}.degree],@this.validate_degrees)
             parse(p,varargin{:});
             % Initialize array of distinct bases:
@@ -69,13 +73,23 @@ classdef Mesh < handle
                     case "logarithmic"
                         x = logspace(p.Results.edgeCoords(1),p.Results.edgeCoords(end),this.edgeCount);
                 end
-            else % use given coordinates (ignore distribution)
+            else % use given coordinates (ignore given distribution)
                 x = p.Results.edgeCoords;
             end
-            % Initialize array of elements (with circular repetition, if necessary):
-            this.elements = arrayfun(@Element,x(1:end-1),x(2:end),this.bases(element2basis(mod(0:this.elementCount-1,numel(element2basis))+1)));
-            % Initialize cell array of element edges:
-            this.edges = {LeftBoundary(x(1),this.elements(1)) arrayfun(@Edge,x(2:end-1),this.elements(1:end-1),this.elements(2:end)) RightBoundary(x(end),this.elements(end))};
+            % Initialize array of elements (with circular repetition of bases, if necessary):
+            this.elements = Element(this.bases(element2basis(mod(0:this.elementCount-1,numel(element2basis))+1)),x);
+            % Initialize boundaries:
+            this.boundaries = p.Results.boundaries;
+            if ~ismember('leftBoundary',p.UsingDefaults)
+                this.boundaries(1) = p.Results.leftBoundary;
+            end
+            if ~ismember('rightBoundary',p.UsingDefaults)
+                this.boundaries(2) = p.Results.rightBoundary;
+            end
+            % And set up ghost elements:
+            this.boundaries.setup(this.elements);
+            % Initialize array of element edges:
+            this.edges = Edge([this.boundaries(1).ghostElement this.elements this.boundaries(2).ghostElement]);
             % Initialize all remaining properties:    
             this.minDegree = min([this.bases.degree]);
             this.maxDegree = max([this.bases.degree]);
@@ -94,29 +108,24 @@ classdef Mesh < handle
             info = sprintf('%s; N_\\Omega = %d, N = %d',info,this.elementCount,this.dofCount);
         end
         %% Compute mesh residuals
-        function computeResiduals(this,physics)
+        function computeResiduals(this,physics,solver)
             % Updates the residuals of all cells in a mesh, using the
             % spatial discretization scheme assigned to the mesh. 
             %
-            % Four-stage process:
-            % 1) Computes the state at both edges of each element.
-            % 2) Computes the Riemann flux at each interior interface; 
-            %    assigns it (conventional sign) to each adjacent element.
-            % 3) Computes Riemann flux at domain boundaries (using boundary
-            %    conditions).
-            % 4) Applies the spatial discretizationn operator to each
-            %    element.
-            %
+            % Compute the state at both edges of each element:
             for element = this.elements
                 element.localTimeDelta = inf;
-                element.interpolateStateAtEdges;
+                element.interpolateStateAtEdges
             end
-            for edge = this.edges{2:end-1} % interior edges only
-                edge.computeFlux(physics);
+            % Also for ghost elements:
+            this.boundaries.apply(physics,solver)
+            % Compute the Riemann flux at each edge:
+            for edge = this.edges
+                edge.computeFlux(physics)
             end
-            physics.applyBoundaryConditions(this); % boundary edges
+            % Apply the spatial discretization operator to each element:
             for element = this.elements
-                element.computeResiduals(physics);
+                element.computeResiduals(physics)
             end
         end
         %% Extract matrices of nodal + edge values of the entire mesh
@@ -311,7 +320,7 @@ classdef Mesh < handle
                 end
             end
             % Convert from knot span units to physical domain units:
-            mass = mass/dSigma*(this.edges{end}.coord - this.edges{1}.coord);
+            mass = mass/dSigma*(this.edges(end).coord - this.edges(1).coord);
         end
         %% Total variation in the means
         function tvm = getTVM(this,eqs)
@@ -387,7 +396,7 @@ classdef Mesh < handle
             % Compute the norm:
             if isnumeric(p)
                 norms = Algorithms.quadvgk(@(x) abs(this.sample(x)).^p,subs,length(eqs));
-                norms = nthroot(norms./(this.edges{end}.coord - this.edges{1}.coord),p);
+                norms = nthroot(norms./(this.edges(end).coord - this.edges(1).coord),p);
             elseif strcmp(p,'mass')
                 norms = Algorithms.quadvgk(@(x) this.sample(x),subs,length(eqs));
             else
@@ -482,7 +491,7 @@ classdef Mesh < handle
             q(:,ids) = this.sample(x(ids));
         end
     end
-    methods (Static,Access = protected)
+    methods (Static, Access = protected)
         %% Custom validation functions
         function validate_edgeCoords(x)
             % Throws an error if the input is not a valid set of edge 
@@ -515,6 +524,10 @@ classdef Mesh < handle
         function validate_clusteringFactor(x)
             % Throws an error if input is not a valid clustering factor.
             validateattributes(x,{'numeric'},{'finite','scalar'})
+        end
+        function validate_boundaries(x,n)
+            % Throws an error if the input is not an array of n boundaries.
+            validateattributes(x,{'Boundary'},{'numel',n})
         end
         function validate_degrees(x)
             % Throws an error if the input is not a valid set of degrees.

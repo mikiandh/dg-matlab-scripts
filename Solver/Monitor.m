@@ -15,8 +15,8 @@ classdef Monitor < handle
         cols
     end
     properties (Access = protected)
-        % Skip norm computation & plotting?
-        skipNorms
+        % Axis limits (3D array):
+        ylims % row: axes; columns: min, max; pages: manual, auto
         % Colormaps:
         cDiscrete
         cLimiters
@@ -73,7 +73,7 @@ classdef Monitor < handle
             this.hFigure = figure('Renderer','painters','Position',[400 100 700*this.cols(end), min(400*this.rows(end),800)]);
             % Initialize a "supertitle" annotation:
             this.hTitle = annotation(this.hFigure,'textbox',[0 0.9 1 0.1],...
-                'String',{[class(this.solver.physics) '; ' mesh.getInfo '; ' this.solver.limiter.getInfo],this.solver.getInfo},...
+                'String',{[this.solver.physics.getInfo '; ' mesh.boundaries.getInfo],[mesh.getInfo '; ' this.solver.limiter.getInfo],this.solver.getInfo},...
                 'FontWeight','bold','EdgeColor','none',...
                 'HorizontalAlignment','center','VerticalAlignment','top');
             % Preallocate graphics objects:
@@ -159,6 +159,11 @@ classdef Monitor < handle
                 % Show legend:
                 legend(this.hAxes(end),'Location','NorthWest')
             end
+            % Initialize y axis limits:
+            this.ylims = zeros(this.rows(end),2,2);
+            for i = this.rows
+                this.ylims(i,:,1) = ylim(this.hAxes(i,1));
+            end
             % Redraw:
             drawnow
         end
@@ -167,7 +172,7 @@ classdef Monitor < handle
             % Replots the monitor figure with current solution and norms.
             %
             % Refresh the title:
-            this.hTitle.String = {[class(this.solver.physics) '; ' mesh.getInfo '; ' this.solver.limiter.getInfo],this.solver.getInfo};
+            this.hTitle.String = {[this.solver.physics.getInfo '; ' mesh.boundaries.getInfo], [mesh.getInfo '; ' this.solver.limiter.getInfo],this.solver.getInfo};
             % Refresh sensor bar charts (if requested):
             if this.showSensor
                 set(this.hSensors,{'XData','YData'},{[mesh.elements.x],double([mesh.elements.isTroubled])})
@@ -206,11 +211,20 @@ classdef Monitor < handle
                     end
                 end
             end
+            % Ensure non-shrinking y axis limits:
+            for i = this.rows
+                ylim(this.hAxes(i,1),'auto');
+                this.ylims(i,:,2) = ylim(this.hAxes(i,1));
+                this.ylims(i,1,1) = min([this.ylims(i,1,1) this.ylims(i,1,2)]);
+                this.ylims(i,2,1) = max([this.ylims(i,2,2) this.ylims(i,2,2)]);
+                ylim(this.hAxes(i,1),this.ylims(i,:,1));
+            end
             % Redraw:
             drawnow limitrate
         end
     end
     methods (Access = protected, Static)
+        %% Process limiter data
         function kji = getLimiterData(mesh,eqs)
             % Processes th isLimited fields of a given mesh to facilitate
             % plotting limiter activation status as a stacked bar chart.

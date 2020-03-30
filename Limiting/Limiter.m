@@ -58,7 +58,7 @@ classdef Limiter < handle
         function applyInitial(this,mesh,solver)
             % Get physics and do the same as every step (default).
             this.physics = solver.physics;
-            this.applyStage(mesh,solver);
+            this.applyStage(mesh,solver)
         end
         %% Information
         function info = getInfo(this)

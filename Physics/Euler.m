@@ -1,84 +1,28 @@
 classdef Euler < Physics
-    properties (Constant)
+    properties (Constant, Hidden)
         equationCount = 3
         controlVars = [1 2 3] % [density velocity pressure]
+        validRiemannSolvers = ["exact","LLF","Rusanov","Roe","RoeNoFix","RoeHartenHyman","RoeFix","HLL","HLLE","HLLC","KEP"]
     end
-    properties
-        riemannSolver
+    properties (SetAccess = immutable)
+        riemannSolver = 'HLLC'
     end
     methods
         %% Constructor
-        function euler = Euler(boundaryConditions,riemannSolver)
-            euler.boundaryConditionsFunction = @Euler.applyTransmissiveBoundaryConditions;
-            euler.riemannSolver = @Euler.riemannHLLC;
-            if nargin > 0
-                switch boundaryConditions
-                    case {'reflecting','reflective'}
-                        euler.boundaryConditionsFunction = @euler.applyReflectingBoundaryConditions;
-                    case 'transmissive'
-                        euler.boundaryConditionsFunction = @euler.applyTransmissiveBoundaryConditions;
-                    otherwise
-                        error('Unknown boundary condition.')
-                end
+        function this = Euler(riemannSolver)
+            if nargin
+                this.riemannSolver = validatestring(riemannSolver,this.validRiemannSolvers);
             end
-            if nargin > 1
-                switch riemannSolver
-                    case 'exact'
-                        euler.riemannSolver = @Euler.riemannExact;
-                    case {'LLF','Rusanov'}
-                        euler.riemannSolver = @Euler.riemannLLF;
-                    case {'Roe','Roe1'}
-                        euler.riemannSolver = @Euler.riemannRoe1;
-                    case 'Roe0'
-                        euler.riemannSolver = @Euler.riemannRoe0;
-                    case 'HLL'
-                        euler.riemannSolver = @Euler.riemannHLL;
-                    case 'HLLE'
-                        euler.riemannSolver = @Euler.riemannHLLE;
-                    case 'HLLC'
-                        euler.riemannSolver = @Euler.riemannHLLC;
-                    otherwise
-                        error('Unknown Riemann solver.')
-                end
-            end
+        end
+        %% Information (extension)
+        function info = getInfo(this)
+            info = sprintf('%s (%s)',this.getInfo@Physics,this.riemannSolver);
         end
     end
     methods
-        %% Apply boundary conditions
-        function applyBoundaryConditions(this,mesh)
-            this.boundaryConditionsFunction(mesh);
-        end
         %% Numerical flux
         function [flux, waveSpeeds] = riemannFlux(this,stateL,stateR)
-            [flux, waveSpeeds] = this.riemannSolver(stateL,stateR);
-        end
-        %% Reflecting boundary conditions
-        function applyReflectingBoundaryConditions(this,mesh)
-            % Right boundary:
-            state = Euler.stateToPrimitive(mesh.elements(end).stateR);
-            state(2) = -state(2);
-            state = Euler.primitiveToState(state);
-            [mesh.elements(end).riemannR,waveSpeeds] = this.riemannFlux(mesh.elements(end).stateR,state);
-            mesh.edges{end}.computeTimeDeltas(waveSpeeds);
-            % Left boundary:
-            state = Euler.stateToPrimitive(mesh.elements(1).stateL);
-            state(2) = -state(2);
-            state = Euler.primitiveToState(state);
-            [mesh.elements(1).riemannL,waveSpeeds] = this.riemannFlux(state,mesh.elements(1).stateL);
-            mesh.elements(1).riemannL = -mesh.elements(1).riemannL;
-            mesh.edges{1}.computeTimeDeltas(waveSpeeds);
-        end
-        %% Transmissive boundary conditions
-        function applyTransmissiveBoundaryConditions(this,mesh)
-            % Right-most edge:
-            [mesh.elements(end).riemannR,waveSpeeds] = this.riemannFlux(...
-                mesh.elements(end).stateR,mesh.elements(end).stateR);
-            mesh.edges{end}.computeTimeDeltas(waveSpeeds);
-            % Left-most edge:
-            [mesh.elements(1).riemannL,waveSpeeds] = this.riemannFlux(...
-                mesh.elements(1).stateL,mesh.elements(1).stateL);
-            mesh.elements(1).riemannL = -mesh.elements(1).riemannL;
-            mesh.edges{1}.computeTimeDeltas(waveSpeeds);
+            [flux, waveSpeeds] = Euler.(this.riemannSolver)(stateL,stateR);
         end
     end
     methods (Static)
@@ -126,11 +70,11 @@ classdef Euler < Physics
         end
         %% Primitive variables (one by one) from state vector(s)
         function [r,u,p,a,H] = getPrimitivesFromState(state)
-            r = state(1,:);
-            u = state(2,:)/state(1,:);
-            p = 0.4*(state(3,:) - 0.5*r.*u.^2);
-            a = realpow(1.4*p./r,0.5);
-            H = (state(3,:) + p)./r;
+            r = state(1,:); % density
+            u = state(2,:)/state(1,:); % velocity
+            p = 0.4*(state(3,:) - 0.5*r.*u.^2); % pressure
+            a = realpow(1.4*p./r,0.5); % speed of sound
+            H = (state(3,:) + p)./r; % total (internal + kinetic) specific (per unit mass) enthalpy
         end
         %% Roe-averaged variables (one by one) from state vectors
         function [rAvg,uAvg,HAvg,aAvg] = getRoeFromState(statesL,statesR)
@@ -146,7 +90,7 @@ classdef Euler < Physics
             aAvg = realpow(0.4*(HAvg - 0.5*uAvg.^2),0.5);
         end
         %% Riemann solver (exact)
-        function [flux,S] = riemannExact(stateL,stateR)
+        function [flux,S] = exact(stateL,stateR)
             % Wave speed estimate:
             stateL = Euler.stateToPrimitive(stateL);
             stateR = Euler.stateToPrimitive(stateR);
@@ -159,7 +103,7 @@ classdef Euler < Physics
             flux = Euler.flux(Euler.primitiveToState([r u p]'));
         end
         %% Riemann solver (local Lax-Friedrichs, a.k.a Rusanov)
-        function [flux,S] = riemannLLF(stateL,stateR)
+        function [flux,S] = LLF(stateL,stateR)
             flux1 = Euler.flux(stateL) + Euler.flux(stateR);
             flux2 = stateR - stateL;
             % Wave speed estimate:
@@ -170,7 +114,7 @@ classdef Euler < Physics
             flux = 0.5*(flux1 - S*flux2);
         end
         %% Riemann solver (Roe-Pike without entropy fix)
-        function [flux,lambdas] = riemannRoe0(stateL,stateR)
+        function [flux,lambdas] = RoeNoFix(stateL,stateR)
             % Primitive variables and jumps:
             [rL,uL,pL,~,~] = Euler.getPrimitivesFromState(stateL);
             [rR,uR,pR,~,~] = Euler.getPrimitivesFromState(stateR);
@@ -200,7 +144,7 @@ classdef Euler < Physics
             flux = 0.5*flux;
         end
         %% Riemann solver (Roe-Pike with Harten-Hyman entropy fix)
-        function [flux,lambdas] = riemannRoe1(stateL,stateR)
+        function [flux,lambdas] = RoeHartenHyman(stateL,stateR)
             % Primitive variables and jumps:
             [rL,uL,pL,aL,~] = Euler.getPrimitivesFromState(stateL);
             [rR,uR,pR,aR,~] = Euler.getPrimitivesFromState(stateR);
@@ -261,7 +205,7 @@ classdef Euler < Physics
             %flux = Euler.flux(stateR) - K(:,i)*(lambdas(i).*alphas(i));
         end
         %% Riemann solver (HLL)
-        function [flux,lambdas] = riemannHLL(stateL,stateR)
+        function [flux,lambdas] = HLL(stateL,stateR)
             % Primitive variables:
             [rL,uL,pL,aL,~] = Euler.getPrimitivesFromState(stateL);
             [rR,uR,pR,aR,~] = Euler.getPrimitivesFromState(stateR);
@@ -292,7 +236,7 @@ classdef Euler < Physics
             end
         end
          %% Riemann solver (HLLE, according to LeVeque)
-        function [flux,lambdas] = riemannHLLE(stateL,stateR)
+        function [flux,lambdas] = HLLE(stateL,stateR)
             % Primitive variables and jumps:
             [rL,uL,~,aL,~] = Euler.getPrimitivesFromState(stateL);
             [rR,uR,~,aR,~] = Euler.getPrimitivesFromState(stateR);
@@ -321,7 +265,7 @@ classdef Euler < Physics
             end
         end
         %% Riemann solver (HLLC)
-        function [flux,lambdas] = riemannHLLC(stateL,stateR)
+        function [flux,lambdas] = HLLC(stateL,stateR)
             % Primitive variables:
             [rL,uL,pL,aL,~] = Euler.getPrimitivesFromState(stateL); %%% FIXME: WoodwardColella bursts at t = 0.027 here
             [rR,uR,pR,aR,~] = Euler.getPrimitivesFromState(stateR);
@@ -361,6 +305,19 @@ classdef Euler < Physics
             else
                 flux = Euler.flux(stateR);
             end
+        end
+        %% KEP numerical flux
+        function [flux,lambdas] = KEP(stateL,stateR)
+            % Computes Jameson's Kinetic Energy Preserving (centered) 
+            % numerical flux, between two state vectors.
+            %
+            % 
+            vars = cell(2,5);
+            [vars{1,:}] = Euler.getPrimitivesFromState(stateL);
+            [vars{2,:}] = Euler.getPrimitivesFromState(stateR);
+            avgs = mean(cell2mat(vars),1);
+            flux = [avgs(1)*avgs(2); avgs(1)*avgs(2)^2 + avgs(3); avgs(1)*avgs(2)*avgs(5)];
+            lambdas = avgs(4);
         end
         %% Return 3D arrays of left and right eigenvectors
         function [L,R] = getEigenvectors(meanStates)
@@ -521,85 +478,5 @@ classdef Euler < Physics
             end
             PASS = 1;
         end
-%%% DEPRECATED %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%         %% Numerical diffusion (Roe average)
-%         function applyArtificialDiffusion_44(element)
-%             % Adds artifficial diffusion to an element's residuals. The
-%             % element's basis is assumed to be DGIGA_AFC.
-%             %
-%             % See Kuzmin et al. 2012, eqs. 42 - 46. Current version employs
-%             % the Roe averaged Jacobians (eq. 42).
-%             %
-%             % Loop over pairs of modes with shared support:
-%             [rows,cols] = find(element.basis.massMatrix);
-%             for e = 1:length(rows) % !-> an edge joins two control locations, i.e. the set of all edges is the control poligon
-%                 r = rows(e);
-%                 j = cols(r);
-%                 if r == j
-%                     continue
-%                 else
-%                     aux = element.basis.gradientMatrix(j,r);
-%                     aux = .5*(aux - element.basis.gradientMatrix(r,j));
-%                     [A,L,R] = Euler.getLocalEigensystem(element.states(:,r),element.states(:,j));
-%                     aux = abs(aux)*R*abs(A)*L; % Möller & Jaeschke, 2018 (eq. 16)
-%                     element.residuals(:,r) =...
-%                         element.residuals(:,r) +...
-%                         aux*(element.states(:,j) - element.states(:,r));
-%                 end
-%             end
-%         end
-%         %% Numerical diffusion (arithmetic average)
-%         function applyArtificialDiffusion_45(element)
-%             % Adds artifficial diffusion to an element's residuals. The
-%             % element's basis is assumed to be DGIGA_AFC.
-%             %
-%             % See Kuzmin et al. 2012, eqs. 42 - 46. Current version employs
-%             % the arithmetically averaged Jacobians (eq. 44).
-%             %
-%             % Loop over pairs of modes with shared support:
-%             [rows,cols] = find(element.basis.massMatrix);
-%             for e = 1:length(rows) % !-> an edge joins two control locations, i.e. the set of all edges is the control poligon
-%                 r = rows(e);
-%                 j = cols(e); % <- fixed a bug, but did not check!
-%                 if r == j
-%                     continue
-%                 else
-%                     aux = element.basis.gradientMatrix(j,r);
-%                     aux = .5*(aux - element.basis.gradientMatrix(r,j));
-%                     [A,L,R] = Euler.getEigensystemAt(.5*(element.states(:,r)+element.states(:,j)));
-%                     aux = abs(aux)*R*abs(A)*L; % Möller & Jaeschke, 2018 (eq. 16)
-%                     element.residuals(:,r) =...
-%                         element.residuals(:,r) +...
-%                         aux*(element.states(:,j) - element.states(:,r));
-%                 end
-%             end
-%         end
-%         %% Numerical diffusion (Rusanov)
-%         function applyArtificialDiffusion(element)
-%             % Adds artifficial diffusion to an element's residuals. The
-%             % element's basis is assumed to be DGIGA_AFC.
-%             %
-%             % See Kuzmin et al. 2012, eqs. 44 - 46. Current version employs
-%             % Rusanov-like scalar diffusion (eq. 45).
-%             %
-%             % Loop over pairs of modes with shared support:
-%             [rows,cols] = find(element.basis.massMatrix);
-%             for e = 1:length(rows) % !-> an edge joins two control locations, i.e. the set of all edges is the control poligon
-%                 r = rows(e);
-%                 j = cols(r);
-%                 if r == j
-%                     continue
-%                 else
-%                     aux = element.basis.gradientMatrix(j,r);
-%                     aux = .5*(aux - element.basis.gradientMatrix(r,j));
-%                     [A,L,R] = Euler.getEigensystemAt(.5*(element.states(:,r)+element.states(:,j)));
-%                     aux = abs(aux)*R*abs(A)*L; % Möller & Jaeschke, 2018 (eq. 16)
-%                     element.residuals(:,r) =...
-%                         element.residuals(:,r) +...
-%                         aux*(element.states(:,j) - element.states(:,r));
-%                 end
-%             end
-%         end
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     end
 end

@@ -10,7 +10,7 @@ classdef TVB < Limiter
         %% Constructor
         function this = TVB(varargin)
             % Superclass constructor:
-            this = this@Limiter(varargin{:});
+            this@Limiter(varargin{:});
             % Initialize an input parser:
             p = inputParser;
             p.KeepUnmatched = true;
@@ -60,8 +60,8 @@ classdef TVB < Limiter
             element.interpolateStateAtEdges;
             v1L = coefs(:,1) - element.stateL; % unsafe, left-sided
             v1R = element.stateR - coefs(:,1); % unsafe, right-sided
-            u1L = coefs(:,1) - basis.getLegendre(element.edgeL.elementL,1); % safe, left-sided
-            u1R = basis.getLegendre(element.edgeR.elementR,1) - coefs(:,1); % safe, right-sided
+            u1L = coefs(:,1) - basis.getLegendre(element.elementL,1); % safe, left-sided
+            u1R = basis.getLegendre(element.elementR,1) - coefs(:,1); % safe, right-sided
             % Compute the mapping to/from local characteristic variables:
             [~,L,R] = this.physics.getEigensystemAt(coefs(:,1));
             % Retrieve limited slopes:

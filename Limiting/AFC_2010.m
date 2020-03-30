@@ -29,7 +29,7 @@ classdef AFC_2010 < Limiter
             % Corrects a low-order predictor (assumes AFC-supported basis
             % has been used in each mesh element).
             %
-            mesh.computeResiduals(this.physics) % extra residual evaluation (linearized high-order predictor)
+            mesh.computeResiduals(this.physics,solver) % extra residual evaluation (linearized high-order predictor)
             this.computeAntidiffusiveFluxes(mesh.elements,solver.timeDelta)
             this.applyAFC(mesh,solver) % linearised AFC
         end
@@ -276,8 +276,8 @@ classdef AFC_2010 < Limiter
             % interface, i.e. all basis modes that "touch" a patch 
             % interface (on both sides of it) share common extrema.
             %
-            % Find intra-patch extrema (all elements):
-            for element = mesh.elements
+            % Find intra-patch extrema:
+            for element = [mesh.elements mesh.ghostElements]
                 % Transform to control variables:
                 this.syncStatesFun(element)
                 % Aliases:
@@ -296,7 +296,7 @@ classdef AFC_2010 < Limiter
             %  the extrema of the first(last) control point of patch k+1
             %  (k-1).
             %
-            for edge = mesh.edges{2} % loop over interior interfaces
+            for edge = mesh.edges % loop over edges
                 % Common maxima:
                 aux = max([edge.elementL.maxima(:,end),edge.elementR.maxima(:,1)],[],2);
                 edge.elementL.maxima(:,end) = aux;

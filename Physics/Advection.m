@@ -1,21 +1,17 @@
 classdef Advection < Physics
-    properties (Constant)
+    properties (Constant, Hidden)
         equationCount = 1
         controlVars = 1
     end
-    properties
-        advSpeed
-        ghostStates
+    properties (SetAccess = immutable)
+        advSpeed = 1
     end
     methods
         %% Constructor
-        function advection = Advection(a,ghostStates)
-            advection.advSpeed = 1;
-            if nargin > 0
-                advection.advSpeed = a;
-            end
-            if nargin > 1
-                advection.ghostStates = ghostStates;
+        function this = Advection(a)
+            if nargin
+                validateattributes(a,"numeric",{'finite'})
+                this.advSpeed = a;
             end
         end
         %% Convection operator
@@ -67,39 +63,9 @@ classdef Advection < Physics
                 flux = S*stateR;
             end
         end
-        %% Boundary conditions
-        function applyBoundaryConditions(this,mesh)
-            if isempty(this.ghostStates)
-                % Periodic boundary conditions:
-                mesh.elements(end).riemannR = this.riemannFlux(...
-                    mesh.elements(end).stateR,mesh.elements(1).stateL);
-                mesh.elements(1).riemannL = - mesh.elements(end).riemannR;
-                mesh.edges{end}.computeTimeDeltas(this.advSpeed);
-                mesh.edges{1}.computeTimeDeltas(this.advSpeed);
-            else
-                % Transmissive boundary conditions:
-                mesh.elements(end).riemannR = this.riemannFlux(mesh.elements(end).stateR,this.ghostStates(2));
-                mesh.edges{end}.computeTimeDeltas(this.advSpeed);
-                mesh.elements(1).riemannL = - this.riemannFlux(this.ghostStates(1),mesh.elements(1).stateL);
-                mesh.edges{1}.computeTimeDeltas(this.advSpeed);
-            end
+        %% Information (extension)
+        function info = getInfo(this)
+            info = sprintf('%s, a = %g',this.getInfo@Physics,this.advSpeed);
         end
-%         %% Periodic boundary condition
-%         function applyBoundaryConditions(this,mesh)
-%             mesh.elements(end).riemannR = this.riemannFlux(...
-%                 mesh.elements(end).stateR,mesh.elements(1).stateL);
-%             mesh.elements(1).riemannL = - mesh.elements(end).riemannR;
-%             % Local time-step sizes:
-%             mesh.edges{end}.computeTimeDeltas(this.advSpeed);
-%             mesh.edges{1}.computeTimeDeltas(this.advSpeed);
-%         end
-        %% Outlet boundary condition
-%         function applyBoundaryConditionsWeakly(this,mesh)
-%             mesh.elements(end).riemannR = this.flux(mesh.elements(end).stateR);
-%             mesh.elements(1).riemannL = 0;
-%             % Local time-step sizes:
-%             mesh.edges{end}.computeTimeDeltas(this.advSpeed);
-%             mesh.edges{1}.computeTimeDeltas(this.advSpeed);
-%         end
     end
 end

@@ -7,9 +7,9 @@ classdef Solver < matlab.mixin.SetGet
         amplificationFactorFun
     end
     properties
+        physics
         timeNow
         timeStop
-        physics
         courantNumber
         timeDelta
         limiter
@@ -30,24 +30,25 @@ classdef Solver < matlab.mixin.SetGet
     end
     methods
         %% Constructor
-        function this = Solver(timeNow,timeStop,physics,varargin)
+        function this = Solver(physics,timeSpan,varargin)
             if nargin > 0
+                % Required inputs:
+                validateattributes(physics,{'Physics'},{'scalar'})
+                validateattributes(timeSpan,{'numeric'},{'vector','nondecreasing','nonnegative','finite'})
+                this.physics = physics;
+                this.timeNow = timeSpan(1);
+                this.timeStop = timeSpan(end);
                 % Initialize an input parser:
                 p = inputParser;
                 p.KeepUnmatched = true;
-                timeCheckFun = @(x) validateattributes(x,{'numeric'},{'scalar','nonnegative','nonempty','nonnan','finite'});
-                % Required arguments:
-                addRequired(p,'timeNow',timeCheckFun)
-                addRequired(p,'timeStop',@(x)validateattributes(x,{'numeric'},{'scalar','>=',timeNow}))
-                addRequired(p,'physics',@(x)validateattributes(x,{'Physics'},{}))
-                % Optional arguments:
-                addParameter(p,'courantNumber',1,timeCheckFun)
-                addParameter(p,'timeDelta',[],timeCheckFun)
+                % Name-value arguments:
+                addParameter(p,'courantNumber',1,@(x)validateattributes(x,{'numeric'},{'scalar','nonnegative','finite'}))
+                addParameter(p,'timeDelta',[],@(x)validateattributes(x,{'numeric'},{'scalar','nonnegative','finite'}))
                 addParameter(p,'limiter',Limiter,@(x)validateattributes(x,{'Limiter'},{}))
                 addParameter(p,'exactSolution',@(t,x) nan,@(x)validateattributes(x,{'function_handle'},{}))
                 addParameter(p,'iterSkip',0,@(x)validateattributes(x,{'numeric'},{'integer'}))
                 % Parse the inputs:
-                parse(p,timeNow,timeStop,physics,varargin{:})
+                parse(p,varargin{:})
                 set(this,fieldnames(p.Results)',struct2cell(p.Results)')
                 % If timeDelta has been given a value, keep it fixed:
                 if any(string(p.UsingDefaults) == "timeDelta")
@@ -74,33 +75,36 @@ classdef Solver < matlab.mixin.SetGet
             addParameter(p,'initialCondition',@(x) this.exactSolution(this.timeNow,x),@(x)validateattributes(x,{'function_handle'},{}))
             % Parse the inputs:
             parse(p,varargin{:})
-            % Initialize boundary conditions:
-            %%% TO BE DONE %%%
             % Initialize solution:
             this.iterationCount = 0; tic
             for element = mesh.elements
                 element.basis.(p.Results.method)(element,p.Results.initialCondition)
+                element.interpolateStateAtEdges
             end
-            p.Results.limiter.applyInitial(mesh,this);
+            % Update ghost elements:
+            mesh.boundaries.apply(this.physics,this)
+            % Limit solution:
+            p.Results.limiter.applyInitial(mesh,this)
+            this.limiter.takeSnapshot(mesh)
             this.wallClockTime = toc;
             % Initialize residuals:
-            mesh.computeResiduals(this.physics);
+            mesh.computeResiduals(this.physics,this)
             % Initialize time-step size:
             if this.isTimeDeltaFixed
-                this.updateCourantNumber(mesh);
+                this.updateCourantNumber(mesh)
             else
-                this.updateTimeDelta(mesh);
+                this.updateTimeDelta(mesh)
             end
             % Initialize solver monitor (shows initial condition):
             this.monitor.initialize(mesh)
         end
         %% Advance solution in time
-        function STOP = launch(this,mesh)
+        function launch(this,mesh)
             % Start and drive the time marching routine, from timeNow
             % until timeStop of this solver instance.
             %
             tic
-            STOP = false;
+            STOP = this.timeNow == this.timeStop;
             if this.isTimeDeltaFixed
                 while ~STOP
                     STOP = this.stepForward(mesh);
@@ -113,6 +117,9 @@ classdef Solver < matlab.mixin.SetGet
                     this.updateTimeDelta(mesh)
                     this.wallClockTime = toc;
                 end
+            end
+            if ~STOP
+                warning('Solver stopped prematurely.')
             end
         end
         %% Estimate maximum stable Courant number
@@ -173,7 +180,7 @@ classdef Solver < matlab.mixin.SetGet
                 % Advance stage counter:
                 this.stageNow = this.stageNow + 1;
                 % Evaluate solution residuals:
-                mesh.computeResiduals(this.physics)
+                mesh.computeResiduals(this.physics,this)
                 % Advance solution by one stage:
                 for element = mesh.elements
                     this.applyStage(element)

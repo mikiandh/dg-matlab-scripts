@@ -1,10 +1,15 @@
 classdef Wave < Physics
-    properties (Constant)
+    % Wave equation physics. Hyperbolic system of two linear equations with
+    % constant coefficients. Alternative formulation of the scalar 2nd 
+    % order wave equation.
+    properties (Constant, Hidden)
         equationCount = 2
         controlVars = 1:2
     end
-    properties
-        waveSpeed
+    properties (SetAccess = immutable)
+        waveSpeed = 1
+    end
+    properties (Access = protected) %%% might break something, check later
         jacobian % i.e. A matrix
         jacobianL % i.e. A^+ or A^- matrix (depending on sign of waveSpeed)
         jacobianR % idem
@@ -13,16 +18,16 @@ classdef Wave < Physics
     end
     methods
         %% Constructor
-        function wave = Wave(c)
-            if nargin == 0
-                c = 1;
+        function this = Wave(c)
+            if nargin
+                validateattributes(c,"numeric",{'finite'})
+                this.waveSpeed = c;
             end
-            wave.waveSpeed = c;
-            wave.jacobian = [0 c^2; 1 0];
-            wave.jacobianL = 0.5*[abs(c) c^2; 1 abs(c)];
-            wave.jacobianR = 0.5*[-abs(c) c^2; 1 -abs(c)];
-            wave.eigenvectors = [c -c; 1 1];
-            wave.invEigenvectors = [1 c; -1 c]/(2*c);
+            this.jacobian = [0 this.waveSpeed^2; 1 0];
+            this.jacobianL = 0.5*[abs(this.waveSpeed) this.waveSpeed^2; 1 abs(this.waveSpeed)];
+            this.jacobianR = [-1 1; 1 -1].*this.jacobianL;
+            this.eigenvectors = [this.waveSpeed -this.waveSpeed; 1 1];
+            this.invEigenvectors = [1 this.waveSpeed; -1 this.waveSpeed]/(2*this.waveSpeed);
         end
         %% Flux function
         function flux = flux(this,states)
@@ -32,30 +37,6 @@ classdef Wave < Physics
         function [flux,S] = riemannFlux(this,stateL,stateR)
             flux = this.jacobianL*stateL + this.jacobianR*stateR;
             S = this.waveSpeed*[1 -1]';
-        end
-        %% Outlet boundary conditions
-%         function applyBoundaryConditionsWeakly(this,mesh)
-%             externalState = zeros(2,1);
-%             % Right-most boundary:
-%             mesh.elements(end).riemannR =...
-%                 this.riemannFlux(mesh.elements(end).stateR,externalState);
-%             mesh.edges{end}.computeTimeDeltas(-this.waveSpeed);
-%             % Left-most boundary:
-%             mesh.elements(1).riemannL =...
-%                 -this.riemannFlux(externalState,mesh.elements(1).stateL);
-%             mesh.edges{1}.computeTimeDeltas(this.waveSpeed);
-%         end
-        %% Reflecting boundary conditions
-        function applyBoundaryConditions(this,mesh)
-            % Right-most boundary:
-            externalState = [mesh.elements(end).stateR(1); -mesh.elements(end).stateR(2)];
-            mesh.elements(end).riemannR = this.riemannFlux(mesh.elements(end).stateR,externalState);
-            mesh.edges{end}.computeTimeDeltas(-this.waveSpeed);
-            % Left-most boundary:
-            externalState = [mesh.elements(1).stateL(1); -mesh.elements(1).stateL(2)];
-            mesh.elements(1).riemannL =...
-                -this.riemannFlux(externalState,mesh.elements(1).stateL);
-            mesh.edges{1}.computeTimeDeltas(this.waveSpeed);
         end
         %% Convert state vector(s) to characteristic variable vector(s)
         function states = stateToEigenstate(this,states)
@@ -121,11 +102,9 @@ classdef Wave < Physics
             L = this.invEigenvectors;
             R = this.eigenvectors;
         end
-    end
-    methods (Static)
-        %% Check for positivity in certain quantities
-        function PASS = checkWithinPhysicalBounds(~,~)
-            PASS = 1;
+        %% Information (extension)
+        function info = getInfo(this)
+            info = sprintf('%s, c = %g',this.getInfo@Physics,this.waveSpeed);
         end
     end
 end

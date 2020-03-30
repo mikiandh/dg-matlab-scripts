@@ -20,9 +20,9 @@ classdef KXRCF < Sensor
                 % Precompute some stuff:
                 ref = abs(element.basis.getLegendre(element,1))*element.dx^(.5*element.dofCount);
                 qL = element.stateL; % left edge of element k
-                qLL = element.edgeL.elementL.stateR; % right edge of element k-1
+                qLL = element.elementL.stateR; % right edge of element k-1
                 qR = element.stateR; % right edge of element k
-                qRR = element.edgeR.elementR.stateL; % left edge of element k+1
+                qRR = element.elementR.stateL; % left edge of element k+1
                 % Test left edge:
                 try
                     [D,L] = solver.physics.getEigensystemAt(qLL,qL);

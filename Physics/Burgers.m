@@ -1,11 +1,10 @@
 classdef Burgers < Physics
-    properties (Constant)
+    properties (Constant, Hidden)
         equationCount = 1
         controlVars = 1
     end
     properties
-        viscosity
-        ghostStates
+        viscosity = 0
     end
     methods (Static)
         %% Convection operator
@@ -43,16 +42,6 @@ classdef Burgers < Physics
         end
     end
     methods
-        %% Constructor
-        function burgers = Burgers(ghostStates,epsilon)
-            if nargin < 2
-                epsilon = 0;
-            end
-            if nargin > 0
-                burgers.ghostStates = ghostStates;
-            end
-            burgers.viscosity = epsilon;
-        end
         %% Riemann solver (exact, with entropy fix)
         function [flux,S] = riemannFlux(this,stateL,stateR)
             S = [stateL stateR]';
@@ -70,24 +59,6 @@ classdef Burgers < Physics
                 else % transonic expansion (entropy fix)
                     flux = 0;
                 end
-            end
-        end
-        %% Boundary conditions
-        function applyBoundaryConditions(this,mesh)
-            if isempty(this.ghostStates)
-                % Periodic boundary conditions:
-                [mesh.elements(end).riemannR,waveSpeeds] = this.riemannFlux(...
-                    mesh.elements(end).stateR,mesh.elements(1).stateL);
-                mesh.elements(1).riemannL = - mesh.elements(end).riemannR;
-                mesh.edges{end}.computeTimeDeltas(waveSpeeds);
-                mesh.edges{1}.computeTimeDeltas(waveSpeeds);
-            else
-                % Transmissive boundary conditions:
-                [mesh.elements(end).riemannR,waveSpeeds] = this.riemannFlux(mesh.elements(end).stateR,this.ghostStates(2));
-                mesh.edges{end}.computeTimeDeltas(waveSpeeds);
-                [mesh.elements(1).riemannL,waveSpeeds] = this.riemannFlux(this.ghostStates(1),mesh.elements(1).stateL);
-                mesh.elements(1).riemannL = - mesh.elements(1).riemannL;
-                mesh.edges{1}.computeTimeDeltas(waveSpeeds);
             end
         end
     end
