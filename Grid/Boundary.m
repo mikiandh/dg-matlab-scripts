@@ -3,7 +3,7 @@ classdef Boundary < handle & matlab.mixin.Heterogeneous
     % Enforcement is made a la weak-Riemann (see Mengaldo et al., 2014), 
     % regardless of the actual type of boundary condition being prescribed.
     properties (SetAccess = protected)
-        ghostElement = Element(DG(0),[-inf inf]) % fictitious (ghost) element
+        ghostElement % fictitious (ghost) element
         boundElement % element closest to the domain's bounday, from inside
     end
     methods (Access = protected)
@@ -12,12 +12,10 @@ classdef Boundary < handle & matlab.mixin.Heterogeneous
             % Assigns bound element and edge coordinate, considering sides.
             if isLeft
                 this.boundElement = elements(1);
-                this.ghostElement.xR = elements(1).xL;
-                this.ghostElement.x = -inf;
+                this.ghostElement = Element(DG(elements(1).dofCount-1),[-inf elements(1).xL]);
             else
                 this.boundElement = elements(end);
-                this.ghostElement.xL = elements(end).xR;
-                this.ghostElement.x = inf;
+                this.ghostElement = Element(DG(elements(end).dofCount-1),[elements(end).xR inf]);
             end
         end
         %% Enforce (scalar, default)

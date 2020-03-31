@@ -15,10 +15,11 @@ classdef Periodic < Boundary
             % Replaces the ghost element adjacent to a boundary with the
             % element adjacent to the opposite one.
             %
-            this.setup_scalar@Boundary(elements,isLeft);
             if isLeft
+                this.boundElement = elements(1);
                 this.ghostElement = elements(end);
             else
+                this.boundElement = elements(end);
                 this.ghostElement = elements(1);
             end
         end

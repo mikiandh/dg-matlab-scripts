@@ -28,7 +28,7 @@ classdef Farfield < Boundary
         end
         %% Information (sclar, extension)
         function info = getInfo_scalar(this)
-            info = sprintf('%s (q_{Inf} = %s)',this.getInfo_scalar@Boundary,func2str(this.states));
+            info = sprintf('%s (q_{\\infty} = %s)',this.getInfo_scalar@Boundary,func2str(this.states));
         end
     end
 end

@@ -59,6 +59,14 @@ classdef Lagrange < Basis
             this.massMatrix = diag(this.nodeWeights); % by definition
             this.gradientMatrix = this.derivatives'.*this.nodeWeights; % idem (08/10/2019: it would be practical to redefine 'this.derivatives' as its transposed, but I don't dare change it at this stage)
         end
+        %% Interpolatory projection
+        function interpolate(~,element,fun0)
+            % Interpolatory projection of the function onto this basis.
+            %
+            element.states = fun0(element.getNodeCoords');
+        end
+    end
+    methods (Access = {?Basis,?Element})
         %% Lagrange to Legendre projection
         function modes = getLegendre(this,element,j,i)
             % Returns selected expansion coefficients from the 
@@ -85,12 +93,6 @@ classdef Lagrange < Basis
                 case 4
                     element.states(i,:) = modes*this.vandermonde;
             end
-        end
-        %% Interpolatory projection
-        function interpolate(~,element,fun0)
-            % Interpolatory projection of the function onto this basis.
-            %
-            element.states = fun0(element.getNodeCoords');
         end
     end
     methods (Static)

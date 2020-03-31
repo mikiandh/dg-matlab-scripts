@@ -15,6 +15,7 @@ classdef Solver < matlab.mixin.SetGet
         limiter
         isTimeDeltaFixed
         iterSkip
+        waitForKey
         iterationCount
         wallClockTime
         exactSolution = @(t,x) nan
@@ -34,7 +35,7 @@ classdef Solver < matlab.mixin.SetGet
             if nargin > 0
                 % Required inputs:
                 validateattributes(physics,{'Physics'},{'scalar'})
-                validateattributes(timeSpan,{'numeric'},{'vector','nondecreasing','nonnegative','finite'})
+                validateattributes(timeSpan,{'numeric'},{'vector','nondecreasing','nonnegative'})
                 this.physics = physics;
                 this.timeNow = timeSpan(1);
                 this.timeStop = timeSpan(end);
@@ -47,6 +48,7 @@ classdef Solver < matlab.mixin.SetGet
                 addParameter(p,'limiter',Limiter,@(x)validateattributes(x,{'Limiter'},{}))
                 addParameter(p,'exactSolution',@(t,x) nan,@(x)validateattributes(x,{'function_handle'},{}))
                 addParameter(p,'iterSkip',0,@(x)validateattributes(x,{'numeric'},{'integer'}))
+                addParameter(p,'waitForKey',false,@(x)validateattributes(x,{'logical'},{'scalar'}))
                 % Parse the inputs:
                 parse(p,varargin{:})
                 set(this,fieldnames(p.Results)',struct2cell(p.Results)')
@@ -97,6 +99,11 @@ classdef Solver < matlab.mixin.SetGet
             end
             % Initialize solver monitor (shows initial condition):
             this.monitor.initialize(mesh)
+            if this.waitForKey
+                fprintf('Paused. Press key to continue...');
+                pause
+                fprintf('\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b')
+            end
         end
         %% Advance solution in time
         function launch(this,mesh)
@@ -194,6 +201,11 @@ classdef Solver < matlab.mixin.SetGet
             if STOP || ~mod(this.iterationCount,this.iterSkip)
                 this.monitor.refresh(mesh)
                 this.limiter.takeSnapshot(mesh)
+                if this.waitForKey
+                    fprintf('Paused. Press key to continue...');
+                    pause
+                    fprintf('\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b')
+                end
             end
         end
         %% Update Courant number (fixed timeDelta)

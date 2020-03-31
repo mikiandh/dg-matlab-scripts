@@ -61,20 +61,46 @@ classdef Norm < handle
                         norm.maxNorm(@(x) mesh.sample(x) - fun(x))
                     case {Norm.Mass}
                         % Solution mass pseudo-norm:
-                        norm.vals = mesh.getSolutionMass(1:norm.rows);
+                        norm.massNorm(mesh)
                     case {Norm.TV}
                         % Solution total variation (estimate):
-                        norm.vals = mesh.getTotalVariation;
+                        norm.tvNorm(mesh)
                     case {Norm.TVM}
                         % Solution total variation in the means:
-                        norm.vals = mesh.getTVM(1:norm.rows);
-                    otherwise
-                        
+                        norm.tvmNorm(mesh)
                 end
             end
         end
     end
     methods (Access = protected)
+        %% Mass norms
+        function massNorm(this,mesh)
+            % Computes the "mass norm" (non-normalized L1, without absolute
+            % values) of solution vector components via Gauss quadrature of
+            % optimal order at each break span.
+            %
+            % Computation of patch averages exploits the fact that, for
+            % bases that satify the partition of unity property at nodes
+            % (e.g. Legendre, BSpline), each lumped mass matrix component
+            % is equal to the integral of its associated basis function 
+            % over the whole patch.
+            %
+            % For Legendre, Lagrange and BSpline bases, results are exact.
+            %
+            % Preallocate:
+            this.vals = zeros(this.rows,1);
+            % Loop over elements:
+            for element = mesh.elements
+                % "Polymorphism":
+                if isa(element.basis,'Legendre') % cell-averages directly available
+                    this.vals = this.vals + element.states(:,1)*element.dx;
+                elseif isa(element.basis,'Lagrange') || isa(element.basis,'BSpline') % nodal partition of unity
+                    this.vals = this.vals + element.states*sum(element.basis.massMatrix,2)*.5*element.dx;
+                else % general case (approximate)
+                    this.vals = this.vals + element.getLegendre(1)*element.dx;
+                end
+            end
+        end
         %% L^p norms
         function pNorm(this,fun)
             % Computes a p-norm of the given function using this norm's
@@ -104,6 +130,70 @@ classdef Norm < handle
             end
             % Retrieve maxima:
             this.vals = -this.vals;
+        end
+        %% Total variation in the means
+        function tvmNorm(this,mesh)
+            % Computes, equation-wise, the total variation in the means of
+            % an approximate solution (i.e. total variation a la FV, see 
+            % Leveque, 2002, p. 109, applied to 1st Legendre coefficients).
+            %
+            % Loop over edges (so that ghost elements are also included):
+            this.vals(1:this.rows,1) = 0;
+            for edge = mesh.edges
+                % Approximate Legendre coefficients patch-wide:
+                QL = edge.elementL.getLegendre(1,1:this.rows);
+                QR = edge.elementR.getLegendre(1,1:this.rows);
+                % Accumulate TV in Legendre coefficients:
+                this.vals = this.vals + abs(QR - QL);
+            end
+        end
+        %% TV estimate
+        function tvNorm(this,mesh)
+            % Compute the total variation of the current approximate
+            % solution stored in the mesh. Convergence acceleration using
+            % linear Richardson extrapolation.
+            %
+            maxIters = 30;
+            x = mesh.getGaussLocations; % global quadrature point locations
+            q = mesh.sample(x); % state vector at every quadrature location (initial samples)
+            function tv = TV
+                tv = sum(abs(diff(q,1,2)),2);
+            end
+            A(:,2) = TV;
+            R0 = inf;
+            % Iterate until reaching tolerance or excessive cost:
+            for iter = 1:maxIters
+                [q,x] = resampleBisection(q,x);
+                A = horzcat(A(:,2),TV);
+                if all(abs(diff(A,1,2)) < 1e-10)
+                    this.vals = A(:,end);
+                    return
+                end
+                this.vals = Algorithms.richardsonExtrapolate(A);
+                if all(abs(this.vals - R0) < 1e-10)
+                    return
+                end
+                if length(x) > 1e6 || any(isnan(this.vals)) || any(this.vals > 1e200)
+                    %warning('Failed to converge on tolerance.')
+                    break
+                end
+                R0 = this.vals;
+            end
+            function [q,x] = resampleBisection(q0,x0)
+                % Refine (in a nested way) a set of solution samples (from
+                % this mesh), by adding to the provided sampled states and
+                % locations new ones obtained via bisection. Only the new
+                % samples are computed.
+                %
+                x = zeros(1,2*length(x0)-1);
+                q = zeros(size(q0,1),length(x));
+                ids = logical(mod(1:length(x),2)); % old entries
+                x(ids) = x0;
+                q(:,ids) = q0;
+                ids = ~ids; % new entries
+                x(ids) = .5*(x0(2:end) + x0(1:end-1));
+                q(:,ids) = mesh.sample(x(ids));
+            end
         end
     end
 end

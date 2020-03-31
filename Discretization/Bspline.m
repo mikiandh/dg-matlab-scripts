@@ -201,11 +201,37 @@ classdef Bspline < Basis
                 ids = ids + this.degree + 1;
             end
         end
+        %% Quasi-interpolatory projection
+        function interpolate(~,element,fun0)
+            % Assign control point values from exact function samples. 
+            % B-spline function at control locations will, in general, not
+            % coincide with the exact one; also, the projection will not be
+            % norm-preserving (in general). It will, nevertheless, be TVD.
+            %
+            element.states = fun0(element.getControlCoords);
+        end
+        %% Oneliner info (extension)
+        function name = getName(this)
+            % Appends number of breakspans and smoothness class to this
+            % basis's one line descriptor.
+            name = getName@Basis(this);
+            varkappa = this.smoothness;
+            if isnan(varkappa) || isinf(varkappa)
+                varkappa = this.degree - 1;
+            end
+            if isempty(varkappa)
+                name = sprintf('%s, N_\\Sigma = %d',name,this.nonzeroSpanCount);
+            else
+                name = sprintf('%s, N_\\Sigma = %d, C^{%d}',name,this.nonzeroSpanCount,varkappa);
+            end
+        end
+    end
+    methods (Access = {?Basis,?Element})
         %% Bspline to Legendre projection (patch-wise)
         function modes = getLegendre(this,element,j,i)
             % Projects the solution from a vector space with Bspline basis
-            % to one with Legendre basis, both with the same number of 
-            % dimensions. Solution continuity will not be preserved, in 
+            % to one with Legendre basis, both with the same number of
+            % dimensions. Solution continuity will not be preserved, in
             % general. Uses Gauss quadrature with order p+1, where p is the
             % highest degree in the destination basis.
             %
@@ -222,7 +248,7 @@ classdef Bspline < Basis
             massLegendre = (legendre(j,:).^2*weights)';
             % Approximate the necessary mixed mass matrix entries:
             %
-            %  In order to get mode(s) j of the Legendre basis, one needs 
+            %  In order to get mode(s) j of the Legendre basis, one needs
             %  ALL basis functions of the origin basis (Bspline), yet ONLY
             %  said j test function(s) of the destination basis (Legendre).
             %
@@ -243,8 +269,8 @@ classdef Bspline < Basis
             %
             % Approximate the mixed mass matrix:
             %
-            %  The destination (Bspline) basis will have, in general, a 
-            %  lower degree than the origin basis. This can potentially 
+            %  The destination (Bspline) basis will have, in general, a
+            %  lower degree than the origin basis. This can potentially
             %  make the quadrature used in this step innacurate. This loss
             %  of accuracy is mitigated by the increased number of
             %  quadrature intervals, but there is no reason why this should
@@ -271,30 +297,6 @@ classdef Bspline < Basis
                 element.states(i,:) = modes;
             else
                 element.states = modes;
-            end
-        end
-        %% Quasi-interpolatory projection
-        function interpolate(~,element,fun0)
-            % Assign control point values from exact function samples. 
-            % B-spline function at control locations will, in general, not
-            % coincide with the exact one; also, the projection will not be
-            % norm-preserving (in general). It will, nevertheless, be TVD.
-            %
-            element.states = fun0(element.getControlCoords);
-        end
-        %% Oneliner info (extension)
-        function name = getName(this)
-            % Appends number of breakspans and smoothness class to this
-            % basis's one line descriptor.
-            name = getName@Basis(this);
-            varkappa = this.smoothness;
-            if isnan(varkappa) || isinf(varkappa)
-                varkappa = this.degree - 1;
-            end
-            if isempty(varkappa)
-                name = sprintf('%s, N_\\Sigma = %d',name,this.nonzeroSpanCount);
-            else
-                name = sprintf('%s, N_\\Sigma = %d, C^{%d}',name,this.nonzeroSpanCount,varkappa);
             end
         end
     end

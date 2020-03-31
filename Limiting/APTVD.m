@@ -13,9 +13,9 @@ classdef APTVD < Sensor
             % Mark all cells containing one or more local extrema:
             for element = mesh.elements([mesh.elements.isTroubled])
                 % Get min/max cell average array:
-                avgs = [element.basis.getLegendre(element,1)...
-                    element.elementL.basis.getLegendre(element.elementL,1)...
-                    element.elementR.basis.getLegendre(element.elementR,1)];
+                avgs = [element.getLegendre(1)...
+                    element.elementL.getLegendre(1)...
+                    element.elementR.getLegendre(1)];
                 % Get solution samples:
                 samples = element.interpolateStateAtCoords([element.xL element.getDofCoords' element.xR]);
                 % Unmark if no local extremum is present:
@@ -24,14 +24,14 @@ classdef APTVD < Sensor
             % Unmark p > 1 cells if their extrema are smooth:
             for element = mesh.elements([mesh.elements.isTroubled] & [mesh.elements.dofCount] > 2)
                 % Approximate 2nd and 3rd Legendre coefficients:
-                coefs = element.basis.getLegendre(element,2:3)./[1 3];
+                coefs = element.getLegendre(2:3)./[1 3];
                 if element.elementL.dofCount > 1
-                    coefsL = element.elementL.basis.getLegendre(element.elementL,2);
+                    coefsL = element.elementL.getLegendre(2);
                 else
                     coefsL = 0;
                 end
                 if element.elementR.dofCount > 1
-                    coefsR = element.elementR.basis.getLegendre(element.elementR,2);
+                    coefsR = element.elementR.getLegendre(2);
                 else
                     coefsR = 0;
                 end

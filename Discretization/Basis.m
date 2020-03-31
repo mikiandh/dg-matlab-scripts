@@ -24,9 +24,11 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
         clone(prototype,degree) % required for the prototype instantiation pattern
         computeResiduals(this,element,physics) % evaluate discrete spatial operator, i.e residual (a la Wang et al. 2013)
         sampleAt(this,x) % sample basis components at given locations
+        interpolate(this,element,fun0) % sample-based projection (non-conservative)
+    end
+    methods (Abstract, Access = {?Basis,?Element})
         getLegendre(this,element,j,i) % get chosen Legendre coefficients from an element (assumed to employ this basis)
         setLegendre(this,element,modes,i) % set all Legendre coefficients of an element (assumed to employ this basis)
-        interpolate(this,element,fun0) % sample-based projection (non-conservative)
     end
     methods
         %% L2 projection (conservative)

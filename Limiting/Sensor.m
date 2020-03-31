@@ -18,10 +18,11 @@ classdef Sensor < handle
             % method has set "isTroubled" to true.
             %
             % Mark all elements as troubled (i.e. to be limited):
-            set(mesh.elements(2:end-1),'isTroubled',true); %%% FIXME: find a better way to deal with BCs %%%
+            flags(1:mesh.elementCount) = {true};
             % Exclude any p == 0 cells:
-            elements = findobj(mesh.elements,'dofCount',1);
-            set(elements,'isTroubled',false);
+            flags([mesh.elements.dofCount] == 1) = {false};
+            % Update:
+            [mesh.elements.isTroubled] = flags{:};
         end
         %% Record status
         function takeSnapshot(this,mesh)

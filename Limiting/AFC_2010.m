@@ -276,8 +276,8 @@ classdef AFC_2010 < Limiter
             % interface, i.e. all basis modes that "touch" a patch 
             % interface (on both sides of it) share common extrema.
             %
-            % Find intra-patch extrema:
-            for element = [mesh.elements mesh.ghostElements]
+            % Find intra-patch extrema (also ghost elements):
+            for element = [mesh.elements mesh.boundaries.ghostElement]
                 % Transform to control variables:
                 this.syncStatesFun(element)
                 % Aliases:
@@ -325,7 +325,6 @@ classdef AFC_2010 < Limiter
             for element = mesh.elements(~mask)
                 this.invSyncStatesFun(element)
             end
-%%% These elements are never troubled anyway (BC limitations) %%%%%%%%%%%%%
             % Override extrema of control points closest to mesh boundaries
             % (Kuzmin et al, 2012; remark 5, pp. 163, bottom):
             mesh.elements(1).maxima(:,1) = inf;

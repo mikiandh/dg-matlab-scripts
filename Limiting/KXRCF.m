@@ -18,7 +18,7 @@ classdef KXRCF < Sensor
             % Check all possibly troubled elements:
             for element = mesh.elements([mesh.elements.isTroubled])
                 % Precompute some stuff:
-                ref = abs(element.basis.getLegendre(element,1))*element.dx^(.5*element.dofCount);
+                ref = abs(element.getLegendre(1))*element.dx^(.5*element.dofCount);
                 qL = element.stateL; % left edge of element k
                 qLL = element.elementL.stateR; % right edge of element k-1
                 qR = element.stateR; % right edge of element k

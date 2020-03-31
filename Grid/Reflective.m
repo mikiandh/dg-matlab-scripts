@@ -24,9 +24,9 @@ classdef Reflective < Boundary
         %% Enforce (scalar, override)
         function apply_scalar(this,physics,solver,isLeft)
             if isLeft
-                state = this.boundElement.statesL;
+                state = this.boundElement.stateL;
             else
-                state = this.boundElement.statesR;
+                state = this.boundElement.stateR;
             end
             this.ghostElement.state = Reflective.(class(physics))(state,this.wallSpeed(solver.timeNow));
             this.ghostElement.interpolateStateAtEdges
@@ -38,7 +38,7 @@ classdef Reflective < Boundary
     end
     methods (Static, Access = protected)
         %% Ghost state (advection)
-        function Advection(~,~)
+        function q = Advection(~,~) %#ok<STOUT>
             error('Reflective boundary condition is not defined for the Advection equation.')
         end
         %% Ghost state (Burgers)

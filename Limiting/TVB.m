@@ -4,20 +4,14 @@ classdef TVB < Limiter
     % order at smooth extrema (if M is not chosen properly).
     %
     properties (SetAccess = immutable)
-        M % user-definable sensitivity parameter (see Cockburn & Shu, 1998)
+        M = 0 % user-definable sensitivity parameter (see Cockburn & Shu, 1998)
     end
     methods
         %% Constructor
-        function this = TVB(varargin)
-            % Superclass constructor:
+        function this = TVB(M,varargin)
+            validateattributes(M,{'numeric'},{'scalar','nonnegative'});
             this@Limiter(varargin{:});
-            % Initialize an input parser:
-            p = inputParser;
-            p.KeepUnmatched = true;
-            addParameter(p,'M',0);
-            % Parse the inputs:
-            parse(p,varargin{:});
-            this.M = p.Results.M;
+            this.M = M;
         end
         %% Apply (extension)
         function applyStage(this,mesh,solver)
@@ -51,23 +45,20 @@ classdef TVB < Limiter
             % values at each edge, as determined in the trouble detection 
             % step.
             %
-            % Aliases:
-            tol = this.M*element.dx^2;
-            basis = element.basis;
             % Get current cell Legendre coefficients:
-            coefs = basis.getLegendre(element);
+            coefs = element.getLegendre;
             % Cell slopes (via finite difference approximations):
             element.interpolateStateAtEdges;
             v1L = coefs(:,1) - element.stateL; % unsafe, left-sided
             v1R = element.stateR - coefs(:,1); % unsafe, right-sided
-            u1L = coefs(:,1) - basis.getLegendre(element.elementL,1); % safe, left-sided
-            u1R = basis.getLegendre(element.elementR,1) - coefs(:,1); % safe, right-sided
+            u1L = coefs(:,1) - element.elementL.getLegendre(1); % safe, left-sided
+            u1R = element.elementR.getLegendre(1) - coefs(:,1); % safe, right-sided
             % Compute the mapping to/from local characteristic variables:
             [~,L,R] = this.physics.getEigensystemAt(coefs(:,1));
             % Retrieve limited slopes:
             u1L = L*u1L; u1R = L*u1R;
-            w1L = R*this.minmod(L*v1L,u1L,u1R,tol); % left-sided
-            w1R = R*this.minmod(L*v1R,u1L,u1R,tol); % right-sided
+            w1L = R*this.minmod(L*v1L,u1L,u1R,this.M*element.dx^2); % left-sided
+            w1R = R*this.minmod(L*v1R,u1L,u1R,this.M*element.dx^2); % right-sided
             % Determine troubled rows and columns:
             rows = find(abs(w1L - v1L) > 1e-10 | abs(w1R - v1R) > 1e-10);
             element.isLimited(rows,2:end) = true; % flag all limited DOFs as such
@@ -75,8 +66,8 @@ classdef TVB < Limiter
             aux = zeros(size(coefs)); % preallocate to zero
             aux(rows,1) = .5*(w1R(rows) + w1L(rows)); % safe 2nd Legendre coefficient
             aux(rows,2) = 0*.5*(w1R(rows) - w1L(rows)); % safe 3rd Legendre coefficient (see A5-XI, 02/03/2020)
-            coefs(:,2:end) = aux(:,1:basis.basisCount-1); % overwrite limited Legendre coefficients (only)
-            basis.setLegendre(element,coefs(rows,:),rows); % overwrite all DOFs of limited state vector components
+            coefs(:,2:end) = aux(:,1:element.basis.basisCount-1); % overwrite limited Legendre coefficients (only)
+            element.setLegendre(coefs(rows,:),rows); % overwrite all DOFs of limited state vector components
         end
     end
     methods (Static)

@@ -150,6 +150,8 @@ classdef Legendre < Basis
             weights = 2./((1-coords.^2).*dLGV.^2)*(N2/N1)^2; % compute weights
             LGVM = (LGVM(:,1:end-1))'; % clean-up the Vandermonde matrix
         end
+    end
+    methods (Static, Access = {?Basis,?Element})
         %% Identity projection (forwards)
         function modes = getLegendre(element,j,i)
             % Returns selected modes of the given element.

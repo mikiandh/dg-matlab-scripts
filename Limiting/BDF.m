@@ -58,7 +58,7 @@ classdef BDF < Limiter
             this.R = zeros(this.I,this.I,this.K);
             % Populate Legendre coefficients:
             for k = 1:this.K
-                this.coefs(:,1:elements(k).dofCount,k) = elements(k).basis.getLegendre(elements(k));
+                this.coefs(:,1:elements(k).dofCount,k) = elements(k).getLegendre;
             end
             % Save unlimited Legendre coefs. in cons. vars. for later:
             this.coefs0 = this.coefs;
@@ -68,8 +68,8 @@ classdef BDF < Limiter
                 [~,L,this.R(:,:,k)] = this.physics.getEigensystemAt(this.coefs(:,1,k));
                 % Apply to Legendre coefficients:
                 this.coefs(:,:,k) = L*this.coefs(:,:,k);
-                this.coefsL(:,1:elements(k).elementL.dofCount,k) = L*elements(k).elementL.basis.getLegendre(elements(k).elementL);
-                this.coefsR(:,1:elements(k).elementR.dofCount,k) = L*elements(k).elementR.basis.getLegendre(elements(k).elementR);
+                this.coefsL(:,1:elements(k).elementL.dofCount,k) = L*elements(k).elementL.getLegendre;
+                this.coefsR(:,1:elements(k).elementR.dofCount,k) = L*elements(k).elementR.getLegendre;
             end
             % Permute for convenience:
             this.coefs = permute(this.coefs,[3,2,1]);
@@ -116,7 +116,7 @@ classdef BDF < Limiter
                 elements(k).isLimited = abs(this.coefs0(:,:,k) - this.coefs(:,:,k)) > 1e-10;
                 % Update all modes of each affected conservative variables:
                 i = any(elements(k).isLimited,2);
-                elements(k).basis.setLegendre(elements(k),this.coefs(i,1:elements(k).dofCount,k),i);
+                elements(k).setLegendre(this.coefs(i,1:elements(k).dofCount,k),i);
             end
         end
     end

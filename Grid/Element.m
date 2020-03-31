@@ -1,4 +1,4 @@
-classdef Element < matlab.mixin.SetGet
+classdef Element < handle
     % Class that represents the fundamental geometrical unit in which the
     % solution lives: the (DG) element, a.k.a patch.
     properties
@@ -173,6 +173,14 @@ classdef Element < matlab.mixin.SetGet
                 f = betas.*reshape(this.antidiffusiveFluxes(i,:),N,N);
                 this.states(i,:) = this.states(i,:) - sum(f,2)'./masses;
             end
+        end
+        %% Get Legendre coefficients of this element
+        function Q = getLegendre(this,varargin)
+            Q = this.basis.getLegendre(this,varargin{:});
+        end
+        %% Set Legendre coefficients of this element
+        function setLegendre(this,varargin)
+            this.basis.setLegendre(this,varargin{:});
         end
     end
 end
