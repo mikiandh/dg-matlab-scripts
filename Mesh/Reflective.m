@@ -21,14 +21,37 @@ classdef Reflective < Boundary
         end
     end
     methods (Access = protected)
-        %% Enforce (scalar, override)
+        %% Initialize (scalar)
+        function setup_scalar(this,elements,isLeft)
+            % Computes and stores the LU decomposition of matrix A in
+            % A*X = B, where X is the 2D array of ghost states (i.e.
+            % Legendre coeffs.), B(1,1:I) is the solution vector at the
+            % boundary, and B(2:J,1:I) are the Legendre coefficients of the
+            % bound element of this boundary.
+            %
+            % Set bound and ghost elements (both have the same #DoFs):
+            if isLeft
+                this.boundElement = elements(1);
+                this.ghostElement = Element(DG(elements(1).dofCount-1),[-inf elements(1).xL]);
+            else
+                this.boundElement = elements(end);
+                this.ghostElement = Element(DG(elements(end).dofCount-1),[elements(end).xR inf]);
+            end
+            % Sparse constraint matrix assembly:
+            J = this.boundElement.dofCount; % number of rows/columns
+            s = isLeft - ~isLeft; % +1 if left boundary, -1 if right
+            A = sparse([repelem(1,J) 2:J],[1:J 2:J],[s.^(2:J+1) repelem(1,J-1)]);
+            % LU factorization:
+            [this.L,this.U,this.P] = lu(A);
+        end
+        %% Enforce (scalar)
         function apply_scalar(this,physics,solver,isLeft)
             if isLeft
                 state = this.boundElement.stateL;
             else
                 state = this.boundElement.stateR;
             end
-            this.ghostElement.state = Reflective.(class(physics))(state,this.wallSpeed(solver.timeNow));
+            this.ghostElement.states = Reflective.(class(physics))(state,this.wallSpeed(solver.timeNow));
             this.ghostElement.interpolateStateAtEdges
         end
         %% Information (scalar, extension)

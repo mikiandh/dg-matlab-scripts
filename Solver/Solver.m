@@ -169,7 +169,7 @@ classdef Solver < matlab.mixin.SetGet
             this.iterationCount = this.iterationCount + 1;
             this.timeNow = this.timeNow + this.timeDelta;
             % Check solution boundedness:
-            states = cell2mat({mesh.elements.states});
+            states = [mesh.elements.states];
             if any(isinf(states(:))) || any(isnan(states(:)))
                 warning('Inf or NaN state(s) detected at t = %.4f.',this.timeNow)
                 STOP = true;

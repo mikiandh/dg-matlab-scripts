@@ -21,8 +21,23 @@ classdef Farfield < Boundary
         end
     end
     methods (Access = protected)
-        %% Enforce (scalar, extension)
+        %% Initialize (scalar)
+        function setup_scalar(this,elements,isLeft)
+            % Sets this boundary's bound and ghost elements. The latter
+            % uses a FV basis (i.e. element-wide constant solution, p = 0).
+            if isLeft
+                this.boundElement = elements(1);
+                this.ghostElement = Element(DG(0),[-inf elements(1).xL]);
+            else
+                this.boundElement = elements(end);
+                this.ghostElement = Element(DG(0),[elements(end).xR inf]);
+            end
+        end
+        %% Enforce (scalar)
         function apply_scalar(this,~,solver,~)
+            % Updates the ghost state vector according to this boundary's 
+            % farfield state function (of time). Propagates it to this 
+            % boundary's ghost element's edges.
             this.ghostElement.states = this.states(solver.timeNow);
             this.ghostElement.interpolateStateAtEdges
         end

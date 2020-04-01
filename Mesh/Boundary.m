@@ -6,22 +6,16 @@ classdef Boundary < handle & matlab.mixin.Heterogeneous
         ghostElement % fictitious (ghost) element
         boundElement % element closest to the domain's bounday, from inside
     end
+    methods (Access = protected, Abstract)
+        % Initializes the ghost and bound elements of this boundary,
+        % according to its type and side (left or right).
+        setup_scalar(this,elements,isLeft)
+        % Enforces a boundary condition by updating this boundary's ghost
+        % element edge values, according to its type and side (left or
+        % right).
+        apply_scalar(this,physics,solver,isLeft)
+    end
     methods (Access = protected)
-        %% Initialize (scalar, default)
-        function setup_scalar(this,elements,isLeft)
-            % Assigns bound element and edge coordinate, considering sides.
-            if isLeft
-                this.boundElement = elements(1);
-                this.ghostElement = Element(DG(elements(1).dofCount-1),[-inf elements(1).xL]);
-            else
-                this.boundElement = elements(end);
-                this.ghostElement = Element(DG(elements(end).dofCount-1),[elements(end).xR inf]);
-            end
-        end
-        %% Enforce (scalar, default)
-        function apply_scalar(~,~,~,~)
-            % Does nothing.
-        end
         %% Information (scalar, default)
         function info = getInfo_scalar(this)
             info = class(this);
@@ -46,6 +40,13 @@ classdef Boundary < handle & matlab.mixin.Heterogeneous
         %% Information (vector)
         function info = getInfo(these)
             info = sprintf('%s, %s',these(1).getInfo_scalar,these(2).getInfo_scalar);
+        end
+    end
+    methods (Static, Access = protected, Sealed)
+        function default_object = getDefaultScalarElement
+            % Since Boundary is abstract, this functions sets the default
+            % object type for heterogeneous Boundary arrays to Periodic.
+            default_object = Periodic;
         end
     end
 end

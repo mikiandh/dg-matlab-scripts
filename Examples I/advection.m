@@ -1,18 +1,17 @@
 clc
 clear
 %close all
-%path(pathdef)
 
 % This script solves the advection equation in 1D.
 
 %% Dependencies
-addpath('../Extra')
-addpath('../Discretization')
 addpath('../Limiting')
 addpath('../Physics')
 addpath('../Solver')
-addpath('../Grid')
+addpath('../Basis')
+addpath('../Mesh')
 addpath('../Math')
+addpath('../Extra')
 
 %% Parameters
 L = [-1 1]; % domain edges
@@ -39,14 +38,15 @@ IC_p3d2 = @(x) (x+x.^2+x.^3).*(1 - heaviside(x)) + (x+2*x.^2+x.^3).*(heaviside(x
 IC_p3d3 = @(x) (x+x.^2+x.^3).*(1 - heaviside(x)) + (x+x.^2+2*x.^3).*(heaviside(x));
 IC_p3d4 = @(x) (x+x.^2+x.^3);
 
-%% Discretization (equation + solution + domain)
-mesh = Mesh(DGSEM(2),L,10,'boundaries',[Transmissive Farfield]);
+%% Discretization
+mesh = Mesh(DGSEM(2),L,[Farfield(1) Periodic],10);
 
 %% Solver
-solver = SSP_RK3(Advection,[0 1],...
+solver = SSP_RK3(Advection(-1),[0 2],...
     'courantNumber',.1,...
     'limiter',TVB(10),...
     'showSensor',true,'showLimiter',true,...
+    'norms',Norm('mass'),...
     'exactSolution',@(t,x) IC_sine(x),'iterSkip',1,'waitForKey',false);
 
 %% Initial condition

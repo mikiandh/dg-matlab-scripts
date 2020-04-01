@@ -32,12 +32,10 @@ classdef Mesh < matlab.mixin.Copyable
             p = inputParser;
             addRequired(p,'bases',@this.validate_bases)
             addRequired(p,'edgeCoords',@this.validate_edgeCoords)
+            addOptional(p,'boundaries',Periodic(2),@this.validate_boundaries)
             addOptional(p,'elementCount',numel(varargin{2})-1,@this.validate_elementCount)
             addOptional(p,'edgeDistribution',"uniform",@this.validate_edgeDistribution)
             addOptional(p,'clusteringFactor',0,@this.validate_clusteringFactor)
-            addParameter(p,'boundaries',Periodic(2),@(x) this.validate_boundaries(x,2))
-            addParameter(p,'leftBoundary',Periodic,@(x) this.validate_boundaries(x,1))
-            addParameter(p,'rightBoundary',Periodic,@(x) this.validate_boundaries(x,1))
             addParameter(p,'degrees',[varargin{1}.degree],@this.validate_degrees)
             parse(p,varargin{:});
             % Initialize array of distinct bases:
@@ -80,13 +78,6 @@ classdef Mesh < matlab.mixin.Copyable
             this.elements = Element(this.bases(element2basis(mod(0:this.elementCount-1,numel(element2basis))+1)),x);
             % Initialize boundaries:
             this.boundaries = p.Results.boundaries;
-            if ~ismember('leftBoundary',p.UsingDefaults)
-                this.boundaries(1) = p.Results.leftBoundary;
-            end
-            if ~ismember('rightBoundary',p.UsingDefaults)
-                this.boundaries(2) = p.Results.rightBoundary;
-            end
-            % And set up ghost elements:
             this.boundaries.setup(this.elements);
             % Initialize array of element edges:
             this.edges = Edge([this.boundaries(1).ghostElement this.elements this.boundaries(2).ghostElement]);
@@ -321,9 +312,9 @@ classdef Mesh < matlab.mixin.Copyable
             % Throws an error if input is not a valid clustering factor.
             validateattributes(x,{'numeric'},{'finite','scalar'})
         end
-        function validate_boundaries(x,n)
-            % Throws an error if the input is not an array of n boundaries.
-            validateattributes(x,{'Boundary'},{'numel',n})
+        function validate_boundaries(x)
+            % Throws an error if the input is not an array of 2 boundaries.
+            validateattributes(x,{'Boundary'},{'numel',2})
         end
         function validate_degrees(x)
             % Throws an error if the input is not a valid set of degrees.

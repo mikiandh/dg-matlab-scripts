@@ -15,8 +15,8 @@ classdef Monitor < handle
         cols
     end
     properties (Access = protected)
-        % Axis limits (3D array):
-        ylims % row: axes; columns: min, max; pages: manual, auto
+        % Axis limits (seed) for the solution (i.e. left column) subplots:
+        ylims = [nan nan] % columns: min, max (#rows is set automatically)
         % Colormaps:
         cDiscrete
         cLimiters
@@ -92,7 +92,7 @@ classdef Monitor < handle
                     this.hAxes(i,j) = subplot(this.rows(end),this.cols(end),k);
                     % Push downwards (make room for the title):
                     if numel(this.rows) == 1
-                        set(this.hAxes(i,j),'OuterPosition',get(this.hAxes(i,j),'OuterPosition').*[1 1 1 .9])
+                        set(this.hAxes(i,j),'OuterPosition',get(this.hAxes(i,j),'OuterPosition').*[1 1 1 .85])
                     end
                     % Add labels:
                     if j == 1
@@ -157,14 +157,10 @@ classdef Monitor < handle
                     end
                 end
                 % Show legend:
-                legend(this.hAxes(end),'Location','NorthWest')
-            end
-            % Initialize y axis limits:
-            this.ylims = zeros(this.rows(end),2,2);
-            for i = this.rows
-                this.ylims(i,:,1) = ylim(this.hAxes(i,1));
+                legend(this.hAxes(end),'Location','NorthEast')
             end
             % Redraw:
+            this.updateYLims
             drawnow
         end
         %% Refresh
@@ -211,16 +207,25 @@ classdef Monitor < handle
                     end
                 end
             end
-            % Ensure non-shrinking y axis limits:
-            for i = this.rows
-                ylim(this.hAxes(i,1),'auto');
-                this.ylims(i,:,2) = ylim(this.hAxes(i,1));
-                this.ylims(i,1,1) = min([this.ylims(i,1,1) this.ylims(i,1,2)]);
-                this.ylims(i,2,1) = max([this.ylims(i,2,2) this.ylims(i,2,2)]);
-                ylim(this.hAxes(i,1),this.ylims(i,:,1));
-            end
             % Redraw:
+            this.updateYLims
             drawnow limitrate
+        end
+    end
+    methods (Access = protected)
+        %% Vertical axis limits
+        function updateYLims(this)
+            % Sets this Monitor's axis limits such that their range is 
+            % allowed to increase but not shrink as the solver progresses.
+            %
+            % Retrieve updated solution values (exact and approximate):
+            y = [...
+                reshape([this.hExact.YData],numel(this.rows),[])...
+                reshape([this.hDiscrete.YData],numel(this.rows),[])...
+                ];
+            % Non-shrinking axis limits update:
+            this.ylims = [min([y this.ylims(:,1)],[],2) max([y this.ylims(:,2)],[],2)];
+            set(this.hAxes(:,1),{'YLim'},num2cell(this.ylims,2))
         end
     end
     methods (Access = protected, Static)

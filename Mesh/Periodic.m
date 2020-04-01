@@ -10,11 +10,10 @@ classdef Periodic < Boundary
         end
     end
     methods (Access = protected)
-        %% Initialize (scalar, extension)
+        %% Initialize (scalar)
         function setup_scalar(this,elements,isLeft)
-            % Replaces the ghost element adjacent to a boundary with the
-            % element adjacent to the opposite one.
-            %
+            % Sets the ghost element adjacent to this boundary to a handle
+            % of the element adjacent to the domain's opposite boundary.
             if isLeft
                 this.boundElement = elements(1);
                 this.ghostElement = elements(end);
@@ -22,6 +21,11 @@ classdef Periodic < Boundary
                 this.boundElement = elements(end);
                 this.ghostElement = elements(1);
             end
+        end
+        %% Enforce (scalar)
+        function apply_scalar(varargin)
+            % Intentionally does nothing (the ghost element is a handle to
+            % an actual element, which is updated by the solver).
         end
     end
 end
