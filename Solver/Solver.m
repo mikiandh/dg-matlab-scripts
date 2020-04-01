@@ -8,6 +8,7 @@ classdef Solver < matlab.mixin.SetGet
     end
     properties
         physics
+        timeStart
         timeNow
         timeStop
         courantNumber
@@ -35,10 +36,11 @@ classdef Solver < matlab.mixin.SetGet
             if nargin > 0
                 % Required inputs:
                 validateattributes(physics,{'Physics'},{'scalar'})
-                validateattributes(timeSpan,{'numeric'},{'vector','nondecreasing','nonnegative'})
+                validateattributes(timeSpan,{'numeric'},{'vector','nondecreasing','nonnegative','numel',2})
                 this.physics = physics;
-                this.timeNow = timeSpan(1);
+                this.timeStart = timeSpan(1);
                 this.timeStop = timeSpan(end);
+                this.timeNow = this.timeStart;
                 % Initialize an input parser:
                 p = inputParser;
                 p.KeepUnmatched = true;
@@ -81,8 +83,8 @@ classdef Solver < matlab.mixin.SetGet
             this.iterationCount = 0; tic
             for element = mesh.elements
                 element.basis.(p.Results.method)(element,p.Results.initialCondition)
-                element.interpolateStateAtEdges
             end
+            mesh.elements.interpolateStateAtEdges
             % Update ghost elements:
             mesh.boundaries.apply(this.physics,this)
             % Limit solution:
@@ -158,8 +160,8 @@ classdef Solver < matlab.mixin.SetGet
             else
                 info = sprintf('\\varsigma = %.3g (fixed), \\Deltat = %.3g',this.courantNumber,this.timeDelta);
             end
-            info = sprintf('SSP RK%d(%d); t = %.4g, %s, iter = %d, WCT = %.2f s',...
-                this.order,this.stageCount,this.timeNow,info,this.iterationCount,this.wallClockTime);
+            info = sprintf('SSP RK%d(%d); t = %.4g \\in [%.4g,%.4g], %s, iter = %d, WCT = %.2f s',...
+                this.order,this.stageCount,this.timeNow,this.timeStart,this.timeStop,info,this.iterationCount,this.wallClockTime);
         end
     end
     methods (Access = protected)

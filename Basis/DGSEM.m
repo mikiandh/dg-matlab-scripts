@@ -12,6 +12,8 @@ classdef DGSEM < Lagrange
         function dgsem = clone(~,p)
             dgsem = DGSEM(p);
         end
+    end
+    methods (Access = {?Basis,?Element})
         %% DGSEM operator
         function computeResiduals(this,element,physics)
             element.computeFluxesFromStates(physics);

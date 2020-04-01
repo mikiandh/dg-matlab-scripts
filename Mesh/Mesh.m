@@ -103,21 +103,15 @@ classdef Mesh < matlab.mixin.Copyable
             % Updates the residuals of all cells in a mesh, using the
             % spatial discretization scheme assigned to the mesh. 
             %
-            % Compute the state at both edges of each element:
-            for element = this.elements
-                element.localTimeDelta = inf;
-                element.interpolateStateAtEdges
-            end
+            % Compute the state at both edges of each element 
+            [this.elements.localTimeDelta] = deal(inf);
+            this.elements.interpolateStateAtEdges
             % Also for ghost elements:
             this.boundaries.apply(physics,solver)
             % Compute the Riemann flux at each edge:
-            for edge = this.edges
-                edge.computeFlux(physics)
-            end
+            this.edges.computeFlux(physics)
             % Apply the spatial discretization operator to each element:
-            for element = this.elements
-                element.computeResiduals(physics)
-            end
+            this.elements.computeResiduals(physics)
         end
         %% Extract matrices of nodal + edge values of the entire mesh
         function q = getNodalCoeffs(this,eqs)

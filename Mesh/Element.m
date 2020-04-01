@@ -125,10 +125,13 @@ classdef Element < handle
             q = this.residuals*this.basis.sampleAt(x);
         end
         %% Interpolate state at element edges
-        function interpolateStateAtEdges(this)
+        function interpolateStateAtEdges(these)
             % Evaluates and stores the state vector at the element's edges.
-            this.stateL = this.states*this.basis.left;
-            this.stateR = this.states*this.basis.right;
+            % Vector input.
+            for this = these
+                this.stateL = this.states*this.basis.left;
+                this.stateR = this.states*this.basis.right;
+            end
         end
         %% Interpolate flux at element edges
         function interpolateFluxAtEdges(this)
@@ -141,8 +144,10 @@ classdef Element < handle
             this.fluxes = physics.flux(this.states);
         end
         %% Update element residuals according to its basis
-        function computeResiduals(this,physics)
-            this.basis.computeResiduals(this,physics);
+        function computeResiduals(these,physics)
+            for this = these
+                this.basis.computeResiduals(this,physics);
+            end
         end
         %% Correct element states by adding antidiffusive fluxes
         function applyAntidiffusiveFluxes(this)

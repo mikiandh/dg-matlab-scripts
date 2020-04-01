@@ -10,11 +10,9 @@ classdef KXRCF < Sensor
         %% Sensor
         function apply(this,mesh,solver)
             % Apply default sensor first:
-            apply@Sensor(this,mesh);
+            apply@Sensor(this,mesh)
             % Evaluate state at all edges:
-            for element = mesh.elements
-                element.interpolateStateAtEdges;
-            end
+            mesh.elements.interpolateStateAtEdges
             % Check all possibly troubled elements:
             for element = mesh.elements([mesh.elements.isTroubled])
                 % Precompute some stuff:

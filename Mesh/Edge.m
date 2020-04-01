@@ -26,16 +26,28 @@ classdef Edge < matlab.mixin.SetGet
                 [elements(1:end-1).elementR] = aux{2:end};
             end
         end
-        %% Riemann flux at edge
-        function computeFlux(this,physics)
-            [flux,waveSpeeds] = physics.riemannFlux(...
-                this.elementL.stateR,this.elementR.stateL);
-            this.elementL.riemannR = flux; % 'normal vector' = +1
-            this.elementR.riemannL = -flux; % 'normal vector' = -1
-            this.computeTimeDeltas(waveSpeeds);
+        %% Riemann flux at edges
+        function computeFlux(these,physics)
+            % Computes and sets numerical fluxes (i.e. solutions of the
+            % Riemann problem at an edge) on both elements sharing each of 
+            % these edges, including a conventional sign. Also sets a local
+            % tim-step size based on each Riemann problem's characteristic 
+            % speeds. Vector input.
+            for this = these
+                [flux,waveSpeeds] = physics.riemannFlux(...
+                    this.elementL.stateR,this.elementR.stateL);
+                this.elementL.riemannR = flux; % 'normal vector' = +1
+                this.elementR.riemannL = -flux; % 'normal vector' = -1
+                this.computeTimeDeltas(waveSpeeds);
+            end
         end
+    end
+    methods (Access = protected)
         %% Update local time-step sizes
         function computeTimeDeltas(this,waveSpeeds)
+            % Sets local time-step sizes based on characteristic speeds and
+            % element sizes, such that each local Courant number is unity.
+            % Does not override more conservative existing values.
             this.elementL.localTimeDelta = min([this.elementL.localTimeDelta; - this.elementL.dx./waveSpeeds(waveSpeeds < 0)]);
             this.elementR.localTimeDelta = min([this.elementR.localTimeDelta; this.elementR.dx./waveSpeeds(waveSpeeds > 0)]);
         end

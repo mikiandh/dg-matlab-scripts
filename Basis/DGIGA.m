@@ -8,6 +8,8 @@ classdef DGIGA < Bspline
         function this = clone(prototype,degree)
             this = DGIGA(prototype.knots,degree,prototype.smoothness);
         end
+    end
+    methods (Access = {?Basis,?Element})
         %% DGIGA operator
         function computeResiduals(this,element,physics)
             element.computeFluxesFromStates(physics);

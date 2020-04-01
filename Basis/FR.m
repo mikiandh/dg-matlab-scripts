@@ -36,6 +36,16 @@ classdef FR < Lagrange
         function fr = clone(this,p)
             fr = FR(this.param,p);
         end
+        %% Oneliner info (extension)
+        function name = getName(this)
+            % Adds the VCJH correction function parameter to this basis's
+            % one line descriptor.
+            name = getName@Lagrange(this);
+            aux = sprintf('%s(%s)',class(this),num2str(this.param));
+            name = strrep(name,class(this),aux);
+        end
+    end
+    methods (Access = {?Basis,?Element})
         %% FR operator
         function computeResiduals(this,element,physics)
             element.computeFluxesFromStates(physics);
@@ -44,14 +54,6 @@ classdef FR < Lagrange
                 (-element.riemannL - element.fluxL)*this.correctionsL +... % negative left Riemann flux to avoid the conventional sign assigned in the edge-based calculation
                 (element.riemannR - element.fluxR)*this.correctionsR;
             element.residuals = -2/element.dx*element.residuals;
-        end
-        %% Oneliner info (extension)
-        function name = getName(this)
-            % Adds the VCJH correction function parameter to this basis's
-            % one line descriptor.
-            name = getName@Lagrange(this);
-            aux = sprintf('%s(%s)',class(this),num2str(this.param));
-            name = strrep(name,class(this),aux);
         end
     end
     methods (Static)

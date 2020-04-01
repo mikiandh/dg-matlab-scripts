@@ -16,16 +16,6 @@ classdef DGIGA_AFC < Bspline
         function this = clone(prototype,degree)
             this = DGIGA_AFC(prototype.knots,degree,prototype.smoothness);
         end
-        %% DGIGA-AFC operator (low-order predictor)
-        function computeResiduals(this,element,physics)
-            element.computeFluxesFromStates(physics)
-            element.residuals = ...
-                element.fluxes*this.gradientMatrix...
-                - element.riemannR.*this.right'...
-                - element.riemannL.*this.left';
-            this.diffuseResiduals(element,physics)
-            element.residuals = 2/element.dx*element.residuals./this.lumpedMassMatrixDiagonal;
-        end
         %% L2 projection (lumped or constrained)
         function project(this,element,fun0)
             % Lumped projection of a function into a finite-dimensional
@@ -46,6 +36,18 @@ classdef DGIGA_AFC < Bspline
             element.diffusions(rj) = {sparse(I,I)};
             % Preallocate antidiffusive fluxes:
             element.antidiffusiveFluxes = spalloc(I,N^2,I*length(rj));
+        end
+    end
+    methods (Access = {?Basis,?Element})
+        %% DGIGA-AFC operator (low-order predictor)
+        function computeResiduals(this,element,physics)
+            element.computeFluxesFromStates(physics)
+            element.residuals = ...
+                element.fluxes*this.gradientMatrix...
+                - element.riemannR.*this.right'...
+                - element.riemannL.*this.left';
+            this.diffuseResiduals(element,physics)
+            element.residuals = 2/element.dx*element.residuals./this.lumpedMassMatrixDiagonal;
         end
     end
     methods (Access = protected)

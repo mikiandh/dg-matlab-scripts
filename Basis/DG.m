@@ -16,6 +16,8 @@ classdef DG < Legendre
         function dg = clone(~,p)
             dg = DG(p);
         end
+    end
+    methods (Access = {?Basis,?Element})
         %% DG operator
         function computeResiduals(this,element,physics)
             element.residuals = element.states*this.vandermonde;

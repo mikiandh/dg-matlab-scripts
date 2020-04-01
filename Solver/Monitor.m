@@ -160,6 +160,8 @@ classdef Monitor < handle
                 legend(this.hAxes(end),'Location','NorthEast')
             end
             % Redraw:
+            set(this.hAxes(:,1),'XLim',[mesh.edges(1).coord mesh.edges(end).coord])
+            set(this.hAxes(:,2),'XLim',[this.solver.timeStart this.solver.timeStop])
             this.updateYLims
             drawnow
         end
