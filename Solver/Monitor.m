@@ -16,7 +16,7 @@ classdef Monitor < handle
     end
     properties (Access = protected)
         % Axis limits (seed) for the solution (i.e. left column) subplots:
-        ylims = [nan nan] % columns: min, max (#rows is set automatically)
+        ylims = [0 1] % columns: min, max (#rows is set automatically)
         % Colormaps:
         cDiscrete
         cLimiters

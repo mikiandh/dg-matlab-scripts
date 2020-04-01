@@ -3,7 +3,19 @@ classdef Reflective < Boundary
     % domain. Can be static or moving. See Leveque, 2002, p. 136 and Toro,
     % 2009, p. 496).
     properties (SetAccess = immutable)
-        wallSpeed = @(t) 0 % nondim. by the propagation speed (i.e. Mach number)
+        % Speed of the wall, in units of the propagation speed:
+        wallSpeed = @(t) 0
+    end
+    properties (Access = protected)
+        % Matrix that, applied to the bound element's degrees 
+        % of freedom, gives the corresponding ghost element's DoFs.
+        % Encodes a simple reflection (for pressure-like variables).
+        A
+        % Repetition array that, when applied to a (scalar) wall velocity, 
+        % gives a 1D array of velocity DoFs, in the adequate shape to be 
+        % added to the ghost states, i.e.: u_ghost = -u_bound*A + u_wall*B
+        % (c.f. Toro, 2009, p. 496).
+        B
     end
     methods
         %% Constructor
@@ -29,54 +41,49 @@ classdef Reflective < Boundary
             % boundary, and B(2:J,1:I) are the Legendre coefficients of the
             % bound element of this boundary.
             %
-            % Set bound and ghost elements (both have the same #DoFs):
+            % Set bound and ghost elements (both have the same basis):
             if isLeft
                 this.boundElement = elements(1);
-                this.ghostElement = Element(DG(elements(1).dofCount-1),[-inf elements(1).xL]);
+                this.ghostElement = Element(elements(1).basis,[-inf elements(1).xL]);
             else
                 this.boundElement = elements(end);
-                this.ghostElement = Element(DG(elements(end).dofCount-1),[elements(end).xR inf]);
+                this.ghostElement = Element(elements(end).basis,[elements(end).xR inf]);
             end
-            % Sparse constraint matrix assembly:
-            J = this.boundElement.dofCount; % number of rows/columns
-            s = isLeft - ~isLeft; % +1 if left boundary, -1 if right
-            A = sparse([repelem(1,J) 2:J],[1:J 2:J],[s.^(2:J+1) repelem(1,J-1)]);
-            % LU factorization:
-            [this.L,this.U,this.P] = lu(A);
+            % Set pressure (A) and wall-velocity (B) permutation matrices:
+            J = this.boundElement.dofCount;
+            if isa(this.ghostElement.basis,'Legendre')
+                vals = (-1).^(0:J-1);
+                this.A = spdiags(vals',0,J,J);
+                this.B = [2 repelem(0,J-1)]; % only the mean value is perturbed
+            elseif isa(this.ghostElement.basis,'Lagrange') || isa(this.ghostElement.basis,'BSpline')
+                this.A = flip(speye(J));
+                this.B = repelem(2,J); % all DoFs are perturbed equally
+            else
+                error('Basis type not supported.')
+            end
         end
         %% Enforce (scalar)
-        function apply_scalar(this,physics,solver,isLeft)
-            if isLeft
-                state = this.boundElement.stateL;
+        function apply_scalar(this,physics,solver,~)
+            % Computes the ghost element's state vectors matrix by applying
+            % the (precomputed) reflection operator. "Polymorphic" on the
+            % physics type.
+            if isa(physics,'Burgers')
+                this.ghostElement.states = -this.ghostElement.states(2,:) + this.wallSpeed(solver.timeNow)*this.B*2; % note: 2*uWall because of 1/2 factor
+            elseif isa(physics,'Wave')
+                this.ghostElement.states = this.boundElement.states*this.A;
+                this.ghostElement.states(2,:) = -this.ghostElement.states(2,:) + this.wallSpeed(solver.timeNow)*this.B;
+            elseif isa(physics,'Euler')
+                this.ghostElement.states = physics.stateToPrimitive(this.boundElement.states)*this.A; % note: first primitives, then reflection
+                this.ghostElement.states(2,:) = -this.ghostElement.states(2,:) + this.wallSpeed(solver.timeNow)*this.B;
+                this.ghostElement.states = physics.primitiveToState(this.ghostElement.states);
             else
-                state = this.boundElement.stateR;
+                error('Physics type not unsupported.')
             end
-            this.ghostElement.states = Reflective.(class(physics))(state,this.wallSpeed(solver.timeNow));
             this.ghostElement.interpolateStateAtEdges
         end
         %% Information (scalar, extension)
         function info = getInfo_scalar(this)
             info = sprintf('%s (u_{wall} = %s)',this.getInfo_scalar@Boundary,func2str(this.wallSpeed));
-        end
-    end
-    methods (Static, Access = protected)
-        %% Ghost state (advection)
-        function q = Advection(~,~) %#ok<STOUT>
-            error('Reflective boundary condition is not defined for the Advection equation.')
-        end
-        %% Ghost state (Burgers)
-        function q = Burgers(q,uWall)
-            q = -q + 4*uWall;
-        end
-        %% Ghost state (Wave)
-        function q = Wave(q,uWall)
-            q(2) = -q(2) + 2*uWall;
-        end
-        %% Ghost state (Euler)
-        function q = Euler(q,uWall)
-            q = Euler.stateToPrimitive(q);
-            q(2) = -q(2) + 2*uWall;
-            q = Euler.primitiveToState(q);
         end
     end
 end

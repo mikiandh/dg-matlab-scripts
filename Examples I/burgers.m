@@ -1,29 +1,27 @@
 clc
 clear
 %close all
-%path(pathdef)
 
 % This script solves the (inviscid) Burgers' equation.
 
 %% Dependencies
-addpath('../Extra')
-addpath('../Discretization')
 addpath('../Limiting')
 addpath('../Physics')
 addpath('../Solver')
-addpath('../Grid')
+addpath('../Basis')
+addpath('../Mesh')
 addpath('../Math')
+addpath('../Extra')
 
-%% Discretization (equation + solution + domain)
-L = [-3 3];
-fun = @leveque1;
-mesh = Mesh(DG(2),L,50);
+%% Discretization
+mesh = Mesh(DG(3),[-1 1],[Transmissive Reflective],50);
 
 %% Solver
-solver = SSP_RK3(0,.5,Burgers(fun(0,L)),...
-    'courantNumber',.1,...
-    'norms',Norm.TVM,...
-    'exactSolution',fun,'iterSkip',5);
+solver = SSP_RK3(Burgers,[0 2.0],...
+    'courantNumber',.25,...
+    'limiter',TVB(0),...
+    'norms',Norm('Mass'),...
+    'exactSolution',@riemann1A,'iterSkip',1);
 
 %% Initial condition
 solver.initialize(mesh)
