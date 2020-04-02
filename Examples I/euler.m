@@ -6,22 +6,21 @@ clear
 % This script solves the Euler equations.
 
 %% Dependencies
-addpath('../Extra')
-addpath('../Discretization')
 addpath('../Limiting')
 addpath('../Physics')
 addpath('../Solver')
-addpath('../Grid')
+addpath('../Basis')
+addpath('../Mesh')
 addpath('../Math')
+addpath('../Extra')
 
-%% Discretization (equation + solution + domain)
-%%%mesh = Mesh(DG,[-5 5],99,'degree',randi([1 4],[1 99]));
-mesh = Mesh(DGSEM(2),[0 1],99);
+%% Discretization
+mesh = Mesh(DG(2),[-5 5],[Transmissive Reflective],25);
 
 %% Solver
-solver = SSP_RK3(0,.125,Euler('transmissive'),...
-    'limiter',TVB,...
-    'exactSolution',@toro1,'iterSkip',100,...
+solver = SSP_RK3(Euler,[0,2.6],...
+    'limiter',TVB(0),...
+    'exactSolution',@lax,'iterSkip',1,...
     'showSensor',true,'showLimiter',true,'equations',[1 2 3],...
     'courantNumber',.1);
 
@@ -80,6 +79,8 @@ end
 % Woodward and Colella:
 function y = woodwardColella(~,x)
 % tEnd = 0.038
+% L = [0 1]
+% Reflective(0,0)
 y = ones(3,length(x));
 y1 = Euler.primitiveToState([1 0 1000]');
 y2 = Euler.primitiveToState([1 0 0.01]');

@@ -53,6 +53,8 @@ classdef Monitor < handle
             % Subplot indices:
             this.rows = p.Results.equations;
             this.cols = 1:1 + ~isempty(this.norms);
+            % Repmat initial axis limits:
+            this.ylims = repmat(this.ylims,numel(this.rows),1);
         end
         %% Initialize
         function initialize(this,mesh)
@@ -93,6 +95,10 @@ classdef Monitor < handle
                     % Push downwards (make room for the title):
                     if numel(this.rows) == 1
                         set(this.hAxes(i,j),'OuterPosition',get(this.hAxes(i,j),'OuterPosition').*[1 1 1 .85])
+                    elseif numel(this.rows) == 2
+                        set(this.hAxes(i,j),'OuterPosition',get(this.hAxes(i,j),'OuterPosition').*[1 1 1 .90])
+                    elseif numel(this.rows) == 3
+                        set(this.hAxes(i,j),'OuterPosition',get(this.hAxes(i,j),'OuterPosition').*[1 1 1 .95])
                     end
                     % Add labels:
                     if j == 1
@@ -161,8 +167,10 @@ classdef Monitor < handle
             end
             % Redraw:
             set(this.hAxes(:,1),'XLim',[mesh.edges(1).coord mesh.edges(end).coord])
-            set(this.hAxes(:,2),'XLim',[this.solver.timeStart this.solver.timeStop])
-            this.updateYLims
+            if ~isscalar(this.cols)
+                set(this.hAxes(:,2),'XLim',[this.solver.timeStart this.solver.timeStop])
+            end
+            %%%this.updateYLims
             drawnow
         end
         %% Refresh
@@ -210,7 +218,7 @@ classdef Monitor < handle
                 end
             end
             % Redraw:
-            this.updateYLims
+            %%%this.updateYLims
             drawnow limitrate
         end
     end

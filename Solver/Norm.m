@@ -29,7 +29,7 @@ classdef Norm < handle
             this.p = p;
         end
         %% Evaluate
-        function compute(this,mesh,fun)
+        function compute(these,mesh,fun)
             % Computes norms of each scalar component of the solution on
             % a given mesh (according to the norm type). Supports being 
             % called on an array of norm instances. Returns 'true' iff the
@@ -40,34 +40,34 @@ classdef Norm < handle
             %  fun: exact solution (function of space only)
             %
             % Update norm properties:
-            [this.rows] = deal(size(mesh.elements(1).states,1));
-            [this.vals] = deal(nan(this(1).rows,1));
-            [this.subs] = deal(reshape(mesh.getBreakLocations(false),2,[])); % polynomial endpoints
+            [these.rows] = deal(size(mesh.elements(1).states,1));
+            [these.vals] = deal(nan(these(1).rows,1));
+            [these.subs] = deal(mesh.getBreakSpans); % polynomial intervals
             % Loop over norm instances:
-            for norm = this
+            for this = these
                 % De facto polymorphism:
-                switch norm
+                switch this
                     case {Norm.L1, Norm.L2}
                         % Solution p-norms:
-                        norm.pNorm(@(x) mesh.sample(x))
+                        this.pNorm(@(x) mesh.sample(x))
                     case {Norm.Max}
                         % Solution maximum norm (estimate):
-                        norm.maxNorm(@(x) mesh.sample(x))
+                        this.maxNorm(@(x) mesh.sample(x))
                     case {Norm.ErrorL1, Norm.ErrorL2}
                         % Error p-norms:
-                        norm.pNorm(@(x) mesh.sample(x) - fun(x))
+                        this.pNorm(@(x) mesh.sample(x) - fun(x))
                     case {Norm.ErrorMax}
                         % Error maximum norm:
-                        norm.maxNorm(@(x) mesh.sample(x) - fun(x))
+                        this.maxNorm(@(x) mesh.sample(x) - fun(x))
                     case {Norm.Mass}
                         % Solution mass pseudo-norm:
-                        norm.massNorm(mesh)
+                        this.massNorm(mesh)
                     case {Norm.TV}
                         % Solution total variation (estimate):
-                        norm.tvNorm(mesh)
+                        this.tvNorm(mesh)
                     case {Norm.TVM}
                         % Solution total variation in the means:
-                        norm.tvmNorm(mesh)
+                        this.tvmNorm(mesh)
                 end
             end
         end

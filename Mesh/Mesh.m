@@ -210,14 +210,16 @@ classdef Mesh < matlab.mixin.Copyable
                 x(n) = 0.5*(element.xL + element.xR);
             end
         end
-        %% Retrieve breakpoint locations globally
-        function x = getBreakLocations(this,makeUnique)
-            % Remove duplicated element edge breakpoints?
-            if nargin > 1 && makeUnique
-                l = 0; % yes
-            else
-                l = 1; % no (default)
-            end
+        %% Retrieve breakspans globally
+        function subs = getBreakSpans(this)
+            % Retrieves the breakpoint coordinates of each element in this
+            % mesh (avoiding repeated edge breakpoints). Then returns all
+            % breakspans as a 2D array of subintervals (1st row: left 
+            % breakpoint; 2nd row: right breakpoint).
+            %
+            % A breakspan is the portion of the domain in which the
+            % solution is piece-wise polynomial (regardless of the basis).
+            %
             N = 1;
             % Count the total number of breakpoints:
             for element = this.elements
@@ -229,8 +231,10 @@ classdef Mesh < matlab.mixin.Copyable
             for element = this.elements
                 m = n + length(element.basis.breakCoords) - 1;
                 x(n:m) = element.getBreakCoords;
-                n = m + l;
+                n = m;
             end
+            % Re-arrange into subintervals:
+            subs = [x(1:end-1); x(2:end)];
         end
         %% Retrieve nodal locations globally
         function x = getNodeLocations(this)

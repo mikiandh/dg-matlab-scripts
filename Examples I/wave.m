@@ -6,23 +6,24 @@ clear
 % This script solves the wave equation in 1D.
 
 %% Dependencies
-addpath('../Extra')
-addpath('../Discretization')
 addpath('../Limiting')
 addpath('../Physics')
 addpath('../Solver')
-addpath('../Grid')
+addpath('../Basis')
+addpath('../Mesh')
 addpath('../Math')
+addpath('../Extra')
 
 %% Discretization (equation + solution + domain)
-mesh = Mesh(DGSEM(2),[0 1],99);
+mesh = Mesh(DG(3),[0 1],[Reflective(@(t) .5*sin(2*pi*t)) Reflective],50);
 
 %% Solver
-norms = Norm(["Mass","ErrorL2"]);
-solver = SSP_RK3(0,2,Wave,...
-    'courantNumber',.2,...
-    'norms',norms,...
-    'exactSolution',@combinedIC,'iterSkip',25);
+norms = Norm(["Mass","L2"]);
+solver = SSP_RK3(Wave,[0 4],...
+    'courantNumber',.1,...
+    'limiter',BSB('Sensor',KXRCF),...
+    'showSensor',true,'showLimiter',true,'norms',norms,...
+    'exactSolution',@constantIC,'iterSkip',50);
 
 %% Time-integration
 solver.initialize(mesh)
@@ -34,7 +35,7 @@ solver.physics.displayData(num2cell(norms),{'Norm','tEnd'},[norms.vals])
 %% Auxiliary functions
 function y = constantIC(~,x)
 y = zeros(2,length(x));
-y(2,:) = 1;
+%%% y(2,:) = 1;
 end
 
 function y = pickIC(~,x)
