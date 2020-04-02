@@ -14,14 +14,14 @@ addpath('../Math')
 addpath('../Extra')
 
 %% Discretization
-mesh = Mesh(DG(3),[-1 1],[Transmissive Reflective],50);
+mesh = Mesh(DGIGA(5,3),[-1 1],[Farfield(.5) Transmissive],10);
 
 %% Solver
 solver = SSP_RK3(Burgers,[0 2.0],...
-    'courantNumber',.25,...
-    'limiter',TVB(0),...
+    'courantNumber',.01,...
+    'limiter',TVB(inf),...
     'norms',Norm('Mass'),...
-    'exactSolution',@riemann1A,'iterSkip',1);
+    'exactSolution',@sineIC,'iterSkip',1);
 
 %% Initial condition
 solver.initialize(mesh)
@@ -79,7 +79,7 @@ y = x.*(heaviside(x) - heaviside(x-2));
 end
 
 function y = sineIC(~,x)
-y = 0.5*sin(9*x*pi) + 0.5;
+y = 0.5*sin(3*x*pi) + 0.5;
 end
 
 function y = combinedIC(~,x) % perfect initial condition; L = [-1,2], tEnd = 2

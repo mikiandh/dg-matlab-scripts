@@ -55,7 +55,7 @@ classdef Reflective < Boundary
                 vals = (-1).^(0:J-1);
                 this.A = spdiags(vals',0,J,J);
                 this.B = [2 repelem(0,J-1)]; % only the mean value is perturbed
-            elseif isa(this.ghostElement.basis,'Lagrange') || isa(this.ghostElement.basis,'BSpline')
+            elseif isa(this.ghostElement.basis,'Lagrange') || isa(this.ghostElement.basis,'Bspline')
                 this.A = flip(speye(J));
                 this.B = repelem(2,J); % all DoFs are perturbed equally
             else
@@ -68,7 +68,7 @@ classdef Reflective < Boundary
             % the (precomputed) reflection operator. "Polymorphic" on the
             % physics type.
             if isa(physics,'Burgers')
-                this.ghostElement.states = -this.ghostElement.states(2,:) + this.wallSpeed(solver.timeNow)*this.B*2; % note: 2*uWall because of 1/2 factor
+                this.ghostElement.states = -this.boundElement.states*this.A + this.wallSpeed(solver.timeNow)*this.B*2; % note: 2*uWall because of 1/2 factor
             elseif isa(physics,'Wave')
                 this.ghostElement.states = this.boundElement.states*this.A;
                 this.ghostElement.states(2,:) = -this.ghostElement.states(2,:) + this.wallSpeed(solver.timeNow)*this.B;
