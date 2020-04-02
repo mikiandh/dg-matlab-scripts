@@ -94,6 +94,28 @@ classdef Lagrange < Basis
                     element.states(i,:) = modes*this.vandermonde;
             end
         end
+        %% Identity projection (forwards)
+        function nodes = getLagrange(~,element,j,i)
+            % Returns selected modes of the given element.
+            switch nargin
+                case 2
+                    nodes = element.states;
+                case 3
+                    nodes = element.states(:,j);
+                case 4
+                    nodes = element.states(i,j);
+            end
+        end
+        %% Identity projection (backwards)
+        function nodes = setLagrange(~,element,nodes,i)
+            % Sets given Lagrange nodes into the given element.
+            switch nargin
+                case 3
+                    element.states = nodes;
+                case 4
+                    element.states(i,:) = nodes;
+            end
+        end
     end
     methods (Static)
         %% Barycentric weights

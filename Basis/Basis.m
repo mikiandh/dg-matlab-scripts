@@ -29,6 +29,8 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
         computeResiduals(this,element,physics) % evaluate discrete spatial operator, i.e residual (a la Wang et al. 2013)
         getLegendre(this,element,j,i) % get chosen Legendre coefficients from an element (assumed to employ this basis)
         setLegendre(this,element,modes,i) % set all Legendre coefficients of an element (assumed to employ this basis)
+        getLagrange(this,element,j,i) % get chosen Lagrange coefficients from an element (assumed to employ this basis)
+        setLagrange(this,element,nodes,i) % set all Lagrange coefficients of an element (assumed to employ this basis)
     end
     methods
         %% L2 projection (conservative)

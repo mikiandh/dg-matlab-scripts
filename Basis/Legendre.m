@@ -151,27 +151,52 @@ classdef Legendre < Basis
             LGVM = (LGVM(:,1:end-1))'; % clean-up the Vandermonde matrix
         end
     end
-    methods (Static, Access = {?Basis,?Element})
+    methods (Access = {?Basis,?Element})
         %% Identity projection (forwards)
-        function modes = getLegendre(element,j,i)
+        function modes = getLegendre(~,element,j,i)
             % Returns selected modes of the given element.
             switch nargin               
-                case 1
-                    modes = element.states;
                 case 2
-                    modes = element.states(:,j);
+                    modes = element.states;
                 case 3
+                    modes = element.states(:,j);
+                case 4
                     modes = element.states(i,j);
             end
         end
         %% Identity projection (backwards)
-        function setLegendre(element,modes,i)
+        function setLegendre(~,element,modes,i)
             % Sets given Legendre modes into the given element.
             switch nargin
-                case 2
-                    element.states = modes;
                 case 3
+                    element.states = modes;
+                case 4
                     element.states(i,:) = modes;
+            end
+        end
+        %% Legendre to Lagrange projection
+        function nodes = getLagrange(this,element,j,i)
+            % Returns the expansion coefficients of the projection of this
+            % basis to a Lagrange one of the same length.
+            switch nargin
+                case 2
+                    nodes = element.states*this.vandermonde;
+                case 3
+                    nodes = element.states*this.vandermonde(:,j);
+                case 4
+                    nodes = element.states(i,:)*this.vandermonde(:,j);
+            end
+        end
+        %% Lagrange to Legendre projection
+        function setLagrange(this,element,nodes,i)
+            % Sets given Lagrange expansion coefficients to selected
+            % state array entries; assumes that the Lagrange and the 
+            % element's bases have the same length.
+            switch nargin
+                case 3
+                    element.states = nodes*this.invVandermonde;
+                case 4
+                    element.states(i,:) = nodes*this.invVandermonde;
             end
         end
     end

@@ -299,6 +299,36 @@ classdef Bspline < Basis
                 element.states = modes;
             end
         end
+        %% Bspline control points as Lagrange nodes (patch-wise)
+        function nodes = getLagrange(~,element,j,i)
+            % Returns the Lagrange coefficeints of the polynomial that
+            % would interpolate over the nodes of the control poligon of 
+            % this basis.
+            %
+            % Note that these are NOT the same as the Lagrange coefficients
+            % of this basis's projection on a Lagrange finite-dimensional 
+            % space of the same length.
+            %
+            switch nargin
+                case 2
+                    nodes = element.states;
+                case 3
+                    nodes = element.states(:,j);
+                case 4
+                    nodes = element.states(i,j);
+            end
+        end
+        %% Lagrange nodes as Bspline control points (patch-wise)
+        function setLagrange(~,element,nodes,i)
+            % Sets the nodal values of the control polygon of the given
+            % element (assumed to employ this basis).
+            switch nargin
+                case 3
+                    element.states = nodes;
+                case 4
+                    element.states(i,:) = nodes;
+            end
+        end
     end
     methods (Static)
         %% Re-scale knot vector

@@ -1,7 +1,7 @@
 classdef Reflective < Boundary
     % Solid wall boundary that reflects any incoming wave back into the
     % domain. Can be static or moving. See Leveque, 2002, p. 136 and Toro,
-    % 2009, p. 496).
+    % 2009, p. 496). Smoothness-preserving treatment.
     properties (SetAccess = immutable)
         % Speed of the wall, in units of the propagation speed:
         wallSpeed = @(t) 0
@@ -24,38 +24,39 @@ classdef Reflective < Boundary
     methods (Access = protected)
         %% Initialize (scalar)
         function setup_scalar(this,elements,isLeft)
-            % Initializes a p = 0, DG, ghost element.
-            %
-            % Set bound and ghost elements:
+            % Sets bound and ghost elements (both have the same basis), as
+            % well as this boundary's auxiliary matrices A, B and C.
             if isLeft
                 this.boundElement = elements(1);
-                this.ghostElement = Element(DG(0),[-inf elements(1).xL]);
+                this.ghostElement = Element(elements(1).basis,[-inf elements(1).xL]);
             else
                 this.boundElement = elements(end);
-                this.ghostElement = Element(DG(0),[elements(end).xR inf]);
+                this.ghostElement = Element(elements(end).basis,[elements(end).xR inf]);
             end
         end
         %% Enforce (scalar)
-        function apply_scalar(this,physics,solver,isLeft)
-            % Sets the ghost element's edge state vector to match that of
-            % the bound element's.
-            if isLeft
-                state = this.boundElement.stateL;
-            else
-                state = this.boundElement.stateR;
+        function apply_scalar(this,physics,solver,~)
+            % Computes the ghost element's state vectors matrix by applying
+            % a discrete reflection operator. "Polymorphic" on the physics
+            % type.
+            %
+            % Physics-dependent constraint:
+            switch class(physics)
+                case 'Burgers'
+                    this.ghostElement.states = -this.boundElement.getLagrange + 4*this.wallSpeed(solver.timeNow);
+                case 'Wave'
+                    this.ghostElement.states = this.boundElement.getLagrange;
+                    this.ghostElement.states(2,:) = -this.ghostElement.states(2,:) + 2*this.wallSpeed(solver.timeNow);
+                case 'Euler'
+                    this.ghostElement.states = Euler.stateToPrimitive(this.boundElement.getLagrange);
+                    this.ghostElement.states(2,:) = -this.ghostElement.states(2,:) + 2*this.wallSpeed(solver.timeNow);
+                    this.ghostElement.states = Euler.primitiveToState(this.ghostElement.states);
+                otherwise
+                    error('Physics not supported.')
             end
-            if isa(physics,'Burgers')
-                state = -state + 2*this.wallSpeed(solver.timeNow);
-            elseif isa(physics,'Wave')
-                state(2) = -state(2) + 2*this.wallSpeed(solver.timeNow);
-            elseif isa(physics,'Euler')
-                state = physics.stateToPrimitive(state);
-                state(2) = -state(2) + 2*this.wallSpeed(solver.timeNow);
-                state = physics.primitiveToState(state);
-            else
-                error('Physics type not supported.')
-            end
-            this.ghostElement.states = state;
+            % Reflect (as nodal) and set into ghost element (as modal):
+            this.ghostElement.setLagrange(this.ghostElement.states(:,end:-1:1));
+            % Evaluate at edges:
             this.ghostElement.interpolateStateAtEdges
         end
         %% Information (scalar, extension)

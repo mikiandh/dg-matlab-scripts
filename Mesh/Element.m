@@ -187,5 +187,13 @@ classdef Element < handle
         function setLegendre(this,varargin)
             this.basis.setLegendre(this,varargin{:});
         end
+        %% Get Lagrange coefficeints of this element
+        function q = getLagrange(this,varargin)
+            q = this.basis.getLagrange(this,varargin{:});
+        end
+        %% Set Lagrange coefficeints of this element
+        function setLagrange(this,varargin)
+            this.basis.setLagrange(this,varargin{:});
+        end
     end
 end

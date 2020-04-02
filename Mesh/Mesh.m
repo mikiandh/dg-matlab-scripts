@@ -25,8 +25,10 @@ classdef Mesh < matlab.mixin.Copyable
             % argument pairs. All arguments are self-explanatory.
             %
             % Check:
-            if nargin < 2
+            if nargin == 0
                 return % default constructor
+            elseif nargin < 2
+                error('Missing 1 input: array of edge coordinates.')
             end
             % Input parser:
             p = inputParser;
