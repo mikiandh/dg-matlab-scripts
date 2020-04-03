@@ -15,6 +15,7 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
         dofCoords % positions associated with each degree of freedom
         breakCoords % positions where the approximate solution experiences a reduction in smoothness
         nodeCoords
+        controlCoords % abscissae of all control points in a patch (in reference patch coordinates)
         gaussCoords
         gaussWeights
         pairs % 2D array of test function/basis function pairs within mutual nonzero support; 1st row: test function, r; 2nd row: basis function, j; 3rd row: linear index; 4th row: transposed linear index

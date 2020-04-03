@@ -7,7 +7,6 @@ classdef Bspline < Basis
     properties
         % Miscellanea:
         smoothness % differentiability class for the entire patch (if applicable)
-        controlCoords % abscissae of all control points in a patch (in reference patch coordinates)
         nonzeroSpanCount % number of non-vansihing spans
         % B-splines:
         knots % open knot vector
