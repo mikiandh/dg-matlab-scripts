@@ -102,6 +102,10 @@ classdef Wave < Physics
             L = this.invEigenvectors;
             R = this.eigenvectors;
         end
+        %% Advection velocity
+        function v = getVelocityAt(this,~)
+            v = this.waveSpeed;
+        end
         %% Information (extension)
         function info = getInfo(this)
             info = sprintf('%s, c = %g',this.getInfo@Physics,this.waveSpeed);

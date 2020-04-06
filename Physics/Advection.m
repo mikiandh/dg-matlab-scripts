@@ -63,6 +63,10 @@ classdef Advection < Physics
                 flux = S*stateR;
             end
         end
+        %% Advection velocity
+        function v = getVelocityAt(this,~)
+            v = this.advSpeed;
+        end
         %% Information (extension)
         function info = getInfo(this)
             info = sprintf('%s, a = %g',this.getInfo@Physics,this.advSpeed);

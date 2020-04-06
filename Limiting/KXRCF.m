@@ -4,8 +4,12 @@ classdef KXRCF < Sensor
     % property that DG has at outflow boundaries of cells where the exact
     % solution is smooth, where order of accuracy rises to 2(p+1).
     %
-    % Applied characteristic-wise.
+    % Employs the first state vector component as indicator variable.
+    % Velocity-like variable/quantity is physics-dependent.
     %
+    properties (Constant)
+        treshold = 1 % activation treshold
+    end
     methods
         %% Sensor
         function apply(this,mesh,solver)
@@ -15,34 +19,19 @@ classdef KXRCF < Sensor
             mesh.elements.interpolateStateAtEdges
             % Check all possibly troubled elements:
             for element = mesh.elements([mesh.elements.isTroubled])
-                % Precompute some stuff:
-                ref = abs(element.getLegendre(1))*element.dx^(.5*element.dofCount);
-                qL = element.stateL; % left edge of element k
-                qLL = element.elementL.stateR; % right edge of element k-1
-                qR = element.stateR; % right edge of element k
-                qRR = element.elementR.stateL; % left edge of element k+1
-                % Test left edge:
-                try
-                    [D,L] = solver.physics.getEigensystemAt(qLL,qL);
-                catch
-                    continue
+                % Compute jump in indicator variable across inflow edges:
+                if solver.physics.getVelocityAt(element.stateL) > 0 % left edge inflow
+                    I = abs(element.stateL(1) - element.elementL.stateR(1));
+                else
+                    I = 0; % reset
                 end
-                i = diag(D) < 0; % out-going characteristics
-                if any(L(i,:)*abs(qLL - qL)./(L(i,:)*ref) > 1)
-                    continue
+                if solver.physics.getVelocityAt(element.stateR) < 0 % right edge inflow
+                    I = I + abs(element.stateR(1) - element.elementR.stateL(1));
                 end
-                % Test right edge:
-                try
-                    [D,L] = solver.physics.getEigensystemAt(qR,qRR);
-                catch
-                    continue
-                end
-                i = diag(D) > 0; % out-going characteristics
-                if any(L(i,:)*abs(qRR - qR)./(L(i,:)*ref) > 1)
-                    continue
-                end
-                % If it got this far, element is untroubled:
-                element.isTroubled = false;
+                % Normalize it by an estimated baseline convergence rate:
+                I = I/(abs(element.getLegendre(1,1))*element.dx^(.5*element.dofCount));
+                % Set sensor status:
+                element.isTroubled = I > this.treshold;
             end
         end
     end

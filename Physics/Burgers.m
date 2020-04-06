@@ -40,6 +40,10 @@ classdef Burgers < Physics
             L = 1;
             R = 1;
         end
+        %% Advection velocity
+        function v = getVelocityAt(state)
+            v = .5*state;
+        end
     end
     methods
         %% Riemann solver (exact, with entropy fix)

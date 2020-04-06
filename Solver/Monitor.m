@@ -78,7 +78,7 @@ classdef Monitor < handle
             % cross markers.
             %
             % Initialize a figure:
-            this.hFigure = figure('Position',this.figurePosition,'Name',class(this),'NumberTitle','off');
+            this.hFigure = figure('Position',this.figurePosition,'Name',class(this));
             % Instantiate a uipanel:
             this.hPanel = uipanel(this.hFigure,'Position',[0 0 1 1-this.titleHeight],'BackgroundColor','w','BorderType','none');
             % Initialize "supertitle" annotations:

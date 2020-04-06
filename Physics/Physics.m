@@ -7,6 +7,7 @@ classdef (Abstract) Physics < handle
         flux(this,states)
         riemannFlux(this,stateL,stateR)
         getEigensystemAt(this,state1,state2)
+        getVelocityAt(this,state) % returns the value of the velocity-like variable corresponding to a given state vector
     end
     methods
         %% Tabular data display

@@ -14,14 +14,13 @@ addpath('../Math')
 addpath('../Extra')
 
 %% Discretization
-mesh = Mesh(DGIGA(5,3),[-1 1],[Farfield(.5) Transmissive],10);
+mesh = Mesh(DGSEM(2),[-1 1],[Transmissive Transmissive],25);
 
 %% Solver
-solver = SSP_RK3(Burgers,[0 2.0],...
+solver = SSP_RK3(Burgers,[0 .8],...
     'courantNumber',.05,...
-    'limiter',TVB(inf),...
-    'norms',Norm('Mass'),...
-    'exactSolution',@(t,x) 1+.5*x,'iterSkip',1);
+    'limiter',TVB(0,'Sensor',KXRCF),...
+    'exactSolution',@hesthaven,'iterSkip',1);
 
 %% Initial condition
 solver.initialize(mesh)
@@ -108,6 +107,6 @@ function y = leveque3(~,x) % Inspired by Leveque, 2002 (p. 223); L = [-8 8], tEn
 y = Functions.gauss(x,-4,4).*Functions.tones(x,[1 4 8],[1 2 3],-8,8);
 end
 
-function y = hesthaven(~,x) % Hesthaven & Warburton, 2008 (p. 141); L = [-1 1], tEnd = 0.8.
-y = 2 - heaviside(x+.5);
+function y = hesthaven(t,x) % Hesthaven & Warburton, 2008 (p. 141); L = [-1 1], tEnd = 0.8.
+y = 2 - heaviside(x+.5-1.5*t);
 end

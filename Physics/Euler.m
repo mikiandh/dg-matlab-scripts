@@ -46,6 +46,10 @@ classdef Euler < Physics
                  -.8*state(2)^2 1.6*state(2) .4
                  -1.4*state(2)*state(3)+.4*state(2)^3 1.4*state(3)-.6*state(2)^2 1.4*state(2)];
         end
+        %% Flow velocity
+        function v = getVelocityAt(state)
+            v = state(2,:)./state(1,:);
+        end
         %% Compute vector(s) of all primitive variables from state vector(s)
         function vars = allPrimitiveVarsFromState(state)
             vars = zeros(5,size(state,2));
