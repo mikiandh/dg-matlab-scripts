@@ -1,7 +1,6 @@
 classdef (Abstract) Physics < handle
     properties (Constant,Abstract,Hidden)
         equationCount % number of components that this system of PDEs has
-        controlVars % indices of components considered control variables
     end
     methods (Abstract)
         flux(this,states)

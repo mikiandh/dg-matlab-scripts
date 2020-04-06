@@ -7,6 +7,9 @@ classdef AFC_2010 < Limiter
     % For this version of AFC, the isLimited property is ill-defined, so it
     % is left set to false.
     %
+    properties (Constant)
+        controlVars = struct('Wave',[1 2],'Euler',[1 2 3]) % control variables override
+    end
     properties (Access = protected)
         % Synchronizing functions:
         syncStatesFun = @AFC_2010.sync_skip
@@ -70,6 +73,9 @@ classdef AFC_2010 < Limiter
             % divided by the lumped mass matrix IN REFERENCE SPACE.
             %
             for element = elements
+                if ~isa(element.basis,'DGIGA_AFC')
+                    error('AFC limiting is not supported for this basis.')
+                end
                 for edge = element.basis.edges
                     r = edge(1);
                     j = edge(2);
@@ -348,7 +354,12 @@ classdef AFC_2010 < Limiter
             % vectors (in conservative variables).
             %
             % Control variable loop:
-            for i = this.physics.controlVars
+            try
+                eqs = this.controlVars.(class(this.physics));
+            catch
+                eqs = 1;
+            end
+            for i = eqs
                 % Patch loop:
                 for element = elements
                     % Convert antidiffusive fluxes to control variables:

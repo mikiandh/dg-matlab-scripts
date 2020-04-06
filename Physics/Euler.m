@@ -1,7 +1,6 @@
 classdef Euler < Physics
     properties (Constant, Hidden)
         equationCount = 3
-        controlVars = [1 2 3] % [density velocity pressure]
         validRiemannSolvers = ["exact","LLF","Rusanov","Roe","RoeNoFix","RoeHartenHyman","RoeFix","HLL","HLLE","HLLC","KEP"]
     end
     properties (SetAccess = immutable)

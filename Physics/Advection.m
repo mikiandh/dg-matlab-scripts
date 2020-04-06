@@ -1,7 +1,6 @@
 classdef Advection < Physics
     properties (Constant, Hidden)
         equationCount = 1
-        controlVars = 1
     end
     properties (SetAccess = immutable)
         advSpeed = 1

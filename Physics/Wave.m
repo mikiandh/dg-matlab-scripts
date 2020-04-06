@@ -2,9 +2,12 @@ classdef Wave < Physics
     % Wave equation physics. Hyperbolic system of two linear equations with
     % constant coefficients. Alternative formulation of the scalar 2nd 
     % order wave equation.
+    %
+    % Linear acoustics reduce to this system of equations under a proper
+    % non-dimensionalization (first component, where c^2 appears, is the
+    % pressure; the other is the velocity).
     properties (Constant, Hidden)
         equationCount = 2
-        controlVars = 1:2
     end
     properties (SetAccess = immutable)
         waveSpeed = 1

@@ -9,6 +9,7 @@ classdef KXRCF < Sensor
     %
     properties (Constant)
         treshold = 1 % activation treshold
+        indicator = struct('Euler',[1 3]) % indicator variables override
     end
     methods
         %% Sensor
@@ -17,21 +18,27 @@ classdef KXRCF < Sensor
             apply@Sensor(this,mesh)
             % Evaluate state at all edges:
             mesh.elements.interpolateStateAtEdges
+            % Set components of indicator variables:
+            try
+                i = this.indicator.(class(solver.physics));
+            catch
+                i = 1; % default (first component)
+            end
             % Check all possibly troubled elements:
             for element = mesh.elements([mesh.elements.isTroubled])
                 % Compute jump in indicator variable across inflow edges:
                 if solver.physics.getVelocityAt(element.stateL) > 0 % left edge inflow
-                    I = abs(element.stateL(1) - element.elementL.stateR(1));
+                    I = abs(element.stateL(i) - element.elementL.stateR(i));
                 else
                     I = 0; % reset
                 end
                 if solver.physics.getVelocityAt(element.stateR) < 0 % right edge inflow
-                    I = I + abs(element.stateR(1) - element.elementR.stateL(1));
+                    I = I + abs(element.stateR(i) - element.elementR.stateL(i));
                 end
                 % Normalize it by an estimated baseline convergence rate:
-                I = I/(abs(element.getLegendre(1,1))*element.dx^(.5*element.dofCount));
+                I = I./(abs(element.getLegendre(1,i))*element.dx^(.5*element.dofCount));
                 % Set sensor status:
-                element.isTroubled = I > this.treshold;
+                element.isTroubled = any(I > this.treshold);
             end
         end
     end

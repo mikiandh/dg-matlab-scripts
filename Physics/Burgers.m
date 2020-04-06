@@ -1,7 +1,6 @@
 classdef Burgers < Physics
     properties (Constant, Hidden)
         equationCount = 1
-        controlVars = 1
     end
     properties
         viscosity = 0
