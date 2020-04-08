@@ -7,36 +7,11 @@ classdef WENO < Limiter_legendre
         % neighbors, the smaller the loss of accuracy in smooth regions,
         % but the weaker the limiting near discontinuities.
         linearWeights = [.001 .998 .001]
-        % Small value to avoid division by zero.
-        epsilon = 1e-6
-    end
-    properties (Access = protected)
-        % Quadrature-based smoothness indicator requires an array of
-        % DG (i.e. Legendre) basis instances (one per element), where 
-        % useful quadrature and derivative data live.
-        bases
-        element2basis
     end
     methods
         %% Constructor
         function this = WENO(varargin)
             this@Limiter_legendre(varargin{:});
-        end
-        %% Apply (initialization, extension)
-        function applyInitial(this,mesh,solver)
-            % Instantiates a DG version of each basis in the mesh. Then
-            % reverts to the superclass's default implementation.
-            %
-            % Preallocation:
-            this.element2basis = ones(1,mesh.elementCount);
-            this.bases = repelem(DG,1,numel(mesh.bases));
-            % Fill arrays of unique bases and connectivity:
-            for k = 1:numel(this.bases)
-                this.bases(k) = DG(mesh.bases(k).basisCount);
-                this.element2basis([mesh.elements.basis] == mesh.bases(k)) = k;
-            end
-            % Continue as default:
-            this.applyInitial@Limiter_legendre(mesh,solver)
         end
     end
     methods (Access = protected)
@@ -44,21 +19,50 @@ classdef WENO < Limiter_legendre
         function applyNoSync(this)
             % Applies the WENO limiter asynchronously (i.e. on each
             % characteristic variable independently). Characteristic
-            % decomposition has been carried out by the superclass.
+            % decomposition is handled by the superclass.
             %
             % Compute modified Legendre coefficients of each troubled cell:
             this.coefsL(:,1,:) = this.coefs(:,1,:); % enforces a matching mean value, leaves the rest unchanged
             this.coefsR(:,1,:) = this.coefs(:,1,:);
-            % Evaluate smoothnesses of each troubled cell:
-            
+            % Evaluate smoothnesses of every troubled cell and its 2 neighbors:
+            w = this.getSmoothnesses(this.coefsL,this.coefs,this.coefsR);
+            % Evaluate non-linear weights:
+            w = this.linearWeights./(1e-6 + w).^2;
+            w = w./sum(w,2);
+            % Reconstruct WENO-limited Legendre coefficients:
+            this.coefs = this.coefsL.*w(:,1,:) + this.coefs.*w(:,2,:) + this.coefsR.*w(:,3,:);
         end
     end
-    methods (Static, Access = protected)
-        %% Smoothness indicators
-        function [betaL,beta,betaR] = getSmoothness(I,p,basis,QL,Q,QR)
-            % Evaluate smoothnesses of a troubled cell and its 2 neighbors:
-            aux = 2.^(2*(1:p)'-1);
-            aux = (QL*basis.derivatives)^2*basis.gaussWeights;
+    methods (Static,Access = protected)
+        %% Compute smoothness
+        function betas = getSmoothnesses(varargin)
+            % Evaluate smoothness indicator values for each given array of
+            % Legendre coefficients.
+            %
+            % Arguments
+            %  varargin: list of Legendre coefficient arrays (row: cell;
+            %            column: basis function index; page: equation)
+            % Output
+            %  betas: smoothness indicator values (row: troubled cell;
+            %         column: input index; page: equation)
+            %
+            % Deduce sizes (#troubled elements, #DoFs, #equations):
+            [K,J,I] = size(varargin{1});
+            % Preallocate smoothness indicator values:
+            betas = zeros(K,nargin,I);
+            % Precompute some stuff:
+            [xi,w] = Legendre.quadratureGaussLegendre(J-1);
+            phi = Legendre.getDerivatives(J,xi',J-1);
+            % Loop over system components:
+            for i = 1:I
+                % Loop over derivatives (skipping the zeroth one):
+                for s = 2:size(phi,3)
+                    % Loop over cells within stencil (left, middle, right):
+                    for l = 1:size(betas,2)
+                        betas(:,l,i) = betas(:,l,i) + 2^(2*s-3).*(varargin{l}(:,:,i)*phi(:,:,s)).^2*w;
+                    end
+                end
+            end
         end
     end
 end

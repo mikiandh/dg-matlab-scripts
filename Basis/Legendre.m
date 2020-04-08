@@ -63,7 +63,7 @@ classdef Legendre < Basis
         end
     end
     methods (Static)
-        %% Lagrange polynomials and 1st derivative at given points
+        %% Legendre polynomials and 1st derivative at given points
         function [dPn,Pn] = getLegendreAndDerivatives(n,xi)
             % Returns evaluations of the Legendre polynomials and their
             % first derivative, for degrees from 0 to n-1 at xi. See
@@ -100,6 +100,40 @@ classdef Legendre < Basis
             dPn(2,:) = 1;
             for j = 2:size(Pn,1)-1
                 dPn(j+1,:) = j*Pn(j,:) + xi.*dPn(j,:);
+            end
+        end
+        %% Derivatives at given points
+        function p = getDerivatives(n,xi,s)
+            % Returns evaluations of 1 to s derivatives of Legendre
+            % polynomials 1 to n, at a set of points.
+            %
+            % Arguments
+            %  n: highest-degree polynomial to sample (n = 1 <-> zero degree)
+            %  xi: evaluation locations (row array)
+            %  s: highest order derivative to compute (s = 0 <-> polynomial itself)
+            %
+            % Return
+            %  p: 0 to s derivatives (pages) of 1 to n Legendre polynomials (rows) at points xi (columns)
+            %
+            % Preallocate:
+            p = zeros(n,length(xi),s+1);
+            % Trivial, nonzero cases:
+            p(1,:,1) = 1;
+            if n > 1
+                p(2,:,1) = xi;
+                if s > 0
+                    p(2,:,2) = 1;
+                end
+            end
+            % Zeroth derivative (i.e. polynomials themselves):
+            for j = 2:n-1
+                p(j+1,:,1) = ((2*j-1)*xi.*p(j,:,1) - (j-1)*p(j-1,:,1))/j; % (j+1)th degree Legendre polynomial
+            end
+            % Higher-order derivatives:
+            for k = 1:s
+                for j = 2:n-1
+                    p(j+1,:,k+1) = (2*j-1)*p(j,:,k) + p(j-1,:,k+1); % kth derivative of the (j+1)th degree Legendre polynomial
+                end
             end
         end
         %% Legendre basis sampled at edges
