@@ -106,6 +106,7 @@ classdef Legendre < Basis
         function p = getDerivatives(n,xi,s)
             % Returns evaluations of 1 to s derivatives of Legendre
             % polynomials 1 to n, at a set of points.
+            % Based on Kopriva, 2009 (p. 24).
             %
             % Arguments
             %  n: highest-degree polynomial to sample (n = 1 <-> zero degree)
@@ -132,6 +133,7 @@ classdef Legendre < Basis
             % Higher-order derivatives:
             for k = 1:s
                 for j = 2:n-1
+                    % Differentiated Bonnet's formula:
                     p(j+1,:,k+1) = (2*j-1)*p(j,:,k) + p(j-1,:,k+1); % kth derivative of the (j+1)th degree Legendre polynomial
                 end
             end

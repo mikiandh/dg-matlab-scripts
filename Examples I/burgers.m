@@ -14,13 +14,13 @@ addpath('../Math')
 addpath('../Extra')
 
 %% Discretization
-mesh = Mesh(DGSEM(2),[-1 1],[Transmissive Transmissive],25);
+mesh = Mesh(DGSEM(3),[0 2*pi],[Periodic Periodic],80);
 
 %% Solver
-solver = SSP_RK3(Burgers,[0 .8],...
-    'courantNumber',.05,...
-    'limiter',TVB(0,'Sensor',KXRCF),...
-    'exactSolution',@hesthaven,'iterSkip',1);
+solver = SSP_RK3(Burgers,[0 1.5],...
+    'courantNumber',.1,...
+    'limiter',WENO('Sensor',KXRCF),...
+    'exactSolution',@sineIC,'iterSkip',1);
 
 %% Initial condition
 solver.initialize(mesh)
@@ -78,7 +78,7 @@ y = x.*(heaviside(x) - heaviside(x-2));
 end
 
 function y = sineIC(~,x)
-y = 0.5*sin(3*x*pi) + 0.5;
+y = sin(x) + 0.5;
 end
 
 function y = combinedIC(~,x) % perfect initial condition; L = [-1,2], tEnd = 2

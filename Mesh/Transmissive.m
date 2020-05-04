@@ -4,12 +4,9 @@ classdef Transmissive < Boundary
     % p. 134 and Toro, 2009, p. 495). Also known as: zero-gradient, 
     % non-reflective, absorbing.
     properties (Access = protected)
-        % Decomposition A = P'*L*U, matrix which couples the ghost
-        % element's state vectors with the bound element Legendre 
-        % coefficients and left/right edge value, so that the zero-gradient
-        % constraint is satisfied (more or less exactly) for all 
-        % derivatives of the solution at the boundary.
-        L,U,P
+        % Matrix that couples the ghost and bound element's state vectors 
+        % to each other: Q_ghost = Q_bound*C
+        C
     end
     methods
         %% Constructor
@@ -22,42 +19,33 @@ classdef Transmissive < Boundary
     methods(Access = protected)
         %% Initialize (scalar)
         function setup_scalar(this,elements,isLeft)
-            % Computes and stores the LU decomposition of matrix A in
-            % A*X = B, where X is the 2D array of ghost states (i.e.
-            % Legendre coeffs.), B(1,1:I) is the solution vector at the
-            % boundary, and B(2:J,1:I) are the Legendre coefficients of the
-            % bound element of this boundary.
+            % Computes the constraint matrix.
             %
             % Set bound and ghost elements (both have the same #DoFs):
             if isLeft
                 this.boundElement = elements(1);
-                this.ghostElement = Element(DG(elements(1).dofCount-1),[-inf elements(1).xL]);
+                N = this.boundElement.dofCount;
+                p = N-1;
+                s = [1 -1];
+                this.ghostElement = Element(DG(p),[-inf elements(1).xL]);
             else
                 this.boundElement = elements(end);
-                this.ghostElement = Element(DG(elements(end).dofCount-1),[elements(end).xR inf]);
+                N = this.boundElement.dofCount;
+                p = N-1;
+                s = [-1 1];
+                this.ghostElement = Element(DG(p),[elements(end).xR inf]);
             end
-            % Sparse constraint matrix assembly:
-            J = this.boundElement.dofCount; % number of rows/columns
-            s = isLeft - ~isLeft; % +1 if left boundary, -1 if right
-            A = sparse([repelem(1,J) 2:J],[1:J 2:J],[s.^(2:J+1) repelem(1,J-1)]);
-            % LU factorization:
-            [this.L,this.U,this.P] = lu(A);
+            % Assemble the matrix:
+            AB = permute(Legendre.getDerivatives(N,s,p),[1 3 2]);
+            this.C = AB(:,:,2)/AB(:,:,1);
         end
         %% Enforce (scalar)
-        function apply_scalar(this,~,~,isLeft)
+        function apply_scalar(this,~,~,~)
             % Updates the ghost element's state vectors such that the
-            % approximate solution is smooth at the boundary. Employs an
-            % LU-factorized constraint matrix, such that: x = U\(L\P*b).
+            % approximate solution is smooth at the boundary.
             %
             % Right-hand side matrix:
-            this.ghostElement.states = this.boundElement.getLegendre;
-            if isLeft
-                this.ghostElement.states(:,1) = this.boundElement.stateL;
-            else
-                this.ghostElement.states(:,1) = this.boundElement.stateR;
-            end
-            % Solve:
-            this.ghostElement.states = (this.U\(this.L\this.P*this.ghostElement.states'))';
+            this.ghostElement.states = this.boundElement.getLegendre*this.C;
             % Evaluate ghost element at its edges:
             this.ghostElement.interpolateStateAtEdges
         end
