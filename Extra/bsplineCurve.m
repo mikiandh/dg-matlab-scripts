@@ -1,42 +1,41 @@
 clc
 clear
-close all
+%close all
 
 % This script plots a 1D (nonrational) B-spline curve using a B-spline 
 % basis and a set of control points.
 
 %% Parameters
-N = 250; % arc length samples
+N = 50; % arc length samples
 p = 3; % degree
 knots = [0 1 2 2 3 3 3 4]; % knot vector
-cPoints = logspiral(2,.1,10,1.5); % control points
+cPoints = logspiral(1,.3063489,10,1); % control points
 
-%% B-spline curve
-% Open the knot vector:
-reps = [p zeros(1,numel(knots)-2) p];
-knots = repelem(knots,reps+1);
+%% Sample
+% Preprocess:
+reps = [p zeros(1,numel(knots)-2) p]; % knot multiplicities
+knots = repelem(knots,reps+1); % clamped knot vector
+breaks = unique(knots); % breakpoint vector
 % Check sizes:
 if size(cPoints,1) ~= length(knots)-p-1
     error(['The number of control points must match the number of basis functions (' num2str(length(knots)-p-1) ').'])
 end
-% Sample locations (along the arc length):
-x = [knots linspace(knots(1),knots(end),N)];
-% Sample the curve:
-tic
-C = zeros(length(x),size(cPoints,2));
-for i = 1:length(x)
-    C(i,:) = curvePoint(knots,cPoints,p,x(i));
+% Plot the control polygon:
+plot(cPoints(:,1),cPoints(:,2),'--ob','MarkerFaceColor','b','MarkerSize',10); % control points
+hold all
+% Plot the B-spline curve:
+C = zeros(N*(numel(breaks)-1),2); % B-spline sample coordinates
+B = zeros(numel(breaks),2); % breakpoint coordinates
+for i = 1:numel(breaks)-1
+    xi = linspace(breaks(i),breaks(i+1),N);
+    for j = 1:numel(xi)
+         C(j+(i-1)*N,:) = curvePoint(knots,cPoints,p,xi(j));
+    end
+    B(i,:) = C(1+(i-1)*N,:);
 end
-toc
-disp(['Done (' num2str(toc) ').'])
-
-%% Plot
-figure()
-plot(cPoints(:,1),cPoints(:,2),'--ob','MarkerFaceColor','b','MarkerSize',10) % control points
-hold on
-plot(C(length(knots)+1:end,1),C(length(knots)+1:end,2),'-k') % B-spline curve
-plot(C(1:length(knots),1),C(1:length(knots),2),'sr','MarkerFaceColor','r','MarkerSize',10) % break points
-%legend('Control polygon','B-spline curve','Location','Best')
+B(end,:) = C(end,:);
+plot(B(:,1),B(:,2),'sr','MarkerFaceColor','r','MarkerSize',10) % breakpoints
+plot(C(:,1),C(:,2),'-k') % B-spline curve
 axis equal
 
 %% Functions
