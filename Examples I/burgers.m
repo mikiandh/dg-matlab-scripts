@@ -14,13 +14,12 @@ addpath('../Math')
 addpath('../Extra')
 
 %% Discretization
-mesh = Mesh(DGSEM(3),[0 2*pi],[Periodic Periodic],80);
+mesh = Mesh(DGIGA(5,2),[-1 1],[Farfield(2) Transmissive],20);
 
 %% Solver
-solver = SSP_RK3(Burgers,[0 1.5],...
-    'courantNumber',.1,...
-    'limiter',WENO('Sensor',KXRCF),...
-    'exactSolution',@sineIC,'iterSkip',1);
+solver = SSP_RK3(Burgers,[0 .4],...
+    'courantNumber',.01,...
+    'exactSolution',@hesthaven,'iterSkip',60);
 
 %% Initial condition
 solver.initialize(mesh)

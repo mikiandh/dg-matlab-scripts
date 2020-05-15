@@ -20,6 +20,7 @@ classdef Bspline < Basis
         vandermonde % 3D array of basis functions (rows) sampled at Gauss points (columns) of each nonzero knot span (pages)
         derivatives % idem, for the first derivative of the basis functions
         invVandermonde % 3D array of Gauss quadrature point contributions (rows) to modal components (columns) of each nonzero knot span (pages)
+        controlVandermonde % 2D array of basis functions (rows) sampled at control points (columns) of the patch
     end
     methods
         %% Constructor
@@ -92,6 +93,7 @@ classdef Bspline < Basis
             this.left = zeros(this.basisCount,1);
             this.left(1) = 1;
             this.right = flip(this.left);
+            this.controlVandermonde = this.sampleAt(this.controlCoords);
             % Precomputed operators:
             this.assembleOperators;
             % Sparsity graph:
