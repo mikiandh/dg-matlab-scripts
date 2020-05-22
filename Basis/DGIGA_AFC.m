@@ -41,8 +41,8 @@ classdef DGIGA_AFC < Bspline
     methods (Access = {?Basis,?Element})
         %% DGIGA-AFC operator (low-order predictor)
         function computeResiduals(this,element,physics)
-            element.residuals = element.states;%*this.controlVandermonde;
-            element.fluxes = physics.flux(element.residuals);%/this.controlVandermonde;
+            element.residuals = element.states*this.controlVandermonde;
+            element.fluxes = physics.flux(element.residuals)/this.controlVandermonde;
             element.residuals = ...
                 element.fluxes*this.gradientMatrix...
                 - element.riemannR.*this.right'...
