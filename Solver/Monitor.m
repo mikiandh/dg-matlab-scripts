@@ -133,7 +133,8 @@ classdef Monitor < handle
             end
             % Initialize limiter bar charts:
             for i = this.rows
-                this.hLimiters(i,:) = bar(this.hAxes(i,1),[mesh.elements.x],this.getLimiterData(mesh,i),1,'stacked'); % fraction of 1
+                this.hLimiters(i,:) = bar(this.hAxes(i,1),this.getLimiterData(mesh,i),1,'stacked'); % fraction of 1
+                set(this.hLimiters(i,:),'XData',[mesh.elements.x]);  % hotfix around the "equal lengths bug"
                 set(this.hLimiters(i,:),{'EdgeColor'},num2cell(this.cLimiters,2),{'FaceColor'},num2cell(this.cLimiters,2));
             end
             set(this.hLimiters,'FaceAlpha',.1,'EdgeAlpha',.2)

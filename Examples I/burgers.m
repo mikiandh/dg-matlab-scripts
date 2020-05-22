@@ -14,12 +14,13 @@ addpath('../Math')
 addpath('../Extra')
 
 %% Discretization
-mesh = Mesh(DGIGA(5,2),[-1 1],[Farfield(2) Transmissive],20);
+mesh = Mesh(DGIGA(3,2),[-1 1],[Periodic Periodic],5);
 
 %% Solver
-solver = SSP_RK3(Burgers,[0 .4],...
+solver = SSP_RK3(Burgers,[0 .25],...
     'courantNumber',.01,...
-    'exactSolution',@hesthaven,'iterSkip',60);
+    'norm',Norm(["ErrorL1" "ErrorL2"]),...
+    'exactSolution',@gaussIC,'iterSkip',10);
 
 %% Initial condition
 solver.initialize(mesh)
@@ -64,8 +65,8 @@ function y = riemann4B(~,x) % transonic expansion (left-going)
 y = -0.8 + heaviside(x);
 end
 
-function y = gaussIC(~,x)
-y = Functions.gauss(x,-1,1);
+function y = gaussIC(t,x) % L = [-1 1], tEnd < .2659
+y = evolve(t,x,@(x)Functions.gauss(x,-1,1));
 end
 
 function y = jumpIC(~,x)
@@ -76,8 +77,8 @@ function y = halfJumpIC(~,x)
 y = x.*(heaviside(x) - heaviside(x-2));
 end
 
-function y = sineIC(~,x)
-y = sin(x) + 0.5;
+function y = sineIC(t,x) % L = [0 2*pi], tEnd < 1
+y = evolve(t,x,@(x) sin(x) + .5);
 end
 
 function y = combinedIC(~,x) % perfect initial condition; L = [-1,2], tEnd = 2
@@ -108,4 +109,24 @@ end
 
 function y = hesthaven(t,x) % Hesthaven & Warburton, 2008 (p. 141); L = [-1 1], tEnd = 0.8.
 y = 2 - heaviside(x+.5-1.5*t);
+end
+
+function y = evolve(t,x,fun) % evolves an initial condition
+y0 = fun(x); % initial condition
+y = fun(x - y0*t); % initial guess
+% Iterative approximation to the analytical solution:
+for i = 1:1000
+    if norm(y-y0,inf) < 1e-6
+        return
+    else
+        y0 = y;
+        y = fun(x - y.*t);
+    end
+end
+% Assume that the solution "broke":
+persistent w
+if isempty(w)
+    w = warning('Exact solution evolved past its breaking time (estimated at t = %g).',t);
+end
+y = nan.*x;
 end

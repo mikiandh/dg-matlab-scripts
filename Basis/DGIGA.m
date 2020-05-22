@@ -13,8 +13,8 @@ classdef DGIGA < Bspline
         %% DGIGA operator
         function computeResiduals(this,element,physics)
             element.residuals = element.states*this.controlVandermonde;
-            element.residuals = physics.flux(element.residuals)/this.controlVandermonde;
-            element.residuals = (element.residuals*this.gradientMatrix...
+            element.fluxes = physics.flux(element.residuals)/this.controlVandermonde;
+            element.residuals = (element.fluxes*this.gradientMatrix...
                 - element.riemannR.*this.right'...
                 - element.riemannL.*this.left');
             element.residuals = element.residuals / this.massMatrix;
