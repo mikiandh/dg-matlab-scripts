@@ -14,13 +14,13 @@ addpath('../Math')
 addpath('../Extra')
 
 %% Discretization
-mesh = Mesh(DGIGA(3,2),[-1 1],[Periodic Periodic],5);
+mesh = Mesh(DGIGA_AFC(10,2),[-1 1],[Periodic Periodic],5);
 
 %% Solver
-solver = SSP_RK3(Burgers,[0 .25],...
-    'courantNumber',.01,...
-    'norm',Norm(["ErrorL1" "ErrorL2"]),...
-    'exactSolution',@gaussIC,'iterSkip',10);
+solver = SSP_RK3(Burgers,[0 .45],...
+    'courantNumber',.001,...
+    'limiter',AFC_2010,...
+    'exactSolution',@gaussIC,'iterSkip',60);
 
 %% Initial condition
 solver.initialize(mesh)
@@ -116,7 +116,7 @@ y0 = fun(x); % initial condition
 y = fun(x - y0*t); % initial guess
 % Iterative approximation to the analytical solution:
 for i = 1:1000
-    if norm(y-y0,inf) < 1e-6
+    if norm(y-y0,inf) < 1e-12
         return
     else
         y0 = y;
@@ -126,7 +126,7 @@ end
 % Assume that the solution "broke":
 persistent w
 if isempty(w)
-    w = warning('Exact solution evolved past its breaking time (estimated at t = %g).',t);
+    w = warning('Exact solution reached its breaking time (estimated at t = %g).',t);
 end
 y = nan.*x;
 end

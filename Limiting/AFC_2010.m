@@ -233,7 +233,7 @@ classdef AFC_2010 < Limiter
             % FCT limiting (in control variables):
             this.applySynchronizedFCT(elements)
             % Failsafe limiting (in control variables):
-            this.applyFailsafe(elements,1)
+            %%% this.applyFailsafe(elements,1)
         end
         %% Apply sensor
         function applySensor(this,mesh,solver)
@@ -333,10 +333,10 @@ classdef AFC_2010 < Limiter
             end
             % Override extrema of control points closest to mesh boundaries
             % (Kuzmin et al, 2012; remark 5, pp. 163, bottom):
-            mesh.elements(1).maxima(:,1) = inf;
-            mesh.elements(1).minima(:,1) = -inf;
-            mesh.elements(end).maxima(:,end) = inf;
-            mesh.elements(end).minima(:,end) = -inf;
+%             mesh.elements(1).maxima(:,1) = inf;
+%             mesh.elements(1).minima(:,1) = -inf;
+%             mesh.elements(end).maxima(:,end) = inf;
+%             mesh.elements(end).minima(:,end) = -inf;
         end
         %% Linearized FCT, synchronized
         function applySynchronizedFCT(this,elements)
