@@ -41,6 +41,10 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             % approximated using adaptive quadrature. All basis subclasses
             % share this general implementation (break span based).
             %
+            % IMPORTANT: 'this' it is assumed to be the basis of both trial
+            % and test spaces. For non-standard Galerkin (e.g. FR),
+            % override or extend as necessary.
+            %
             % Set up:
             I = length(fun0(0));
             N = this.basisCount;

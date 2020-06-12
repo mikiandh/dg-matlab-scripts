@@ -147,7 +147,7 @@ classdef Monitor < handle
                 x0 = mesh.elements(k).getControlCoords;
                 x1 = mesh.elements(k).getNodeCoords';
                 x2 = mesh.elements(k).getBreakCoords;
-                x3 = linspace(mesh.elements(k).xL,mesh.elements(k).xR,mesh.elements(k).dofCount*this.nPerDof);
+                x3 = linspace(mesh.elements(k).xL,mesh.elements(k).xR,ceil(mean(1000,mesh.elements(k).dofCount*this.nPerDof)));
                 x = unique([x3 x2 x1],'sorted');
                 % Indices of sample subsets:
                 j = cellfun(@(b) arrayfun(@(a) find(x == a,1),b),{x1 x2 x3},'UniformOutput',false);
@@ -211,7 +211,7 @@ classdef Monitor < handle
                 set(this.hNodes(:,k),'XData',x1)
                 x2 = mesh.elements(k).getBreakCoords;
                 set(this.hBreaks(:,k),'XData',x2)
-                x3 = linspace(mesh.elements(k).xL,mesh.elements(k).xR,mesh.elements(k).dofCount*this.nPerDof);
+                x3 = linspace(mesh.elements(k).xL,mesh.elements(k).xR,ceil(mean(1000,mesh.elements(k).dofCount*this.nPerDof)));
                 x = unique([x3 x2 x1],'sorted');
                 set(this.hDiscrete(:,k),'XData',x)
                 set(this.hExact(:,k),'XData',x)

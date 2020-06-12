@@ -39,16 +39,17 @@ IC_p3d3 = @(x) (x+x.^2+x.^3).*(1 - heaviside(x)) + (x+x.^2+2*x.^3).*(heaviside(x
 IC_p3d4 = @(x) (x+x.^2+x.^3);
 
 %% Discretization
-mesh = Mesh(DGIGA(1,2),L,Periodic(2),20);
+mesh = Mesh(FR('min',3),L,Periodic(2),5);
 
 %% Solver
 solver = SSP_RK3(Advection,[0 2],...
-    'courantNumber',.1,...
+    'courantNumber',.01,...
     'limiter',Limiter('Sensor',Sensor),...
-    'exactSolution',@(t,x) IC_gauss(x),'iterSkip',1,'waitForKey',false);
+    'norms',Norm('L2'),...
+    'exactSolution',@(t,x) IC_gauss(x),'iterSkip',10,'waitForKey',false);
 
 %% Initial condition
-solver.initialize(mesh)
+solver.initialize(mesh,'method','project')
 
 %% Time-integration
 solver.launch(mesh)

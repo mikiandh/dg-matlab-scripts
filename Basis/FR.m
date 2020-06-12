@@ -3,6 +3,7 @@ classdef FR < Lagrange
         param % value for the "c" parameter in VCJH-class correction functions
         correctionsL % array of p+1 "gradient of left correction function" values
         correctionsR
+        auxMassMatrix % mass matrix if FR was using Lagrange test functions (it is not)
     end
     methods
         %% Constructor
@@ -23,11 +24,12 @@ classdef FR < Lagrange
                         return;
                     end
                 % Derivative of the correction function at solution points:
-                eta = this.getEtaParameter(param,this.degree);
+                eta = this.getEtaParameter(param,this.order);
                 dPn = Legendre.getLegendreAndDerivatives(this.degree+2,this.nodeCoords');
                 this.correctionsR = this.rightVCJH(eta,dPn(this.degree:end,:));
                 this.correctionsL = - flip(this.correctionsR);
                 % Mass and gradient matrices (Dirac delta test functions):
+                this.auxMassMatrix = this.massMatrix;
                 this.massMatrix = eye(this.basisCount);
                 this.gradientMatrix = this.derivatives'; % row: test function (sample location); column: derivative of basis function 
             end
@@ -43,6 +45,17 @@ classdef FR < Lagrange
             name = getName@Lagrange(this);
             aux = sprintf('%s(%s)',class(this),num2str(this.param));
             name = strrep(name,class(this),aux);
+        end
+        %% L2 projection (extension)
+        function project(this,element,fun0)
+            % Initializes an L2-preserving interpolant for FR, taking into
+            % account the fact that its test functions are collocated Dirac
+            % Deltas.
+            %
+            % Parent implementation:
+            project@Lagrange(this,element,fun0);
+            % Recover L2-preserving nodal values:
+            element.states = element.states/this.auxMassMatrix;
         end
     end
     methods (Access = {?Basis,?Element})
@@ -61,14 +74,16 @@ classdef FR < Lagrange
         function g = rightVCJH(eta,legendre)
             % Evaluates the expression for the right correction function
             % given in Vincent et. al. 2011 (eq. 3.47) using provided parameter 
-            % 'eta' and samples of the Legendre polynomials (or their
-            % derivatives).
+            % 'eta' and samples of the Legendre polynomials.
+            %
+            % If Legendre derivatives are given instead, output is the
+            % derivative of the correction function, directly.
             %
             % Arguments
             %  eta: a constant parameter
             %  legendre: 2D array with 3 rows, matching Legendre
             %            polynomials p to p+2, where p+1 is the
-            %            degree of the correction fucntion; colums: sample
+            %            degree of the correction function; colums: sample
             %            locations.
             g = 0.5*(legendre(2,:) + (eta*legendre(1,:) + legendre(3,:))/(eta+1));
         end
@@ -77,8 +92,8 @@ classdef FR < Lagrange
             % Evaluates eq. 3.45 from Vincent et. al. 2011.
             %
             % Arguments
-            %  param: VCJH parameter (can also be a string)
-            %  degree: degree of the solution polynomial
+            %  param: VCJH parameter (can also be a character array)
+            %  degree: degree of the correction function (NOT discretization)
             %
             p = factorial(degree);
             a = factorial(2*degree)/(2^degree*(p)^2);
@@ -89,6 +104,8 @@ classdef FR < Lagrange
             end
             % Huyn-type schemes:
             switch param
+                case 'min'
+                    eta = -.5; % 'safe' minimum
                 case 'DG'
                     eta = 0;
                 case 'Ga'
@@ -105,41 +122,12 @@ classdef FR < Lagrange
             %
             % Arguments
             %  param: VCJH parameter (in: eta; out: c)
-            %  degree: degree of the solution polynomial
+            %  degree: degree of the correction function (NOT discretization)
             %
             p = factorial(degree);
             a = factorial(2*degree)/(2^degree*(p)^2);
             param = param/(0.5*(2*degree+1)*(a*p)^2);
         end
-%         %% 1st derivative of Lagrange polynomials at solution points
-%         function [dPn,Pn] = getLegendreAndDerivatives(n,xi)
-%             % Returns evaluations of the Legendre polynomials and their
-%             % first derivative, for degrees from 0 to n-1 at xi. See 
-%             % Kopriva, algorithm 22 (pp. 63).
-%             %
-%             % Arguments
-%             %  n: highest-degree polynomial to sample (n = 1 <-> zero degree)
-%             %  xi: evaluation locations (1D array)
-%             %
-%             % Return
-%             %  dPn: derivative of Legendre polynomials 1 to n (n x length(xi))
-%             %  Pn: Legendre polynomial 1 to n
-%             %
-%             % Preallocate:
-%             dPn = zeros(n,length(xi));
-%             Pn = ones(n,length(xi));
-%             % Trivial cases:
-%             if n == 1
-%                 return;
-%             end
-%             dPn(2,:) = 1;
-%             Pn(2,:) = xi;
-%             % Sample the Legendre polynomials and their derivatives:
-%             for j = 2:n-1
-%                 Pn(j+1,:) = ((2*j-1)*xi.*Pn(j,:) - (j-1)*Pn(j-1,:))/j;
-%                 dPn(j+1,:) = j*Pn(j,:) + xi.*dPn(j,:);
-%             end
-%         end
         %% Correction functions and derivatives
         function [gL,dgL,gR,dgR] = getCorrectionFunctionAndDerivative(c,p,xi)
             % Returns the p+1 degree correction functions and their 
