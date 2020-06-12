@@ -14,19 +14,20 @@ addpath('../Math')
 addpath('../Extra')
 
 %% Discretization
-mesh = Mesh(DGIGA_AFC(10,2),[-1 1],[Periodic Periodic],5);
+mesh = Mesh(DGIGA(3,2),[-1 1],[Periodic Periodic],5);
 
 %% Solver
-solver = SSP_RK3(Burgers,[0 .45],...
+solver = SSP_RK3(Burgers,[0 .4],...
     'courantNumber',.001,...
-    'limiter',AFC_2010,...
-    'exactSolution',@gaussIC,'iterSkip',60);
+    'limiter',Limiter,...
+    'norms',Norm({'L2','ErrorL2','TV'}),...
+    'exactSolution',@gaussIC,'iterSkip',25);
 
 %% Initial condition
 solver.initialize(mesh)
 
 %% Time-integration
-solver.launch(mesh);
+solver.launch(mesh)
 
 %% Initial conditions
 function y = riemann1A(~,x) % right-going shock
