@@ -66,8 +66,8 @@ classdef TVB < Limiter
             aux = zeros(size(coefs)); % preallocate to zero
             %%aux(rows,1) = .5*(w1R(rows) + w1L(rows)); % safe 2nd Legendre coefficient
             %%aux(rows,2) = 0*.5*(w1R(rows) - w1L(rows)); % safe 3rd Legendre coefficient (see A5-XI, 02/03/2020)
-            aux(rows,1) = this.minmod(coefs(rows,2),u1R(rows),u1L(rows),this.M*element.dx^2); % limit to p = 1 with TVB slope
-            coefs(:,2:end) = aux(:,1:element.basis.basisCount-1); % overwrite limited Legendre coefficients (only)
+            aux(:,1) = R*this.minmod(L*coefs(:,2),u1R,u1L,this.M*element.dx^2); % limit to p = 1 with TVB slope
+            coefs(rows,2:end) = aux(rows,1:element.basis.basisCount-1); % overwrite limited Legendre coefficients (only)
             element.setLegendre(coefs(rows,:),rows); % overwrite all DOFs of limited state vector components
         end
     end
