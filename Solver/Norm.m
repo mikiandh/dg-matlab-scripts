@@ -22,6 +22,7 @@ classdef Norm < handle
         Mass (1)
         TVM (nan)
         TV (nan)
+        BaselineTV (nan)
     end
     methods
         %% Constructor
@@ -64,10 +65,13 @@ classdef Norm < handle
                         this.massNorm(mesh)
                     case {Norm.TV}
                         % Solution total variation (estimate):
-                        this.tvNorm(mesh)
+                        this.tvNorm(@mesh.sample,mesh.getGaussLocations)
                     case {Norm.TVM}
                         % Solution total variation in the means:
                         this.tvmNorm(mesh)
+                    case {Norm.BaselineTV}
+                        % Total variation of the exact solution (estimate):
+                        this.tvNorm(fun,mesh.getGaussLocations)
                 end
             end
         end
@@ -148,14 +152,13 @@ classdef Norm < handle
             end
         end
         %% TV estimate
-        function tvNorm(this,mesh)
-            % Compute the total variation of the current approximate
-            % solution stored in the mesh. Convergence acceleration using
-            % linear Richardson extrapolation.
+        function tvNorm(this,fun,x0)
+            % Compute the total variation of a known function.
+            % Linear Richardson extrapolation.
             %
             maxIters = 30;
-            x = mesh.getGaussLocations; % global quadrature point locations
-            q = mesh.sample(x); % state vector at every quadrature location (initial samples)
+            x = x0; % global initial sample locations
+            q = fun(x); % state vector initial samples
             function tv = TV
                 tv = sum(abs(diff(q,1,2)),2);
             end
@@ -192,7 +195,7 @@ classdef Norm < handle
                 q(:,ids) = q0;
                 ids = ~ids; % new entries
                 x(ids) = .5*(x0(2:end) + x0(1:end-1));
-                q(:,ids) = mesh.sample(x(ids));
+                q(:,ids) = fun(x(ids));
             end
         end
     end
