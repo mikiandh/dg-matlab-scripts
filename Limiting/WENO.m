@@ -55,11 +55,11 @@ classdef WENO < Limiter_legendre
             phi = Legendre.getDerivatives(J,xi',J-1);
             % Loop over system components:
             for i = 1:I
-                % Loop over derivatives (skipping the zeroth one):
-                for s = 2:size(phi,3)
+                % Loop over derivatives:
+                for s = 2:size(phi,3) % "s = 1" is the zeroth derivative! 
                     % Loop over cells within stencil (left, middle, right):
                     for l = 1:size(betas,2)
-                        betas(:,l,i) = betas(:,l,i) + 2^(2*s-3).*(varargin{l}(:,:,i)*phi(:,:,s)).^2*w;
+                        betas(:,l,i) = betas(:,l,i) + 2^(2*s-3).*(varargin{l}(:,:,i)*phi(:,:,s)).^2*w; % "(2*s-3)" is NOT a bug!
                     end
                 end
             end
