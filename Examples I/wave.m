@@ -15,15 +15,15 @@ addpath('../Math')
 addpath('../Extra')
 
 %% Discretization (equation + solution + domain)
-mesh = Mesh(DG(3),[0 1],[Reflective(@(t) .5*sin(2*pi*t)) Reflective],50);
+mesh = Mesh(DG(2),[-1 1],[Reflective(@(t) .5*sin(2*pi*t)) Reflective],50);
 
 %% Solver
 norms = Norm(["Mass","L2"]);
-solver = SSP_RK3(Wave,[0 4],...
+solver = SSP_RK3(Wave,[0 0],...
     'courantNumber',.1,...
     'limiter',BSB('Sensor',KXRCF),...
     'norms',norms,...
-    'exactSolution',@constantIC,'iterSkip',50);
+    'exactSolution',@combinedIC,'iterSkip',50);
 
 %% Time-integration
 solver.initialize(mesh)
@@ -58,10 +58,10 @@ y(2,:) = sin(2*x*pi);
 end
 
 function y = combinedIC(~,x)
-% Initial condition that models the combination of a 'pick' (smooth pulse
-% in displacement) and a 'hammer strike' (sudden change in displacement 
-% rate) over non-overlapping regions of the domain.
+% Initial condition that models the combination of a 'pick' (smooth hump
+% in displacement, i.e. stress) and a 'hammer strike' (sudden change in
+% displacement rate) over non-overlapping regions of the domain.
 y = zeros(2,length(x));
-y(1,:) = Functions.gauss(x,0,.5);
-y(2,:) = Functions.jump(x,.5,1);
+y(1,:) = Functions.gauss(x,-1,0);
+y(2,:) = Functions.jump(x,0,1);
 end

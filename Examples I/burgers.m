@@ -14,14 +14,13 @@ addpath('../Math')
 addpath('../Extra')
 
 %% Discretization
-mesh = Mesh(DGIGA(3,2),[-1 1],[Periodic Periodic],5);
+mesh = Mesh(DGSEM(49),[-1 1],[Periodic Periodic],1);
 
 %% Solver
-solver = SSP_RK3(Burgers,[0 .5],...
-    'courantNumber',.001,...
-    'limiter',Limiter,...
-    'norms',Norm({'TV','TVM','BaselineTV'}),...
-    'exactSolution',@gaussIC,'iterSkip',25);
+solver = SSP_RK3(Burgers,[0 4],...
+    'courantNumber',1e-3,...
+    'norm',Norm({'ErrorL2'}),...
+    'exactSolution',@sineIC,'iterSkip',10);
 
 %% Initial condition
 solver.initialize(mesh)
@@ -66,7 +65,7 @@ function y = riemann4B(~,x) % transonic expansion (left-going)
 y = -0.8 + heaviside(x);
 end
 
-function y = gaussIC(t,x) % L = [-1 1], tEnd < .2659
+function y = gaussIC(t,x) % L = [-1 1], tEnd < .4
 y = evolve(t,x,@(x)Functions.gauss(x,-1,1));
 end
 
@@ -78,8 +77,8 @@ function y = halfJumpIC(~,x)
 y = x.*(heaviside(x) - heaviside(x-2));
 end
 
-function y = sineIC(t,x) % L = [0 2*pi], tEnd < 1
-y = evolve(t,x,@(x) sin(x) + .5);
+function y = sineIC(t,x) % L = [-1 1], tEnd < 5
+y = evolve(t,x,@(x) 1 - 1/(5*pi)*sin(pi*x));
 end
 
 function y = combinedIC(~,x) % perfect initial condition; L = [-1,2], tEnd = 2
