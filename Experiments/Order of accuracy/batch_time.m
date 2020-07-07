@@ -13,38 +13,69 @@ addpath('../../Extra')
 
 %% Setup
 inputData = {
-%   Time convergence
+%   Category    Values                              Format        Is block?    
     {
-%   Category    Values                          Format          Is block?
-    'CFL'       num2cell(logspace(-3,-1,5))     '%.6f'          false
-    'ErrorL2'   {nan}                           '%.6f'          false
-    'Solver'    {'SSP_RK1','SSP_RK2','SSP_RK3'} '%s'            true
-    'L2'        {nan}                           '%.6f'          false
-    'TV'        {nan}                           '%.6f'          false
+    'dt'        [{5e-6},...
+                 num2cell(logspace(-5,-2,30))]      '%.6f'        false
+    'ErrorL2'   {nan}                               '%.6f'        false
+    'Solver'    {'SSP_RK1'}                         '%s'          true
+    'L2'        {nan}                               '%.6f'        false
+    'TV'        {nan}                               '%.6f'        false
+    'Order'     {nan}                               '%.6f'        false
     }
     {
-    %   Category    Values                          Format          Is block?
-    'CFL'       num2cell(logspace(-2,-0,10))    '%.6f'          false
-    'ErrorL2'   {nan}                           '%.6f'          false
-    'Solver'    {'SSP_RK4_10'}                  '%s'            true
-    'L2'        {nan}                           '%.6f'          false
-    'TV'        {nan}                           '%.6f'          false    
+    'dt'        num2cell(logspace(-4,-1,30))        '%.6f'        false
+    'ErrorL2'   {nan}                               '%.6f'        false
+    'Solver'    {'SSP_RK2'}                         '%s'          true
+    'L2'        {nan}                               '%.6f'        false
+    'TV'        {nan}                               '%.6f'        false
+    'Order'     {nan}                               '%.6f'        false
+    }
+    {
+    'dt'        num2cell(logspace(-3,-1,20))        '%.6f'        false
+    'ErrorL2'   {nan}                               '%.6f'        false
+    'Solver'    {'SSP_RK3'}                         '%s'          true
+    'L2'        {nan}                               '%.6f'        false
+    'TV'        {nan}                               '%.6f'        false
+    'Order'     {nan}                               '%.6f'        false
+    }
+    {
+    'dt'        num2cell(logspace(-2,-.5,20))       '%.6f'        false
+    'ErrorL2'   {nan}                               '%.6f'        false
+    'Solver'    {'SSP_RK4_5'}                       '%s'          true
+    'L2'        {nan}                               '%.6f'        false
+    'TV'        {nan}                               '%.6f'        false
+    'Order'     {nan}                               '%.6f'        false
+    }
+    {
+    'dt'        num2cell(logspace(-2,-.5,25))       '%.6f'        false
+    'ErrorL2'   {nan}                               '%.6f'        false
+    'Solver'    {'SSP_RK4_10'}                      '%s'          true
+    'L2'        {nan}                               '%.6f'        false
+    'TV'        {nan}                               '%.6f'        false
+    'Order'     {nan}                               '%.6f'        false
     }
     };
 fileNames = {
-    'order_time_DGSEM_1.dat';
-    'order_time_DGSEM_2.dat';
+%   Name                        Is active?
+    'order_time_RK1.dat'        false
+    'order_time_RK2.dat'        false
+    'order_time_RK3.dat'        false
+    'order_time_RK45.dat'       true
+    'order_time_RK410.dat'      true
     };
-exactSolution = @(t,x) smoothBurgersExact(t,x,@(x) exp(-9*pi/4*x.^2));
-mesh = Mesh(DGSEM(2),[-1 1],Periodic(2),5);
+%exactSolution = @(t,x) smoothBurgersExact(t,x,@(x) 1-sin(pi*x)/(5*pi));
+%exactSolution = @(t,x) smoothBurgersExact(t,x,@(x) exp(-9*pi/4*x.^2));
+exactSolution = @(t,x) exp(-9*pi/4*x.^2);
+mesh = Mesh(DGIGA(27,3),[-1 1],Periodic(2),1);
 
 %% Loop over files
-if numel(inputData) ~= numel(fileNames)
+if numel(inputData) ~= size(fileNames,1)
     error('Inconsistent input.')
 else
-    I = numel(inputData);
+    I = sum([fileNames{:,2}]);
 end
-for i = 1:I
+for i = find([fileNames{:,2}])
     %% Distributed batch run
     % Setup parallel write:
     c = parallel.pool.Constant(@() fopen(tempname(pwd),'wt'),@fclose);
@@ -52,9 +83,13 @@ for i = 1:I
         cpuFile = (fopen(c.Value));
     end
     % Preprocess:
-    dataSpecs = ['%d,' strjoin(inputData{i}(:,3),',') '\n'];
-    fileData = assembleTestTuple(inputData{i}{:,2});
-    J = size(fileData,1);
+    try
+        dataSpecs = ['%d,' strjoin(inputData{i}(:,3),',') '\n'];
+        fileData = assembleTestTuple(inputData{i}{:,2});
+        J = size(fileData,1);
+    catch me
+        warning('Preprocessing for batch %d of %d failed.\n "%s"',i,I,getReport(me))
+    end
     % Run (distributed loop):
     try
         parfor j = 1:J
@@ -64,8 +99,8 @@ for i = 1:I
             norms = Norm({'ErrorL2','L2','TV'}); % norms to compute
             scheme = str2func(cpuData{4});
             solver = scheme(...
-                Burgers,[0 .3],...
-                'courantNumber',cpuData{2},...
+                Advection,[0 2],...
+                'timeDelta',cpuData{2},...
                 'norm',norms,...
                 'exactSolution',exactSolution);
             solver.initialize(mesh)
@@ -73,12 +108,11 @@ for i = 1:I
             % Postprocess:
             [cpuData{[3 5 6]}] = norms.vals;
             fprintf(c.Value,dataSpecs,cpuData{:});
-            fprintf('Worker %d: run %d of %d in batch %d of %d completed (%.3g s).\n',get(getCurrentTask(),'ID'),j,J,i,I,toc)
+            fprintf('Run %d of %d in batch %d of %d completed by worker %d in %.3g s.\n',j,J,i,I,get(getCurrentTask(),'ID'),toc)
             close gcf
-            %%%fileData(j,:) = cpuData;
         end
     catch me
-        warning('Batch %d of %d crashed:\n "%s"',i,I,getReport(me))
+        warning('Batch %d of %d crashed.\n "%s"',i,I,getReport(me))
     end
     clear c % close temporary files
     %% Export to file
@@ -89,9 +123,14 @@ for i = 1:I
         end
         tbl = sortrows(vertcat(tbl0{:}));
         tbl.Properties.VariableNames = [{'Run'}; inputData{i}(:,1)];
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        % Estimate the order of convergence:
+        tbl.Order = [nan; log10(tbl.ErrorL2(2:end)./tbl.ErrorL2(1:end-1))./log10(tbl.dt(2:end)./tbl.dt(1:end-1))];
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         fileData = table2cell(tbl(:,2:end));
+        J = size(fileData,1);
         % Write data into file:
-        fileID = fopen(fileNames{i},'w');
+        fileID = fopen(fileNames{i,1},'w');
         try
             fprintf(fileID,'%s\n',strjoin(inputData{i}(:,1),',')); % print headers
             for j = 1:J
@@ -99,9 +138,16 @@ for i = 1:I
                 if j < J
                     % Search for possible block changes:
                     for k = find([inputData{i}{:,4}])
-                        if any(fileData{j,k} ~= fileData{j+1,k})
-                            fprintf(fileID,'\n'); % start a new block
+                        if contains('%s',inputData{i}{k,3}) % string category
+                            if strcmp(fileData{j,k},fileData{j+1,k})
+                                continue
+                            end
+                        else % assume float category
+                            if fileData{j,k} == fileData{j+1,k}
+                                continue
+                            end
                         end
+                        fprintf(fileID,'\n'); % start a new block
                     end
                 end
             end
