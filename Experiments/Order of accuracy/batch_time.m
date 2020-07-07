@@ -15,52 +15,52 @@ addpath('../../Extra')
 inputData = {
 %   Category    Values                              Format        Is block?    
     {
-    'dt'        [{5e-6},...
-                 num2cell(logspace(-5,-2,30))]      '%.6f'        false
-    'ErrorL2'   {nan}                               '%.6f'        false
+    'dt'        [{1e-6},...
+                 num2cell(logspace(-5,-2,30))]      '%.12f'       false
+    'ErrorL2'   {nan}                               '%.12f'       false
     'Solver'    {'SSP_RK1'}                         '%s'          true
-    'L2'        {nan}                               '%.6f'        false
-    'TV'        {nan}                               '%.6f'        false
-    'Order'     {nan}                               '%.6f'        false
+    'L2'        {nan}                               '%.12f'       false
+    'TV'        {nan}                               '%.12f'       false
+    'Order'     {nan}                               '%.12f'       false
     }
     {
-    'dt'        num2cell(logspace(-4,-1,30))        '%.6f'        false
-    'ErrorL2'   {nan}                               '%.6f'        false
+    'dt'        num2cell(logspace(-4,-1,30))        '%.12f'       false
+    'ErrorL2'   {nan}                               '%.12f'       false
     'Solver'    {'SSP_RK2'}                         '%s'          true
-    'L2'        {nan}                               '%.6f'        false
-    'TV'        {nan}                               '%.6f'        false
-    'Order'     {nan}                               '%.6f'        false
+    'L2'        {nan}                               '%.12f'       false
+    'TV'        {nan}                               '%.12f'       false
+    'Order'     {nan}                               '%.12f'       false
     }
     {
-    'dt'        num2cell(logspace(-3,-1,20))        '%.6f'        false
-    'ErrorL2'   {nan}                               '%.6f'        false
+    'dt'        num2cell(logspace(-3,-1,20))        '%.12f'       false
+    'ErrorL2'   {nan}                               '%.12f'       false
     'Solver'    {'SSP_RK3'}                         '%s'          true
-    'L2'        {nan}                               '%.6f'        false
-    'TV'        {nan}                               '%.6f'        false
-    'Order'     {nan}                               '%.6f'        false
+    'L2'        {nan}                               '%.12f'       false
+    'TV'        {nan}                               '%.12f'       false
+    'Order'     {nan}                               '%.12f'       false
     }
     {
-    'dt'        num2cell(logspace(-2,-.5,20))       '%.6f'        false
-    'ErrorL2'   {nan}                               '%.6f'        false
+    'dt'        num2cell(logspace(-2,-.5,30))       '%.12f'       false
+    'ErrorL2'   {nan}                               '%.12f'       false
     'Solver'    {'SSP_RK4_5'}                       '%s'          true
-    'L2'        {nan}                               '%.6f'        false
-    'TV'        {nan}                               '%.6f'        false
-    'Order'     {nan}                               '%.6f'        false
+    'L2'        {nan}                               '%.12f'       false
+    'TV'        {nan}                               '%.12f'       false
+    'Order'     {nan}                               '%.12f'       false
     }
     {
-    'dt'        num2cell(logspace(-2,-.5,25))       '%.6f'        false
-    'ErrorL2'   {nan}                               '%.6f'        false
+    'dt'        num2cell(logspace(-2,-.5,40))       '%.12f'       false
+    'ErrorL2'   {nan}                               '%.12f'       false
     'Solver'    {'SSP_RK4_10'}                      '%s'          true
-    'L2'        {nan}                               '%.6f'        false
-    'TV'        {nan}                               '%.6f'        false
-    'Order'     {nan}                               '%.6f'        false
+    'L2'        {nan}                               '%.12f'       false
+    'TV'        {nan}                               '%.12f'       false
+    'Order'     {nan}                               '%.12f'       false
     }
     };
 fileNames = {
 %   Name                        Is active?
-    'order_time_RK1.dat'        false
-    'order_time_RK2.dat'        false
-    'order_time_RK3.dat'        false
+    'order_time_RK1.dat'        true
+    'order_time_RK2.dat'        true
+    'order_time_RK3.dat'        true
     'order_time_RK45.dat'       true
     'order_time_RK410.dat'      true
     };
@@ -84,7 +84,7 @@ for i = find([fileNames{:,2}])
     end
     % Preprocess:
     try
-        dataSpecs = ['%d,' strjoin(inputData{i}(:,3),',') '\n'];
+        dataSpecs = [strjoin([{'%d'}; inputData{i}(:,3)],'\t') '\n'];
         fileData = assembleTestTuple(inputData{i}{:,2});
         J = size(fileData,1);
     catch me
@@ -129,10 +129,11 @@ for i = find([fileNames{:,2}])
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         fileData = table2cell(tbl(:,2:end));
         J = size(fileData,1);
+        dataSpecs = [strjoin(inputData{i}(:,3),'\t') '\n'];
         % Write data into file:
         fileID = fopen(fileNames{i,1},'w');
         try
-            fprintf(fileID,'%s\n',strjoin(inputData{i}(:,1),',')); % print headers
+            fprintf(fileID,'%s\n',strjoin(inputData{i}(:,1),'\t')); % print headers
             for j = 1:J
                 fprintf(fileID,dataSpecs,fileData{j,:}); % print one row
                 if j < J
