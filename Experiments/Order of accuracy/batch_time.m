@@ -13,10 +13,9 @@ addpath('../../Extra')
 
 %% Setup
 inputData = {
-%   Category    Values                              Format        Is block?    
+%   Category    Values                                 Format        Is block?    
     {
-    'dt'        [{1e-6},...
-                 num2cell(logspace(-5,-2,30))]      '%.12f'       false
+    'dt'        num2cell(logspace(-6,-1,25))        '%.12f'       false
     'ErrorL2'   {nan}                               '%.12f'       false
     'Solver'    {'SSP_RK1'}                         '%s'          true
     'L2'        {nan}                               '%.12f'       false
@@ -40,7 +39,7 @@ inputData = {
     'Order'     {nan}                               '%.12f'       false
     }
     {
-    'dt'        num2cell(logspace(-2,-.5,30))       '%.12f'       false
+    'dt'        num2cell(logspace(-2,-0,25))        '%.12f'       false
     'ErrorL2'   {nan}                               '%.12f'       false
     'Solver'    {'SSP_RK4_5'}                       '%s'          true
     'L2'        {nan}                               '%.12f'       false
@@ -48,7 +47,7 @@ inputData = {
     'Order'     {nan}                               '%.12f'       false
     }
     {
-    'dt'        num2cell(logspace(-2,-.5,40))       '%.12f'       false
+    'dt'        num2cell(logspace(-2,-0,25))        '%.12f'       false
     'ErrorL2'   {nan}                               '%.12f'       false
     'Solver'    {'SSP_RK4_10'}                      '%s'          true
     'L2'        {nan}                               '%.12f'       false
@@ -58,9 +57,9 @@ inputData = {
     };
 fileNames = {
 %   Name                        Is active?
-    'order_time_RK1.dat'        true
-    'order_time_RK2.dat'        true
-    'order_time_RK3.dat'        true
+    'order_time_RK1.dat'        false
+    'order_time_RK2.dat'        false
+    'order_time_RK3.dat'        false
     'order_time_RK45.dat'       true
     'order_time_RK410.dat'      true
     };

@@ -72,11 +72,11 @@ classdef Algorithms < handle
                 Q = Q + sum(Q1(:, ind), 2);
                 % /////////////////////////////////////////////////////////
                 % Avoid machine zeros causing an infinite adaptation:
-                if all(Q < eps)
+                if all(Q1 < eps)
                     return
                 end
                 % Avoid memory overflow (assume that a singular point is causing an infinite refinement)
-                if size(Subs,2) > 10000
+                if size(Subs,2) > 1000
                     return
                 end
                 % /////////////////////////////////////////////////////////
