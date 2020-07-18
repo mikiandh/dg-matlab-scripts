@@ -9,6 +9,7 @@ classdef FR < Lagrange
         %% Constructor
         function this = FR(param,varargin)
             this@Lagrange(varargin{:});
+            this.auxMassMatrix = this.massMatrix;
             switch nargin
                 case 0
                     this.param = 0; % defaults to DG if no correction function is specified
@@ -21,7 +22,7 @@ classdef FR < Lagrange
                     if this.order == 1 % trivial case (1st order FV)
                         this.correctionsR = 0.5;
                         this.correctionsL = -0.5;
-                        return;
+                        return
                     end
                 % Derivative of the correction function at solution points:
                 eta = this.getEtaParameter(param,this.order);
@@ -29,7 +30,6 @@ classdef FR < Lagrange
                 this.correctionsR = this.rightVCJH(eta,dPn(this.degree:end,:));
                 this.correctionsL = - flip(this.correctionsR);
                 % Mass and gradient matrices (Dirac delta test functions):
-                this.auxMassMatrix = this.massMatrix;
                 this.massMatrix = eye(this.basisCount);
                 this.gradientMatrix = this.derivatives'; % row: test function (sample location); column: derivative of basis function 
             end
@@ -105,13 +105,15 @@ classdef FR < Lagrange
             % Huyn-type schemes:
             switch param
                 case 'min'
-                    eta = -.5; % 'safe' minimum
+                    eta = -.5; % 'safe' minimum (halfway towards unsafe)
                 case 'DG'
                     eta = 0;
                 case 'Ga'
                     eta = degree/(degree+1);
                 case 'LumpLo'
                     eta = (degree+1)/degree;
+                case 'max'
+                    eta = 1e16; % not-to-large number
                 otherwise
                     error('Correction function unknown.')
             end
