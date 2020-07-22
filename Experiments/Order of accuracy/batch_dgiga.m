@@ -14,29 +14,29 @@ addpath('../../Extra')
 %% Input
 inputData = {
     'Filename'               'dt'                'K'            'p'      'k'    'kappa'
-% Bernstein vs. Lagrange:
-%     'order_dgiga_dt_1.dat'   logspace(-5,-2,30)  300            2        1      1 % DOF = 900
-%     'order_dgiga_dt_2.dat'   logspace(-5,-2,30)  225            3        1      2 % DOF = 900
-%     'order_dgiga_dt_3.dat'   logspace(-5,-2,30)  190            4        1      3 % DOF = 900
-% IGA vs. SEM:
-%     'order_dgiga_dt_4.dat'   logspace(-5,-2,30)  1              2        118    1 % DOF = 120
-    'order_dgiga_dt_5.dat'   logspace(-5,-2,30)  1              3        117    2 % DOF = 120
-    'order_dgiga_dt_6.dat'   logspace(-5,-2,30)  1              4        116    3 % DOF = 120
-% DGIGA vs. DGSEM:
-%     'order_dgiga_dt_7.dat'   logspace(-5,-2,30)  10             2        10     1 % DOF = 120
-%     'order_dgiga_dt_8.dat'   logspace(-5,-2,30)  10             3        9      2 % DOF = 120
-%     'order_dgiga_dt_9.dat'   logspace(-5,-2,30)  10             4        8      3 % DOF = 120
-%     'order_dgiga_dt_10.dat'  logspace(-5,-2,30)  20             2        4      1 % DOF = 120
-%     'order_dgiga_dt_11.dat'  logspace(-5,-2,30)  20             3        3      2 % DOF = 120
-%     'order_dgiga_dt_12.dat'  logspace(-5,-2,30)  20             4        2      3 % DOF = 120
-% IGA, smoothness:
-    'order_dgiga_dt_13.dat'  logspace(-5,-2,30)  1              3        117    2 % DOF = 120
-%     'order_dgiga_dt_14.dat'  logspace(-5,-2,30)  1              3        59     1 % DOF = 120
-%     'order_dgiga_dt_15.dat'  logspace(-5,-2,30)  1              3        40     0 % DOF = 121
-% DGIGA, smoothness:
-    'order_dgiga_dt_16.dat'  logspace(-5,-2,30)  10             3        87     2 % DOF = 900
-%     'order_dgiga_dt_17.dat'  logspace(-5,-2,30)  10             3        44     1 % DOF = 900
-%     'order_dgiga_dt_18.dat'  logspace(-5,-2,30)  10             3        30     0 % DOF = 910
+% K <-> p:
+    'order_dgiga_dt_1.dat'   logspace(-5,-2,30)  300            2        1      1 % DOF = 900
+    'order_dgiga_dt_2.dat'   logspace(-5,-2,30)  225            3        1      2 % DOF = 900
+    'order_dgiga_dt_3.dat'   logspace(-5,-2,30)  180            4        1      3 % DOF = 900
+% p <-> k:
+    'order_dgiga_dt_4.dat'   logspace(-5,-2,30)  10             2        10     1 % DOF = 120
+    'order_dgiga_dt_5.dat'   logspace(-5,-2,30)  10             3        9      2 % DOF = 120
+    'order_dgiga_dt_6.dat'   logspace(-5,-2,30)  10             4        8      3 % DOF = 120
+    'order_dgiga_dt_7.dat'   logspace(-5,-2,30)  20             2        4      1 % DOF = 120
+    'order_dgiga_dt_8.dat'   logspace(-5,-2,30)  20             3        3      2 % DOF = 120
+    'order_dgiga_dt_9.dat'   logspace(-5,-2,30)  20             4        2      3 % DOF = 120
+% k <-> kappa:
+    'order_dgiga_dt_10.dat'  logspace(-5,-2,30)  25             3        33     2 % DOF = 900
+    'order_dgiga_dt_11.dat'  logspace(-5,-2,30)  25             3        17     1 % DOF = 900
+    'order_dgiga_dt_12.dat'  logspace(-5,-2,30)  25             3        12     0 % DOF = 925
+% K <-> k:
+    'order_dgiga_dt_13.dat'  logspace(-5,-2,30)  75             2        10     1 % DOF = 900
+    'order_dgiga_dt_14.dat'  logspace(-5,-2,30)  36             2        23     1 % DOF = 900
+    'order_dgiga_dt_15.dat'  logspace(-5,-2,30)  20             2        43     1 % DOF = 900
+% K <-> kappa:
+    'order_dgiga_dt_16.dat'  logspace(-5,-2,30)  30             3        27     2 % DOF = 900
+    'order_dgiga_dt_17.dat'  logspace(-5,-2,30)  16             3        27     1 % DOF = 896
+    'order_dgiga_dt_18.dat'  logspace(-5,-2,30)  11             3        27     0 % DOF = 902
 };
 %exactSolution = @(t,x) smoothBurgersExact(t,x,@(x) 1-sin(pi*x)*2/(5*pi));
 exactSolution = @(t,x) smoothBurgersExact(t,x,@(x) exp(-9*pi/4*x.^2));
@@ -95,7 +95,7 @@ for i = 1:I
                 fprintf('Run %d of %d in batch %d of %d has been skipped (worker %d, %.3g s).\n',j,J,i,I,get(getCurrentTask(),'ID'),toc)
                 continue % do not write it
             end
-            outputData = {runData(j).Run runData(j).dt mesh.dofCount runData(j).K runData(j).p runData(j).k runData(j).kappa solver.wallClockTime norms(:).vals};
+            outputData = {runData(j).Run runData(j).dt mesh.dofCount runData(j).K runData(j).p runData(j).k mesh.bases.smoothness solver.wallClockTime norms(:).vals};
             fprintf(c.Value,'%d\t%.12f\t%d\t%d\t%d\t%d\t%d\t%.12f\t%.12f\t%.12f\t%.12f\n',outputData{:});
             fprintf('Run %d of %d in batch %d of %d completed by worker %d in %.3g s.\n',j,J,i,I,get(getCurrentTask(),'ID'),toc)
         end
