@@ -8,6 +8,9 @@ classdef Algorithms < handle
             %	Gaussian quadrature. The procedure follows that of Shampine [1]. This function is
             %	similar to quadv, but uses the quadgk algorithm.
             %
+            %   More details about quadrature in Matlab can be fgound here:
+            %   https://blogs.mathworks.com/cleve/2016/05/23/modernization-of-numerical-integration-from-quad-to-integral/
+            %
             % Usage:
             %	Q = quadvgk(fv, Subs, NF)
             %
@@ -68,7 +71,10 @@ classdef Algorithms < handle
                     Q1(n,:) = M.*sum((WK*ones(1,NM)).*F);
                     Q2(n,:) = M.*sum((WG*ones(1,NM)).*F(G,:));
                 end
-                ind = find((max(abs((Q1-Q2)./Q1), [], 1)<=1e-6)|((Subs(2,:)-Subs(1,:))<=eps));
+                ind = find(...
+                    max(abs((Q1-Q2)./Q1), [], 1) <= 1e-12 |... % relative
+                    max(abs((Q1-Q2)), [], 1) <= 10*eps |... % absolute
+                    Subs(2,:) - Subs(1,:) <= eps); % subinterval resolution
                 Q = Q + sum(Q1(:, ind), 2);
                 % /////////////////////////////////////////////////////////
                 % Avoid machine zeros causing an infinite adaptation:
@@ -76,7 +82,8 @@ classdef Algorithms < handle
                     return
                 end
                 % Avoid memory overflow (assume that a singular point is causing an infinite refinement)
-                if size(Subs,2) > 1000
+                if size(Subs,2) > 10000
+                    warning('Terminating early (>10000 subintervals). Estimated relative error bound: %g',max(abs((Q1-Q2)./Q1), [], 1));
                     return
                 end
                 % /////////////////////////////////////////////////////////
