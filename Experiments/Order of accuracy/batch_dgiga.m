@@ -12,34 +12,28 @@ addpath('../../Math')
 addpath('../../Extra')
 
 %% Input
+maxDOFs = 900; % will skip any runs beyond this number
 inputData = {
-    'Filename'               'dt'                'K'            'p'      'k'    'kappa'
-% K <-> p:
-    'order_dgiga_dt_1.dat'   logspace(-5,-2,30)  300            2        1      1 % DOF = 900
-    'order_dgiga_dt_2.dat'   logspace(-5,-2,30)  225            3        1      2 % DOF = 900
-    'order_dgiga_dt_3.dat'   logspace(-5,-2,30)  180            4        1      3 % DOF = 900
-% p <-> k:
-    'order_dgiga_dt_4.dat'   logspace(-5,-2,30)  10             2        10     1 % DOF = 120
-    'order_dgiga_dt_5.dat'   logspace(-5,-2,30)  10             3        9      2 % DOF = 120
-    'order_dgiga_dt_6.dat'   logspace(-5,-2,30)  10             4        8      3 % DOF = 120
-    'order_dgiga_dt_7.dat'   logspace(-5,-2,30)  20             2        4      1 % DOF = 120
-    'order_dgiga_dt_8.dat'   logspace(-5,-2,30)  20             3        3      2 % DOF = 120
-    'order_dgiga_dt_9.dat'   logspace(-5,-2,30)  20             4        2      3 % DOF = 120
-% k <-> kappa:
-    'order_dgiga_dt_10.dat'  logspace(-5,-2,30)  25             3        33     2 % DOF = 900
-    'order_dgiga_dt_11.dat'  logspace(-5,-2,30)  25             3        17     1 % DOF = 900
-    'order_dgiga_dt_12.dat'  logspace(-5,-2,30)  25             3        12     0 % DOF = 925
-% K <-> k:
-    'order_dgiga_dt_13.dat'  logspace(-5,-2,30)  75             2        10     1 % DOF = 900
-    'order_dgiga_dt_14.dat'  logspace(-5,-2,30)  36             2        23     1 % DOF = 900
-    'order_dgiga_dt_15.dat'  logspace(-5,-2,30)  20             2        43     1 % DOF = 900
-% K <-> kappa:
-    'order_dgiga_dt_16.dat'  logspace(-5,-2,30)  30             3        27     2 % DOF = 900
-    'order_dgiga_dt_17.dat'  logspace(-5,-2,30)  16             3        27     1 % DOF = 896
-    'order_dgiga_dt_18.dat'  logspace(-5,-2,30)  11             3        27     0 % DOF = 902
+    'Filename'                  'dt'        'Method'                    'K'                             'p'   'k'   'kappa'
+    'order_dgiga_k_1.dat'       1e-4        {'DGIGA','DGIGA_nodal'}     logspacei(1,300,25)             2     1     0
+    'order_dgiga_k_2.dat'       1e-4        {'DGIGA','DGIGA_nodal'}     logspacei(1,225,25)             3     1     0
+    'order_dgiga_k_3.dat'       1e-4        {'DGIGA','DGIGA_nodal'}     logspacei(1,180,25)             4     1     0
+    'order_dgiga_k_4.dat'       1e-4        'DGIGA'                     logspacei(1,150,25)             2     4     0
+    'order_dgiga_k_5.dat'       1e-4        'DGIGA'                     logspacei(1,100,25)             2     4     1
+    'order_dgiga_k_6.dat'       1e-4        'DGIGA'                     logspacei(1,27,25)              2     16    0
+    'order_dgiga_k_7.dat'       1e-4        'DGIGA'                     logspacei(1,50,25)              2     16    1
+    'order_dgiga_k_8.dat'       1e-4        'DGIGA'                     logspacei(1,69,25)              3     4     0
+    'order_dgiga_k_9.dat'       1e-4        'DGIGA'                     logspacei(1,128,25)             3     4     2
+    'order_dgiga_k_10.dat'      1e-4        'DGIGA'                     1:18                            3     16    0
+    'order_dgiga_k_11.dat'      1e-4        'DGIGA'                     logspacei(1,47,25)              3     16    2
+    'order_dgiga_k_12.dat'      1e-4        'DGIGA'                     logspacei(1,52,25)              4     4     0
+    'order_dgiga_k_13.dat'      1e-4        'DGIGA'                     logspacei(1,112,25)             4     4     3
+    'order_dgiga_k_14.dat'      1e-4        'DGIGA'                     1:13                            4     16    0
+    'order_dgiga_k_15.dat'      1e-4        'DGIGA'                     logspacei(1,45,25)              4     16    3
 };
 %exactSolution = @(t,x) smoothBurgersExact(t,x,@(x) 1-sin(pi*x)*2/(5*pi));
-exactSolution = @(t,x) smoothBurgersExact(t,x,@(x) exp(-9*pi/4*x.^2));
+ exactSolution = @(t,x) smoothBurgersExact(t,x,@(x) exp(-9*pi/4*x.^2));
+%exactSolution = @(t,x) smoothBurgersExact(t,x,@(x) cos(.5*pi*x).^5);
 %exactSolution = @(t,x) exp(-9*pi/4*x.^2);
 
 %% Setup
@@ -48,6 +42,7 @@ inputTable = cell2table(inputData(2:end,2:end),...
     'RowNames',inputData(2:end,1)); % pretty print
 disp(inputTable)
 I = size(inputTable,1);
+
 %% Loop over batches
 for i = 1:I
     %% Distributed batch run
@@ -55,7 +50,7 @@ for i = 1:I
     c = parallel.pool.Constant(@() fopen(tempname(pwd),'wt'),@fclose);
     spmd
         cpuFile = (fopen(c.Value));
-        fprintf(c.Value,'Run\tdt\tDOFs\tK\tp\tk\tkappa\tWCT\tTV\tL2\tErrorL2\n');
+        fprintf(c.Value,'Run\tdt\tMethod\tDOFs\tK\tp\tk\tkappa\tWCT\tTV\tL2\tErrorL2\n');
     end
     % Preprocess:
     try
@@ -71,6 +66,15 @@ for i = 1:I
             end
         end
         runData = cell2struct(assembleTestTuple(batchData{:}),['Run' inputTable.Properties.VariableNames],2); % combines batch into individual runs
+        %%%
+        % Replace Inf by p-1 (smoothness):
+        aux = num2cell([runData.p]-1);
+        [runData(isinf([runData.kappa]) | isnan([runData.kappa])).kappa] = aux{:};
+        % Filter out "incompatible" runs:
+        runData([runData.kappa] >= [runData.p],:) = []; % smoothness > degree-1, skip!
+        % Filter out "excessive" runs:
+        runData([runData.K].*([runData.p].*[runData.k] - [runData.kappa].*[runData.k] + [runData.kappa] + 1) > maxDOFs,:) = []; % too many DOFs, skip!
+        %%%
         J = numel(runData);
     catch me
         warning('Preprocessing for batch %d of %d failed.\n "%s"',i,I,getReport(me))
@@ -81,7 +85,8 @@ for i = 1:I
             tic
             % Solve current run:
             norms = Norm({'TV','L2','ErrorL2'}); % norms to compute
-            mesh = Mesh(DGIGA(runData(j).k,runData(j).p,runData(j).kappa),[-1 1],Periodic(2),runData(j).K);
+            method = str2func(runData(j).Method);
+            mesh = Mesh(method(runData(j).k,runData(j).p,runData(j).kappa),[-1 1],Periodic(2),runData(j).K);
             solver = SSP_RK3(...
                 Burgers,[0 .25],...
                 'timeDelta',runData(j).dt,...
@@ -95,8 +100,8 @@ for i = 1:I
                 fprintf('Run %d of %d in batch %d of %d has been skipped (worker %d, %.3g s).\n',j,J,i,I,get(getCurrentTask(),'ID'),toc)
                 continue % do not write it
             end
-            outputData = {runData(j).Run runData(j).dt mesh.dofCount runData(j).K runData(j).p runData(j).k mesh.bases.smoothness solver.wallClockTime norms(:).vals};
-            fprintf(c.Value,'%d\t%.12f\t%d\t%d\t%d\t%d\t%d\t%.12f\t%.12f\t%.12f\t%.12f\n',outputData{:});
+            outputData = {runData(j).Run runData(j).dt runData(j).Method mesh.dofCount runData(j).K runData(j).p runData(j).k mesh.bases.smoothness solver.wallClockTime norms(:).vals};
+            fprintf(c.Value,'%d\t%.12f\t%s\t%d\t%d\t%d\t%d\t%d\t%.12f\t%.12f\t%.12f\t%.12f\n',outputData{:});
             fprintf('Run %d of %d in batch %d of %d completed by worker %d in %.3g s.\n',j,J,i,I,get(getCurrentTask(),'ID'),toc)
         end
     catch me
@@ -111,8 +116,6 @@ for i = 1:I
         end
         outputTable = sortrows(vertcat(cpuTable{:}));
         clear cpuTable % free memory
-        % Estimate the order of convergence (in space):
-        outputTable.Order = [nan; log10(outputTable.ErrorL2(2:end)./outputTable.ErrorL2(1:end-1))./log10(outputTable.DOFs(1:end-1)./outputTable.DOFs(2:end))];
         % Write to output file:
         try
             writetable(outputTable(:,2:end),inputTable.Row{i},'Delimiter','\t')
