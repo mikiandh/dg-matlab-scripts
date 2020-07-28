@@ -57,7 +57,8 @@ classdef Algorithms < handle
             NK = length(WK);
             G = (2:2:NK)';		%	7-point Gaussian poisitions (subset of the Kronrod points)
             Q = zeros(NF, 1);
-            while (~isempty(Subs))
+            L = 2/(Subs(end) - Subs(1)); % 2 over the entire integration interval
+            while ~isempty(Subs)
                 GetSubs;
                 M = (Subs(2,:)-Subs(1,:))/2;
                 C = (Subs(2,:)+Subs(1,:))/2;
@@ -66,28 +67,20 @@ classdef Algorithms < handle
                 FV = fv(x);
                 Q1 = zeros(NF, NM);
                 Q2 = zeros(NF, NM);
-                for n=1:NF
+                for n = 1:NF
                     F = reshape(FV(n,:), NK, []);
                     Q1(n,:) = M.*sum((WK*ones(1,NM)).*F);
                     Q2(n,:) = M.*sum((WG*ones(1,NM)).*F(G,:));
                 end
-                ind = find(...
-                    max(abs((Q1-Q2)./Q1), [], 1) <= 1e-12 |... % relative
-                    max(abs((Q1-Q2)), [], 1) <= 10*eps |... % absolute
-                    Subs(2,:) - Subs(1,:) <= eps); % subinterval resolution
-                Q = Q + sum(Q1(:, ind), 2);
-                % /////////////////////////////////////////////////////////
-                % Avoid machine zeros causing an infinite adaptation:
-                if all(Q1 < eps)
-                    return
+                % Stopping criteria:
+                tols = L*M.*max(1e-13,1e-9*abs(Q)); % subinterval and equation-wise tolerances
+                isConverged = all(abs(Q1-Q2) <= tols,1) | Subs(2,:)-Subs(1,:) <= eps;
+                Q = Q + sum(Q1(:,isConverged), 2);
+                Subs(:, isConverged) = [];
+                if NM >= 16384
+                    warning('Failed to converge; %d subintervals.',NM)
+                    return % next iteration would generate too many intervals
                 end
-                % Avoid memory overflow (assume that a singular point is causing an infinite refinement)
-                if size(Subs,2) > 10000
-                    warning('Terminating early (>10000 subintervals). Estimated relative error bound: %g',max(abs((Q1-Q2)./Q1), [], 1));
-                    return
-                end
-                % /////////////////////////////////////////////////////////
-                Subs(:, ind) = [];
             end
             function GetSubs
                 M = (Subs(2,:)-Subs(1,:))/2;
