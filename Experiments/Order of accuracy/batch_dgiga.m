@@ -14,22 +14,24 @@ addpath('../../Extra')
 %% Input
 maxDOFs = 900; % will skip any runs beyond this number
 inputData = {
-    'Filename'                  'dt'        'Method'                    'K'                             'p'   'k'   'kappa'
-    'order_dgiga_k_1.dat'       1e-4        {'DGIGA','DGIGA_nodal'}     logspacei(1,300,25)             2     1     0
-    'order_dgiga_k_2.dat'       1e-4        {'DGIGA','DGIGA_nodal'}     logspacei(1,225,25)             3     1     0
-    'order_dgiga_k_3.dat'       1e-4        {'DGIGA','DGIGA_nodal'}     logspacei(1,180,25)             4     1     0
-    'order_dgiga_k_4.dat'       1e-4        'DGIGA'                     logspacei(1,150,25)             2     4     0
-    'order_dgiga_k_5.dat'       1e-4        'DGIGA'                     logspacei(1,100,25)             2     4     1
-    'order_dgiga_k_6.dat'       1e-4        'DGIGA'                     logspacei(1,27,25)              2     16    0
-    'order_dgiga_k_7.dat'       1e-4        'DGIGA'                     logspacei(1,50,25)              2     16    1
-    'order_dgiga_k_8.dat'       1e-4        'DGIGA'                     logspacei(1,69,25)              3     4     0
-    'order_dgiga_k_9.dat'       1e-4        'DGIGA'                     logspacei(1,128,25)             3     4     2
-    'order_dgiga_k_10.dat'      1e-4        'DGIGA'                     1:18                            3     16    0
-    'order_dgiga_k_11.dat'      1e-4        'DGIGA'                     logspacei(1,47,25)              3     16    2
-    'order_dgiga_k_12.dat'      1e-4        'DGIGA'                     logspacei(1,52,25)              4     4     0
-    'order_dgiga_k_13.dat'      1e-4        'DGIGA'                     logspacei(1,112,25)             4     4     3
-    'order_dgiga_k_14.dat'      1e-4        'DGIGA'                     1:13                            4     16    0
-    'order_dgiga_k_15.dat'      1e-4        'DGIGA'                     logspacei(1,45,25)              4     16    3
+    'Filename'                  'dt'        'Method'                    'K'                             'p'     'k'         'kappa'
+%     'order_dgiga_k_1.dat'       1e-4        {'DGIGA','DGIGA_nodal'}     logspacei(1,300,25)             2       1           0
+%     'order_dgiga_k_2.dat'       1e-4        {'DGIGA','DGIGA_nodal'}     logspacei(1,225,25)             3       1           0
+%     'order_dgiga_k_3.dat'       1e-4        {'DGIGA','DGIGA_nodal'}     logspacei(1,180,25)             4       1           0
+%     'order_dgiga_k_4.dat'       1e-4        'DGIGA'                     logspacei(1,150,25)             2       4           0
+%     'order_dgiga_k_5.dat'       1e-4        'DGIGA'                     logspacei(1,100,25)             2       4           1
+%     'order_dgiga_k_6.dat'       1e-4        'DGIGA'                     logspacei(1,27,25)              2       16          0
+%     'order_dgiga_k_7.dat'       1e-4        'DGIGA'                     logspacei(1,50,25)              2       16          1
+%     'order_dgiga_k_8.dat'       1e-4        'DGIGA'                     logspacei(1,69,25)              3       4           0
+%     'order_dgiga_k_9.dat'       1e-4        'DGIGA'                     logspacei(1,128,25)             3       4           2
+%     'order_dgiga_k_10.dat'      1e-4        'DGIGA'                     1:18                            3       16          0
+%     'order_dgiga_k_11.dat'      1e-4        'DGIGA'                     logspacei(1,47,25)              3       16          2
+%     'order_dgiga_k_12.dat'      1e-4        'DGIGA'                     logspacei(1,52,25)              4       4           0
+%     'order_dgiga_k_13.dat'      1e-4        'DGIGA'                     logspacei(1,112,25)             4       4           3
+%     'order_dgiga_k_14.dat'      1e-4        'DGIGA'                     1:13                            4       16          0
+%     'order_dgiga_k_15.dat'      1e-4        'DGIGA'                     logspacei(1,45,25)              4       16          3
+    'order_dgiga_p_1.dat'       1e-4        'DGIGA'                     [1 20]                          1:49    2.^(0:3)    0
+    'order_dgiga_p_2.dat'       1e-4        'DGIGA'                     [1 20]                          1:12    2.^(0:3)    inf
 };
 %exactSolution = @(t,x) smoothBurgersExact(t,x,@(x) 1-sin(pi*x)*2/(5*pi));
  exactSolution = @(t,x) smoothBurgersExact(t,x,@(x) exp(-9*pi/4*x.^2));
