@@ -12,48 +12,83 @@ addpath('../../Math')
 addpath('../../Extra')
 
 %% Input
-maxDOFs = 900; % will skip any runs beyond this number
+maxDOFs = 950; % will skip any runs beyond this number
 inputData = {
-    'Filename'                  'dt'        'Method'                    'K'                  	'p'   	'k'                       'kappa'
-%     'order_dgiga_k_1.dat'       1e-4        {'DGIGA','DGIGA_nodal'}     logspacei(1,300,25)	  2   	  1                         0
-%     'order_dgiga_k_2.dat'       1e-4        {'DGIGA','DGIGA_nodal'}     logspacei(1,225,25)	  3   	  1                         0
-%     'order_dgiga_k_3.dat'       1e-4        {'DGIGA','DGIGA_nodal'}     logspacei(1,180,25)	  4   	  1                         0
-%     'order_dgiga_k_4.dat'       1e-4        'DGIGA'                     logspacei(1,150,25)	  2   	  4                         0
-%     'order_dgiga_k_5.dat'       1e-4        'DGIGA'                     logspacei(1,100,25)	  2   	  4                         1
-%     'order_dgiga_k_6.dat'       1e-4        'DGIGA'                     logspacei(1,27,25) 	  2   	  16                        0
-%     'order_dgiga_k_7.dat'       1e-4        'DGIGA'                     logspacei(1,50,25) 	  2   	  16                        1
-%     'order_dgiga_k_8.dat'       1e-4        'DGIGA'                     logspacei(1,69,25) 	  3   	  4                         0
-%     'order_dgiga_k_9.dat'       1e-4        'DGIGA'                     logspacei(1,128,25)	  3   	  4                         2
-%     'order_dgiga_k_10.dat'      1e-4        'DGIGA'                     1:18               	  3   	  16                        0
-%     'order_dgiga_k_11.dat'      1e-4        'DGIGA'                     logspacei(1,47,25) 	  3   	  16                        2
-%     'order_dgiga_k_12.dat'      1e-4        'DGIGA'                     logspacei(1,52,25) 	  4   	  4                         0
-%     'order_dgiga_k_13.dat'      1e-4        'DGIGA'                     logspacei(1,112,25)	  4   	  4                         3
-%     'order_dgiga_k_14.dat'      1e-4        'DGIGA'                     1:13               	  4   	  16                        0
-%     'order_dgiga_k_15.dat'      1e-4        'DGIGA'                     logspacei(1,45,25) 	  4   	  16                        3
-%     'order_dgiga_p_1.dat'       1e-4        'DGIGA'                     [1 20]             	  1:49	  2.^(0:3)                  0
-%     'order_dgiga_p_2.dat'       1e-4        'DGIGA'                     [10 20]            	  1:12	  2.^(0:3)                  inf
-%     'order_dgiga_knot_1.dat'    1e-4        'DGIGA'                     1                  	  2   	  logspacei(1,449,25)       0
-%     'order_dgiga_knot_2.dat'    1e-4        'DGIGA'                     1                  	  2   	  logspacei(1,898,25)       1
-%     'order_dgiga_knot_3.dat'    1e-4        'DGIGA'                     10                 	  2   	  logspacei(1,299,25)       0
-%     'order_dgiga_knot_4.dat'    1e-4        'DGIGA'                     10                 	  2   	  logspacei(1,87,25)        1
-%     'order_dgiga_knot_5.dat'    1e-4        'DGIGA'                     20                 	  2   	  1:22                      0
-%     'order_dgiga_knot_6.dat'    1e-4        'DGIGA'                     20                 	  2   	  logspacei(1,43,25)        1
-%     'order_dgiga_knot_7.dat'    1e-4        'DGIGA'                     1                  	  3   	  logspacei(1,299,25)       0
-%     'order_dgiga_knot_8.dat'    1e-4        'DGIGA'                     1                  	  3   	  logspacei(1,897,25)       2
-%     'order_dgiga_knot_9.dat'    1e-4        'DGIGA'                     10                 	  3   	  logspacei(1,299,25)       0
-%     'order_dgiga_knot_10.dat'   1e-4        'DGIGA'                     10                 	  3   	  logspacei(1,87,25)        2
-%     'order_dgiga_knot_11.dat'   1e-4        'DGIGA'                     20                 	  3   	  logspacei(1,29,25)        0
-%     'order_dgiga_knot_12.dat'   1e-4        'DGIGA'                     20                 	  3   	  logspacei(1,42,25)        2
-%     'order_dgiga_knot_13.dat'   1e-4        'DGIGA'                     1                  	  4   	  logspacei(1,224,25)       0
-%     'order_dgiga_knot_14.dat'   1e-4        'DGIGA'                     1                  	  4   	  logspacei(1,896,25)       3
-%     'order_dgiga_knot_15.dat'   1e-4        'DGIGA'                     10                 	  4   	  1:22                      0
-%     'order_dgiga_knot_16.dat'   1e-4        'DGIGA'                     10                 	  4   	  logspacei(1,86,25)        3
-%     'order_dgiga_knot_17.dat'   1e-4        'DGIGA'                     20                 	  4   	  1:11                      0
-%     'order_dgiga_knot_18.dat'   1e-4        'DGIGA'                     20                 	  4   	  logspacei(1,41,25)        3
-    'order_dgiga_extra_1.dat'   1e-4        'DGIGA'                     10:30                	2     	2                         1
-    'order_dgiga_extra_2.dat'   1e-4        'DGIGA'                     10                   	2:6   	2                         1
-    'order_dgiga_extra_3.dat'   1e-4        'DGIGA'                     10                   	2     	2:10                      1
-    'order_dgiga_extra_4.dat'   1e-4        'DGIGA'                     10                   	2:10  	2                         inf
+    'Filename'                  'dt'                'Method'                    'K'                   'p'     'k'                       'kappa'
+% K <-> p --------------------------------------------------------------------------------------------------------------------------------------------
+    'order_dgiga_dt_1.dat'      logspace(-5,-2,30)  'DGIGA'                     300            		  2       1   					 	1 % DOF = 900
+    'order_dgiga_dt_2.dat'      logspace(-5,-2,30)  'DGIGA'                     225            		  3       1                      	2 % DOF = 900
+    'order_dgiga_dt_3.dat'      logspace(-5,-2,30)  'DGIGA'                 	180            		  4       1                      	3 % DOF = 900
+% p <-> k --------------------------------------------------------------------------------------------------------------------------------------------
+    'order_dgiga_dt_4.dat'      logspace(-5,-2,30)  'DGIGA'                 	10             		  2       10                     	1 % DOF = 120
+    'order_dgiga_dt_5.dat'      logspace(-5,-2,30)  'DGIGA'                 	10             		  3       9                      	2 % DOF = 120
+    'order_dgiga_dt_6.dat'      logspace(-5,-2,30)  'DGIGA'                 	10             		  4       8                      	3 % DOF = 120
+    'order_dgiga_dt_7.dat'      logspace(-5,-2,30)  'DGIGA'                 	20             		  2       4                      	1 % DOF = 120
+    'order_dgiga_dt_8.dat'      logspace(-5,-2,30)  'DGIGA'                 	20             		  3       3                      	2 % DOF = 120
+    'order_dgiga_dt_9.dat'      logspace(-5,-2,30)  'DGIGA'                 	20             		  4       2                      	3 % DOF = 120
+% k <-> kappa ----------------------------------------------------------------------------------------------------------------------------------------
+    'order_dgiga_dt_10.dat'     logspace(-5,-2,30)  'DGIGA'                 	25             		  3       33                     	2 % DOF = 900
+    'order_dgiga_dt_11.dat'     logspace(-5,-2,30)  'DGIGA'                 	25             		  3       17                     	1 % DOF = 900
+    'order_dgiga_dt_12.dat'     logspace(-5,-2,30)  'DGIGA'                 	25             		  3       12                     	0 % DOF = 925
+% K <-> k -------------------------------------------------------------------------------------------------------------------------------------------- 
+    'order_dgiga_dt_13.dat'     logspace(-5,-2,30)  'DGIGA'                 	75             		  2       10                     	1 % DOF = 900
+    'order_dgiga_dt_14.dat'     logspace(-5,-2,30)  'DGIGA'                 	36             		  2       23                     	1 % DOF = 900
+    'order_dgiga_dt_15.dat'     logspace(-5,-2,30)  'DGIGA'                 	20             		  2       43                     	1 % DOF = 900
+% K <-> kappa ----------------------------------------------------------------------------------------------------------------------------------------- 
+    'order_dgiga_dt_16.dat'     logspace(-5,-2,30)  'DGIGA'                 	30             		  3       27                     	2 % DOF = 900
+    'order_dgiga_dt_17.dat'     logspace(-5,-2,30)  'DGIGA'                 	16             		  3       27                     	1 % DOF = 896
+    'order_dgiga_dt_18.dat'     logspace(-5,-2,30)  'DGIGA'                 	11             		  3       27                     	0 % DOF = 902
+% DG h-refinement -------------------------------------------------------------------------------------------------------------------------------------
+    'order_dgiga_k_1.dat'       1e-4                {'DGIGA','DGIGA_nodal'}     logspacei(1,300,25)	  2   	  1                         0
+    'order_dgiga_k_2.dat'       1e-4                {'DGIGA','DGIGA_nodal'}     logspacei(1,225,25)	  3   	  1                         0
+    'order_dgiga_k_3.dat'       1e-4                {'DGIGA','DGIGA_nodal'}     logspacei(1,180,25)	  4   	  1                         0
+    'order_dgiga_k_4.dat'       1e-4                'DGIGA'                     logspacei(1,150,25)	  2   	  4                         0
+    'order_dgiga_k_5.dat'       1e-4                'DGIGA'                     logspacei(1,100,25)	  2   	  4                         1
+    'order_dgiga_k_6.dat'       1e-4                'DGIGA'                     logspacei(1,27,25) 	  2   	  16                        0
+    'order_dgiga_k_7.dat'       1e-4                'DGIGA'                     logspacei(1,50,25) 	  2   	  16                        1
+    'order_dgiga_k_8.dat'       1e-4                'DGIGA'                     logspacei(1,69,25) 	  3   	  4                         0
+    'order_dgiga_k_9.dat'       1e-4                'DGIGA'                     logspacei(1,128,25)	  3   	  4                         2
+    'order_dgiga_k_10.dat'      1e-4                'DGIGA'                     1:18               	  3   	  16                        0
+    'order_dgiga_k_11.dat'      1e-4                'DGIGA'                     logspacei(1,47,25) 	  3   	  16                        2
+    'order_dgiga_k_12.dat'      1e-4                'DGIGA'                     logspacei(1,52,25) 	  4   	  4                         0
+    'order_dgiga_k_13.dat'      1e-4                'DGIGA'                     logspacei(1,112,25)	  4   	  4                         3
+    'order_dgiga_k_14.dat'      1e-4                'DGIGA'                     1:13               	  4   	  16                        0
+    'order_dgiga_k_15.dat'      1e-4                'DGIGA'                     logspacei(1,45,25) 	  4   	  16                        3
+% p-refinement ---------------------------------------------------------------------------------------------------------------------------------------- 
+    'order_dgiga_p_1.dat'       1e-4                'DGIGA'                     [1 20]             	  1:49	  2.^(0:3)                  0
+    'order_dgiga_p_2.dat'       1e-4                'DGIGA'                     [10 20]            	  1:12	  2.^(0:3)                  inf
+% DGIGA knot insertion --------------------------------------------------------------------------------------------------------------------------------
+    'order_dgiga_knot_1.dat'    1e-4                'DGIGA'                     1                  	  2   	  logspacei(1,449,25)       0
+    'order_dgiga_knot_2.dat'    1e-4                'DGIGA'                     1                  	  2   	  logspacei(1,898,25)       1
+    'order_dgiga_knot_3.dat'    1e-4                'DGIGA'                     10                 	  2   	  logspacei(1,299,25)       0
+    'order_dgiga_knot_4.dat'    1e-4                'DGIGA'                     10                 	  2   	  logspacei(1,87,25)        1
+    'order_dgiga_knot_5.dat'    1e-4                'DGIGA'                     20                 	  2   	  1:22                      0
+    'order_dgiga_knot_6.dat'    1e-4                'DGIGA'                     20                 	  2   	  logspacei(1,43,25)        1
+    'order_dgiga_knot_7.dat'    1e-4                'DGIGA'                     1                  	  3   	  logspacei(1,299,25)       0
+    'order_dgiga_knot_8.dat'    1e-4                'DGIGA'                     1                  	  3   	  logspacei(1,897,25)       2
+    'order_dgiga_knot_9.dat'    1e-4                'DGIGA'                     10                 	  3   	  logspacei(1,299,25)       0
+    'order_dgiga_knot_10.dat'   1e-4                'DGIGA'                     10                 	  3   	  logspacei(1,87,25)        2
+    'order_dgiga_knot_11.dat'   1e-4                'DGIGA'                     20                 	  3   	  logspacei(1,29,25)        0
+    'order_dgiga_knot_12.dat'   1e-4                'DGIGA'                     20                 	  3   	  logspacei(1,42,25)        2
+    'order_dgiga_knot_13.dat'   1e-4                'DGIGA'                     1                  	  4   	  logspacei(1,224,25)       0
+    'order_dgiga_knot_14.dat'   1e-4                'DGIGA'                     1                  	  4   	  logspacei(1,896,25)       3
+    'order_dgiga_knot_15.dat'   1e-4                'DGIGA'                     10                 	  4   	  1:22                      0
+    'order_dgiga_knot_16.dat'   1e-4                'DGIGA'                     10                 	  4   	  logspacei(1,86,25)        3
+    'order_dgiga_knot_17.dat'   1e-4                'DGIGA'                     20                 	  4   	  1:11                      0
+    'order_dgiga_knot_18.dat'   1e-4                'DGIGA'                     20                 	  4   	  logspacei(1,41,25)        3
+% 4 refinement directions ---------------------------------------------------------------------------------------------------------------------------- 
+    'order_dgiga_extra_1.dat'   1e-4                'DGIGA'                     10:30                 2       2                         1
+    'order_dgiga_extra_2.dat'   1e-4                'DGIGA'                     10                    2:6     2                         1
+    'order_dgiga_extra_3.dat'   1e-4                'DGIGA'                     10                    2       2:10                      1
+    'order_dgiga_extra_4.dat'   1e-4                'DGIGA'                     10                    2:10    2                         inf
+% IGA & CG knot insertion -----------------------------------------------------------------------------------------------------------------------------
+    'order_iga_knot_1.dat'      1e-4                {'DGIGA','DGIGA_nodal'}     1                     1       logspacei(1,899,25)       0
+    'order_iga_knot_2.dat'      1e-4                {'DGIGA','DGIGA_nodal'}     1                     2       logspacei(1,449,25)       0
+    'order_iga_knot_3.dat'      1e-4                {'DGIGA','DGIGA_nodal'}     1                     2       logspacei(1,898,25)       1
+    'order_iga_knot_4.dat'      1e-4                {'DGIGA','DGIGA_nodal'}     1                     3       logspacei(1,299,25)       0
+    'order_iga_knot_5.dat'      1e-4                {'DGIGA','DGIGA_nodal'}     1                     3       logspacei(1,897,25)       2
+    'order_iga_knot_6.dat'      1e-4                {'DGIGA','DGIGA_nodal'}     1                     4       logspacei(1,224,25)       0
+    'order_iga_knot_7.dat'      1e-4                {'DGIGA','DGIGA_nodal'}     1                     4       logspacei(1,896,25)       3
 };
 %exactSolution = @(t,x) smoothBurgersExact(t,x,@(x) 1-sin(pi*x)*2/(5*pi));
 exactSolution = @(t,x) smoothBurgersExact(t,x,@(x) exp(-9*pi/4*x.^2));
