@@ -13,15 +13,15 @@ addpath('../../Extra')
 
 %% Input
 inputData = {
-    'Filename'           'dt'                'K'            'p'      'g' 
-    'order_fr_dt_1.dat'  logspace(-5,-2,30)  180            4        {'min','Ga','LumpLo','max'}
-    'order_fr_dt_2.dat'  logspace(-5,-2,30)  10             11       {'min','Ga','LumpLo','max'}
-    'order_fr_k_1.dat'   1e-4                [1:7:299 300]  2        {'min','Ga','LumpLo','max'}
-    'order_fr_k_2.dat'   1e-4                [1:5:224 225]  3        {'min','Ga','LumpLo','max'}
-    'order_fr_k_3.dat'   1e-4                [1:3:179 180]  4        {'min','Ga','LumpLo','max'}
-    'order_fr_p_1.dat'   1e-4                20             0:5      {'min','Ga','LumpLo','max'}
-    'order_fr_p_2.dat'   1e-4                10             0:11     {'min','Ga','LumpLo','max'}
-    'order_fr_p_3.dat'   1e-4                1              0:7:119  {'min','Ga','LumpLo','max'}
+    'Filename'           'dt'                'K'                    'p'                     'g' 
+    'order_fr_dt_1.dat'  logspace(-5,-2,30)  180                    4                       {'min','Ga','LumpLo','max'}
+    'order_fr_dt_2.dat'  logspace(-5,-2,30)  10                     11                      {'min','Ga','LumpLo','max'}
+    'order_fr_k_1.dat'   1e-4                logspacei(1,300,25)    2                       {'min','Ga','LumpLo','max'}
+    'order_fr_k_2.dat'   1e-4                logspacei(1,225,25)    3                       {'min','Ga','LumpLo','max'}
+    'order_fr_k_3.dat'   1e-4                logspacei(1,180,25)    4                       {'min','Ga','LumpLo','max'}
+    'order_fr_p_1.dat'   1e-4                20                     0:5                     {'min','Ga','LumpLo','max'}
+    'order_fr_p_2.dat'   1e-4                10                     0:11                    {'min','Ga','LumpLo','max'}
+    'order_fr_p_3.dat'   1e-4                1                      logspacei(0,119,25)     {'min','Ga','LumpLo','max'}
 };
 %exactSolution = @(t,x) smoothBurgersExact(t,x,@(x) 1-sin(pi*x)*2/(5*pi));
 exactSolution = @(t,x) smoothBurgersExact(t,x,@(x) exp(-9*pi/4*x.^2));

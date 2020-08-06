@@ -13,19 +13,19 @@ addpath('../../Extra')
 
 %% Input
 inputData = {
-    'Filename'              'dt'                'K'            'p' 
-    'order_dgsem_dt_1.dat'  logspace(-5,-2,30)  300            2
-    'order_dgsem_dt_2.dat'  logspace(-5,-2,30)  225            3
-    'order_dgsem_dt_3.dat'  logspace(-5,-2,30)  180            4
-    'order_dgsem_dt_4.dat'  logspace(-5,-1,40)  20             5
-    'order_dgsem_dt_5.dat'  logspace(-5,-1,40)  10             11
-    'order_dgsem_dt_6.dat'  logspace(-5,-1,40)  1              119
-    'order_dgsem_k_1.dat'   1e-4                [1:7:299 300]  2
-    'order_dgsem_k_2.dat'   1e-4                [1:5:224 225]  3
-    'order_dgsem_k_3.dat'   1e-4                [1:3:179 180]  4
-    'order_dgsem_p_1.dat'   1e-4                20             0:5
-    'order_dgsem_p_2.dat'   1e-4                10             0:11
-    'order_dgsem_p_3.dat'   1e-4                1              0:7:119
+    'Filename'              'dt'                'K'                 'p' 
+    'order_dgsem_dt_1.dat'  logspace(-5,-2,30)  300                 2
+    'order_dgsem_dt_2.dat'  logspace(-5,-2,30)  225                 3
+    'order_dgsem_dt_3.dat'  logspace(-5,-2,30)  180                 4
+    'order_dgsem_dt_4.dat'  logspace(-5,-1,40)  20                  5
+    'order_dgsem_dt_5.dat'  logspace(-5,-1,40)  10                  11
+    'order_dgsem_dt_6.dat'  logspace(-5,-1,40)  1                   119
+    'order_dgsem_k_1.dat'   1e-4                logspacei(1,300,25) 2
+    'order_dgsem_k_2.dat'   1e-4                logspacei(1,225,25) 3
+    'order_dgsem_k_3.dat'   1e-4                logspacei(1,180,25) 4
+    'order_dgsem_p_1.dat'   1e-4                20                  0:5
+    'order_dgsem_p_2.dat'   1e-4                10                  0:11
+    'order_dgsem_p_3.dat'   1e-4                1                   0:7:119
 };
 %exactSolution = @(t,x) smoothBurgersExact(t,x,@(x) 1-sin(pi*x)*2/(5*pi));
 exactSolution = @(t,x) smoothBurgersExact(t,x,@(x) exp(-9*pi/4*x.^2));
