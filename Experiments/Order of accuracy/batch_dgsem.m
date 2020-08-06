@@ -25,7 +25,7 @@ inputData = {
     'order_dgsem_k_3.dat'   1e-4                logspacei(1,180,25) 4
     'order_dgsem_p_1.dat'   1e-4                20                  0:5
     'order_dgsem_p_2.dat'   1e-4                10                  0:11
-    'order_dgsem_p_3.dat'   1e-4                1                   0:7:119
+    'order_dgsem_p_3.dat'   1e-4                1                   [0 logspacei(1,119,24)]
 };
 %exactSolution = @(t,x) smoothBurgersExact(t,x,@(x) 1-sin(pi*x)*2/(5*pi));
 exactSolution = @(t,x) smoothBurgersExact(t,x,@(x) exp(-9*pi/4*x.^2));
