@@ -70,6 +70,7 @@ inputData = {
     'error_burgers_hump_dgiga_17.dat'       1e-4                    DGIGA(8,6,5)   20 % unstable
 };
 exactSolution = @(t,x) smoothBurgersExact(t,x,@(x) exp(-9*pi/4*x.^2));
+N = 1801; % total number of (distinct) sample locations
 
 %% Setup
 tblIn = cell2table(inputData(2:end,2:end),...
@@ -105,20 +106,17 @@ parfor j = 1:J
         fprintf(fileID,'# dt = %.12g\n',runData(j).dt);
         fprintf(fileID,'# %s; %d elements, N_dofs = %d\n',mesh.bases.getName,runData(j).K,mesh.dofCount);
         fprintf(fileID,'# TV = %.12g, L2 = %.12g, ErrorL2 = %.12g\n',norms.vals);
-        fprintf(fileID,'%s\t%s\t%s\t%s\t%s\t%s\t%s\n','element','x','error','exact','approx','residual','initial_exact');
-        x0 = linspace(-1,1,920); % spatial sample locations (large prime number + 1, so that none coincides with an edge)
-        for k = 1:mesh.elementCount
-            x = x0(x0 >= mesh.edges(k).coord & x0 <= mesh.edges(k+1).coord)
-            dataOut = [
-                k + zeros(1,n)
-                x
-                abs(exactSolution(solver.timeNow,x) - mesh.sample(x))
+        fprintf(fileID,'%s\t%s\t%s\t%s\t%s\t%s\n','x','error','exact','approx','residual','initial_exact');
+        n = round((N-1)/mesh.elementCount+1); % number of samples per element
+        for element = mesh.elements
+            x = linspace(element.edgeL.coord,element.edgeR.coord,n);
+            z = [
                 exactSolution(solver.timeNow,x)
-                mesh.sample(x)
-                mesh.sampleResidual(x)
+                element.interpolateStateAtCoords(x)
+            	element.interpolateResidualAtCoords(x)
                 exactSolution(solver.timeStart,x)
-                ];
-            fprintf(fileID,'%d\t%.12g\t%.12g\t%.12g\t%.12g\t%.12g\t%.12g\n',dataOut);
+            ];
+            fprintf(fileID,'%.12g\t%.12g\t%.12g\t%.12g\t%.12g\t%.12g\n',[x; abs(z(1,:)-z(2,:)); z]);
             fprintf(fileID,'\n'); % blank line
         end
         fprintf('Run %d of %d completed by worker %d in %.3g s.\n',j,J,get(getCurrentTask(),'ID'),toc)
