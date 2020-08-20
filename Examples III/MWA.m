@@ -10,12 +10,12 @@ clear
 % The generating pattern considered is a
 
 %% Dependencies
-addpath('../../../../Extra')
-addpath('../Discretization')
+addpath('../Basis')
+addpath('../Extra')
 
 %% Parameters
 % Discretization, e.g. DGSEM(2), DGIGA(2,1), DGIGA([-1 -1 0 1 1]):
-disc = DGIGA(1,1,inf);
+disc = DGIGA(2,2,0);
 % Upwinding ratio for Riemann fluxes, from -1 (downwind) to 1 (upwind):
 upwind = 1;
 % Number of patches (only affects resolution):

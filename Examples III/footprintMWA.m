@@ -13,7 +13,9 @@ addpath('../Basis')
 addpath('../Solver')
 
 %% Spatial discretizations
-discs = {...
+discs = {
+    DGSEM(2)
+    FR('min',2)
     DGIGA(2,2,0)
     };
 

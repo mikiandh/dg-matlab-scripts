@@ -31,7 +31,7 @@ classdef FR < Lagrange
                 this.correctionsL = - flip(this.correctionsR);
                 % Mass and gradient matrices (Dirac delta test functions):
                 this.massMatrix = eye(this.basisCount);
-                this.gradientMatrix = this.derivatives'; % row: test function (sample location); column: derivative of basis function 
+                this.gradientMatrix = this.derivatives;
             end
         end
         %% Instantiate from prototype

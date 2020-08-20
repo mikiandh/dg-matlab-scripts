@@ -1,11 +1,10 @@
 clc
 clear
 %close all
-%path(pathdef)
 
-% This script shows the Fourier footprint of various spatial
-% discretizations in relation to the stability region of a single time
-% discretization.
+% This script is meant to allow a visual comparison between the Fourier 
+% footprint of various spatial discretizations in relation to the stability 
+% region of a single time discretization.
 
 %% Dependencies
 addpath('../../Extra')
@@ -13,7 +12,9 @@ addpath('../../Basis')
 addpath('../../Solver')
 
 %% Spatial discretizations
-discs = {...
+discs = {
+    DGSEM(2)
+    FR('min',2)
     DGIGA(2,2,0)
     };
 
