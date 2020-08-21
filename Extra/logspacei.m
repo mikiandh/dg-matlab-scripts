@@ -5,7 +5,7 @@ narginchk(3,3)
 if b-a < N-1
     error('Interval [%d,%d] contains fewer than %d integers.',a,b,N)
 end
-x = ones(1,N); % preallocation
+x = a*ones(1,N); % preallocation
 r = (b/a)^(1/N); % initial growth ratio
 for n = 1:N-1 % linear portion
     if r*x(n) - x(n) >= 1
