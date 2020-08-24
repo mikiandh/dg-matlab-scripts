@@ -160,13 +160,14 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             end
         end
         %% Fourier eigenvalues
-        function [eigenvals,wavenumbers] = getFourierFootprint(this,wavenumbers)
+        function [eigenvals,wavenumbers] = getFourierFootprint(this,beta,wavenumbers)
             % Returns all eigenvalues of the (dimensionless) residual
             % operator in Fourier space for the inviscid advection
             % equation. Look up 'modified wavenumber analysis' for 
             % details (e.g. Van den Abeele, 2009).
             %
             % Input
+            %  beta: upwind ratio (usually 1 to 0)
             %  wavenumbers: 1D array of (exact, real) wavenumbers associated
             %               with the columns of the eigenvalue matrix
             %               (default: 61 wavemodes, uniformly around zero).
@@ -175,16 +176,22 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             %             wavemode). Sorted such that the 1st row is the
             %             "physical" eigenmode.
             %  wavenumbers: actual array of wavenumbers used.
-            %             
-            if nargin == 1
+            %
+            if nargin < 2
+                beta = 1; % default to upwind
+            end
+            if nargin < 3
                 wavenumbers = pi*this.basisCount*linspace(-1,1,61);
+            elseif ~any(wavenumbers == 0)
+                wavenumbers = sort([wavenumbers 0]); % add the zeroth wavenumber (it is necessary to detect the physical eigenmode)
             end
             % Preallocation:
             eigenvals = complex(zeros(this.basisCount,numel(wavenumbers)));
             % Operator assembly (vectorized):
+            [E,leftE,rightE] = this.getFourierMatrices(beta);
             I = speye(numel(wavenumbers)); % identity matrix
             coefs = spdiags(exp(-1i*wavenumbers.'),0,numel(wavenumbers),numel(wavenumbers));
-            R = kron(I,this.fourierMatrix) + kron(coefs,this.fourierMatrixL) + kron(coefs',this.fourierMatrixR);
+            R = kron(I,E) + kron(coefs,leftE) + kron(coefs',rightE);
             R = kron(I,this.massMatrix) \ R;
             % Eigenvalues:
             for n = 1:numel(wavenumbers)
@@ -203,12 +210,11 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
     end
     methods (Access = protected)
         %% Assemble Fourier residual matrices (DG)
-        function assembleFourierMatrices(this)
+        function [A,B,C] = getFourierMatrices(this,beta)
             % Base implementation (valid for all pure DG methods; not FR).
-            % Assumes beta = 1 (upwind).
-            this.fourierMatrix = 2*(this.gradientMatrix.' - sparse(this.right*this.right.')); % baseline
-            this.fourierMatrixL = 2*sparse(this.left*this.right.'); % upwind
-            this.fourierMatrixR = sparse(this.basisCount,this.basisCount); % downwind
+            A = 2*this.gradientMatrix.' + sparse((1-beta)*this.left*this.left.' - (1+beta)*this.right*this.right.');
+            B = (1+beta)*sparse(this.left*this.right.'); % upwind
+            C = (-1+beta)*sparse(this.right*this.left.'); % downwind
         end
     end
     methods (Static, Access = protected, Sealed)

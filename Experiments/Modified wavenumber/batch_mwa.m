@@ -28,9 +28,9 @@ inputData = {
 %     'mwa_dgsem_21.dat'      SSP_RK3    DGSEM(21)       60       1          inf             nan
 %     'mwa_dgsem_50.dat'      SSP_RK3    DGSEM(50)       60       1          inf             nan
 %     'mwa_dgsem_119.dat'     SSP_RK3    DGSEM(119)      60       1          inf             nan
-    'mwa_dgiga_1.dat'       SSP_RK4_10    DGIGA(9,2,0)    60       1          inf             4
-    'mwa_dgiga_2.dat'       SSP_RK4_10    DGIGA(8,2,0)    60       1          inf             5
-    'mwa_dgiga_3.dat'       SSP_RK4_10    DGIGA(7,2,0)    60       1          inf             6
+    'mwa_dgiga_1.dat'       SSP_RK3     DGIGA(9,2,0)    60       1          inf             4
+    'mwa_dgiga_2.dat'       SSP_RK3     DGIGA(8,2,0)    60       1          inf             5
+    'mwa_dgiga_3.dat'       SSP_RK3     DGIGA(7,2,0)    60       1          inf             6
 };
 
 %% Setup
@@ -79,7 +79,7 @@ for i = 1:I
         [~,ids] = sort(abs(kMod(:,k==0)));
         kMod = kMod(ids,:);
         % Postprocess & export:
-        tic, CFL = runData(i).Time.optimizeCFL(runData(i).Space);
+        tic, CFL = runData(i).Time.optimizeCFL(runData(i).Space,runData(i).beta);
         fprintf(fileID,'# %s, CFL_max = %.12g (%.6g s)\n',class(runData(i).Time),CFL,toc);
         fprintf(fileID,'# %s; J = %d, %d patches, beta = %f\n',runData(i).Space.getName,runData(i).Space.basisCount,runData(i).K,runData(i).beta);
         fprintf(fileID,'%s\t%s\t%s\t%s\t%s\t%s\t%s\n','j','n','k_exact','k_real','k_imag','z_real','z_imag');

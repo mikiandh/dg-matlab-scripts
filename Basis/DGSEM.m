@@ -6,7 +6,6 @@ classdef DGSEM < Lagrange
             if nargin > 0
                 dgsem.derivatives = - dgsem.nodeWeights./...
                     dgsem.nodeWeights'.*dgsem.derivatives'; % modified derivative matrix
-                dgsem.assembleFourierMatrices;
             end
         end
         %% Instantiate from prototype

@@ -10,7 +10,6 @@ classdef DG < Legendre
                 dg.norms = 2*(1:dg.order)-1;
                 dg.derivatives =...
                     dg.gaussWeights.*dg.derivatives'; % modified derivative matrix (weighted 1st derivative, row: basis comp.; column: Gauss point)
-                dg.assembleFourierMatrices;
             end
         end
         %% Instantiate from prototype

@@ -19,18 +19,18 @@ discs = {
     };
 
 %% Temporal discretization
-time = SSP_RK4_10;
+time = SSP_RK3;
 
 %% Extra parameters
 % Upwinding ratio for Riemann fluxes, from -1 (downwind) to 1 (upwind):
 upwind = 1;
-% Number of patches (only affects resolution):
-Nx = 32;
+% Number of patches (only affects resolution; should be even):
+Nx = 120;
 % Temporal amplification factor function:
 G = time.amplificationFactorFun;
 % G = @(z) 1./(1 - z); % overwrite with implict RK1
 % Courant number seed:
-CFL = .05;
+CFL = 1;
 % Plot footprint as points instead of curves? (much more efficient)
 flagPoints = true;
 
@@ -39,14 +39,14 @@ I = size(discs,1);
 z = cell(I,1);
 CFL = CFL*ones(I,1);
 for i = 1:I
-    % Modified wavenumber analysis:
-    z{i} = reshape(...
-        -1i*MWA_eigen_full(Nx,discs{i}.degree,discs{i},upwind),1,[]);
+    % Get a Fourier footprint:
+    z{i} = complex(pi*discs{i}.basisCount*linspace(0,1,Nx));
+    z{i} = reshape(discs{i}.getFourierFootprint(upwind,z{i}),1,[]);
     % Scale Fourier footprint with its critical Courant number:
     [CFL(i),exitFlag] = optimizeCFL(CFL(i),z{i},G);
     z{i} = z{i}*CFL(i);
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % z{i} = z{i}*0.05;
+    % z{i} = z{i}*0.0525;
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Recover negative wavenumbers (aesthetic reasons only):
     z{i} = horzcat(flip((z{i}').',2),z{i});
@@ -112,16 +112,12 @@ function [CFL,exitFlag] = optimizeCFL(CFL,theta,G)
 % the L1 norm of the amplification factors - all eigenmodes and wavenumbers
 % considered.
 %
-% Nonlinear function to minimize:
-    function norm = fun(CFL)
-        norm = - sum(abs(G(theta*CFL)));
-    end
 % Nonlinear constraint:
     function [c,ceq] = nonlcon(CFL)
         c = max(abs(G(theta*CFL))) - 1;
         ceq = [];
     end
 % Solve the problem:
-[CFL,~,exitFlag] = fmincon(@fun,CFL,[],[],[],[],0,[],@nonlcon,...
+[CFL,~,exitFlag] = fmincon(@(CFL) -CFL, CFL,[],[],[],[],0,[],@nonlcon,...
     optimoptions('fmincon','Display','off'));
 end

@@ -96,7 +96,6 @@ classdef Bspline < Basis
             this.controlVandermonde = this.sampleAt(this.controlCoords);
             % Precomputed operators:
             this.assembleOperators;
-            this.assembleFourierMatrices;
             % Sparsity graph:
             this.computeSparsityGraph;
         end

@@ -132,23 +132,22 @@ classdef Solver < matlab.mixin.SetGet
             end
         end
         %% Estimate maximum stable Courant number
-        function CFL = optimizeCFL(this,space)
+        function CFL = optimizeCFL(this,space,varargin)
             % This function estimates the maximum allowable Courant number for a given
             % combination of time and space discretization methods. See 'Examples III'
             % for more details.
             %
-            function [c,ceq] = nonlcon(g)
-                c = max(max(g)) - 1;
+            function [c,ceq] = nonlcon(x)
+                c = max(abs(this.amplificationFactorFun(theta*x))) - 1;
                 ceq = [];
             end
-            CFL = 10; % Courant number seed
-            theta = space.getFourierFootprint;
+            theta = reshape(space.getFourierFootprint(varargin{:}),1,[]); % 1D array
             problem.options = optimoptions('fmincon','Display','notify-detailed');
             problem.solver = 'fmincon';
-            problem.objective = @(CFL) - sum(sum(abs(this.amplificationFactorFun(theta*CFL)),2)); % maximize some norm of amplitude factors, all eigenmodes at once
-            problem.x0 = CFL;
+            problem.objective = @(CFL) - CFL; % maximize the Courant number
+            problem.x0 = 1;
             problem.lb = 0;
-            problem.nonlcon = @(CFL) nonlcon(abs(this.amplificationFactorFun(theta*CFL)));
+            problem.nonlcon = @nonlcon;
             CFL = fmincon(problem);
         end
         %% Solver status
