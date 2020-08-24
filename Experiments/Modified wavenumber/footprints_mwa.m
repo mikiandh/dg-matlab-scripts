@@ -13,13 +13,13 @@ addpath('../../Solver')
 
 %% Spatial discretizations
 discs = {
-    DGSEM(2)
-    FR('min',2)
-    DGIGA(2,2,0)
+    %DGIGA(7,2,0)
+    DGIGA(8,2,0)
+    %DGIGA(9,2,0)
     };
 
 %% Temporal discretization
-time = SSP_RK3;
+time = SSP_RK4_10;
 
 %% Extra parameters
 % Upwinding ratio for Riemann fluxes, from -1 (downwind) to 1 (upwind):
@@ -30,7 +30,7 @@ Nx = 32;
 G = time.amplificationFactorFun;
 % G = @(z) 1./(1 - z); % overwrite with implict RK1
 % Courant number seed:
-CFL = 1;
+CFL = .05;
 % Plot footprint as points instead of curves? (much more efficient)
 flagPoints = true;
 
@@ -43,8 +43,11 @@ for i = 1:I
     z{i} = reshape(...
         -1i*MWA_eigen_full(Nx,discs{i}.degree,discs{i},upwind),1,[]);
     % Scale Fourier footprint with its critical Courant number:
-    CFL(i) = optimizeCFL(CFL(i),z{i},G);
+    [CFL(i),exitFlag] = optimizeCFL(CFL(i),z{i},G);
     z{i} = z{i}*CFL(i);
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % z{i} = z{i}*0.05;
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Recover negative wavenumbers (aesthetic reasons only):
     z{i} = horzcat(flip((z{i}').',2),z{i});
     if ~flagPoints

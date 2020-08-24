@@ -142,8 +142,7 @@ classdef Solver < matlab.mixin.SetGet
                 ceq = [];
             end
             CFL = 10; % Courant number seed
-            Nx = 32; % number of patches (only affects resolution)
-            theta = -1i*MWA_eigen_full(Nx,space.degree,space,1); % kMod = 1i*eigenvalue
+            theta = space.getFourierFootprint;
             problem.options = optimoptions('fmincon','Display','notify-detailed');
             problem.solver = 'fmincon';
             problem.objective = @(CFL) - sum(sum(abs(this.amplificationFactorFun(theta*CFL)),2)); % maximize some norm of amplitude factors, all eigenmodes at once

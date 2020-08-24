@@ -12,6 +12,7 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
         right
         massMatrix % inner products between every basis function (row) and test function (column)
         gradientMatrix % inner products between every basis function (row) and test function first derivative (column)
+        fourierMatrix, fourierMatrixL, fourierMatrixR % residual operator matrix terms, used in the MWA (left-multiplying to a column vector of Fourier DOFs)
         dofCoords % positions associated with each degree of freedom
         breakCoords % positions where the approximate solution experiences a reduction in smoothness
         nodeCoords
@@ -157,6 +158,57 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
                 fprintf(1, '%s\t\t%s\t\t%s\n', VarNames{:});
                 fprintf(1, '%.5g\t\t\t\t%.5g\t\t\t\t\t%.5g\n', Data');
             end
+        end
+        %% Fourier eigenvalues
+        function [eigenvals,wavenumbers] = getFourierFootprint(this,wavenumbers)
+            % Returns all eigenvalues of the (dimensionless) residual
+            % operator in Fourier space for the inviscid advection
+            % equation. Look up 'modified wavenumber analysis' for 
+            % details (e.g. Van den Abeele, 2009).
+            %
+            % Input
+            %  wavenumbers: 1D array of (exact, real) wavenumbers associated
+            %               with the columns of the eigenvalue matrix
+            %               (default: 61 wavemodes, uniformly around zero).
+            % Output
+            %  eigenvals: 2D array of eigenvalues (row: eigenmode; column: 
+            %             wavemode). Sorted such that the 1st row is the
+            %             "physical" eigenmode.
+            %  wavenumbers: actual array of wavenumbers used.
+            %             
+            if nargin == 1
+                wavenumbers = pi*this.basisCount*linspace(-1,1,61);
+            end
+            % Preallocation:
+            eigenvals = complex(zeros(this.basisCount,numel(wavenumbers)));
+            % Operator assembly (vectorized):
+            I = speye(numel(wavenumbers)); % identity matrix
+            coefs = spdiags(exp(-1i*wavenumbers.'),0,numel(wavenumbers),numel(wavenumbers));
+            R = kron(I,this.fourierMatrix) + kron(coefs,this.fourierMatrixL) + kron(coefs',this.fourierMatrixR);
+            R = kron(I,this.massMatrix) \ R;
+            % Eigenvalues:
+            for n = 1:numel(wavenumbers)
+                blockIds = (1:this.basisCount) + (n-1)*this.basisCount;
+                eigenvals(:,n) = eigs(R(blockIds,blockIds),this.basisCount);
+                % Enforce a consistent ordering:
+                if n > 1
+                    [~,ids] = min(abs(eigenvals(:,n) - eigenvals(:,n-1).'),[],2); % mind the dot! (transpose vs. ctranspose)
+                    eigenvals(ids,n) = eigenvals(:,n);
+                end
+            end
+            % Sort eigenmodes (physical first):
+            [~,ids] = sort(abs(eigenvals(:,wavenumbers==0)));
+            eigenvals = eigenvals(ids,:);
+        end
+    end
+    methods (Access = protected)
+        %% Assemble Fourier residual matrices (DG)
+        function assembleFourierMatrices(this)
+            % Base implementation (valid for all pure DG methods; not FR).
+            % Assumes beta = 1 (upwind).
+            this.fourierMatrix = 2*(this.gradientMatrix.' - sparse(this.right*this.right.')); % baseline
+            this.fourierMatrixL = 2*sparse(this.left*this.right.'); % upwind
+            this.fourierMatrixR = sparse(this.basisCount,this.basisCount); % downwind
         end
     end
     methods (Static, Access = protected, Sealed)

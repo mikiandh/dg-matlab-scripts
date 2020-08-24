@@ -32,6 +32,7 @@ classdef FR < Lagrange
                 % Mass and gradient matrices (Dirac delta test functions):
                 this.massMatrix = eye(this.basisCount);
                 this.gradientMatrix = this.derivatives;
+                this.assembleFourierMatrices;
             end
         end
         %% Instantiate from prototype
@@ -161,6 +162,16 @@ classdef FR < Lagrange
             dPn = dPn(p:end,:);
             dgR = FR.rightVCJH(eta,dPn);
             dgL = - flip(dgR);
+        end
+    end
+    methods (Access = protected)
+        %% Assemble Fourier residual matrices (override)
+        function assembleFourierMatrices(this)
+            % FR version.
+            % Assumes beta = 1 (upwind).
+            this.fourierMatrix = 2*(-this.gradientMatrix.' + sparse(this.correctionsL.'*this.left.')); % baseline
+            this.fourierMatrixL = -2*sparse(this.correctionsL.'*this.right.'); % upwind
+            this.fourierMatrixR = sparse(this.basisCount,this.basisCount); % downwind
         end
     end
 end

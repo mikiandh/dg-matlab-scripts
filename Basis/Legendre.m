@@ -25,6 +25,7 @@ classdef Legendre < Basis
                 this.derivatives = ...
                     this.diffLegendre(this.gaussCoords',this.vandermonde);
                 this.assembleMassAndConvectionMatrices;
+                this.assembleFourierMatrices;
                 % Sparsity graph:
                 this.computeSparsityGraph;
             end
