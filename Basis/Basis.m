@@ -181,7 +181,7 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
                 beta = 1; % default to upwind
             end
             if nargin < 3
-                wavenumbers = pi*this.basisCount*linspace(-1,1,61);
+                wavenumbers = pi*this.basisCount*linspace(-1,1,this.basisCount*61); % 61 generating patterns (resolution)
             elseif ~any(wavenumbers == 0)
                 wavenumbers = sort([wavenumbers 0]); % add the zeroth wavenumber (it is necessary to detect the physical eigenmode)
             end
@@ -189,14 +189,12 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             eigenvals = complex(zeros(this.basisCount,numel(wavenumbers)));
             % Operator assembly (vectorized):
             [E,leftE,rightE] = this.getFourierMatrices(beta);
-            I = speye(numel(wavenumbers)); % identity matrix
-            coefs = spdiags(exp(-1i*wavenumbers.'),0,numel(wavenumbers),numel(wavenumbers));
-            R = kron(I,E) + kron(coefs,leftE) + kron(coefs',rightE);
-            R = kron(I,this.massMatrix) \ R;
+            coefsL = exp(-1i*wavenumbers.');
+            coefsR = coefsL';
             % Eigenvalues:
             for n = 1:numel(wavenumbers)
-                blockIds = (1:this.basisCount) + (n-1)*this.basisCount;
-                eigenvals(:,n) = eigs(R(blockIds,blockIds),this.basisCount);
+                R = this.massMatrix \ (E + coefsL(n)*leftE + coefsR(n)*rightE);
+                eigenvals(:,n) = eigs(R,this.basisCount);
                 % Enforce a consistent ordering:
                 if n > 1
                     [~,ids] = min(abs(eigenvals(:,n) - eigenvals(:,n-1).'),[],2); % mind the dot! (transpose vs. ctranspose)
