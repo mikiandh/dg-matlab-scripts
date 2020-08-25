@@ -14,21 +14,20 @@ addpath('../../Basis')
 %% Input
 inputData = {
 % DGSEM:
-    'Filename'              'Time'     'Space'         'K'      'beta'     'eigenmodes'    'fig'
-%     'mwa_dgsem_0.dat'       SSP_RK3    DGSEM(0)        60       1          inf             nan
-%     'mwa_dgsem_1.dat'       SSP_RK3    DGSEM(1)        60       1          inf             nan
-%     'mwa_dgsem_2.dat'       SSP_RK3    DGSEM(2)        60       1          inf             nan
-%     'mwa_dgsem_3.dat'       SSP_RK3    DGSEM(3)        60       1          inf             nan
-%     'mwa_dgsem_4.dat'       SSP_RK3    DGSEM(4)        60       1          inf             nan
-%     'mwa_dgsem_5.dat'       SSP_RK3    DGSEM(5)        60       1          inf             nan
-%     'mwa_dgsem_6.dat'       SSP_RK3    DGSEM(6)        60       1          inf             nan
-%     'mwa_dgsem_7.dat'       SSP_RK3    DGSEM(7)        60       1          inf             nan
-%     'mwa_dgsem_8.dat'       SSP_RK3    DGSEM(8)        60       1          inf             nan
-%     'mwa_dgsem_9.dat'       SSP_RK3    DGSEM(9)        60       1          inf             nan
-%     'mwa_dgsem_21.dat'      SSP_RK3    DGSEM(21)       60       1          inf             nan
-%     'mwa_dgsem_50.dat'      SSP_RK3    DGSEM(50)       60       1          inf             nan
-%     'mwa_dgsem_119.dat'     SSP_RK3    DGSEM(119)      60       1          inf             nan
-    'mwa_dgiga_1.dat'       SSP_RK3     DGIGA(9,2,0)    60       1          inf             4
+    'Filename'              'Time'     'Space'         'K'      'beta'     'eigenmodes'     'fig'
+%     'mwa_fv_upwind.dat'     SSP_RK3     DGSEM(0)       60       1          inf             1
+%     'mwa_fv_center.dat'     SSP_RK3     DGSEM(0)       60       0          inf             1
+    'mwa_dgsem_2_all.dat'   SSP_RK3    DGSEM(2)        60       1          inf              nan
+    'mwa_dgsem_3_all.dat'   SSP_RK3    DGSEM(3)        60       1          inf              nan
+    'mwa_dgsem_2.dat'       SSP_RK3    DGSEM(2)        60       1          1                2
+    'mwa_dgsem_3.dat'       SSP_RK3    DGSEM(3)        60       1          1                2
+    'mwa_dgsem_4.dat'       SSP_RK3    DGSEM(4)        60       1          1                2
+    'mwa_dgsem_5.dat'       SSP_RK3    DGSEM(5)        60       1          1                2
+    'mwa_dgsem_6.dat'       SSP_RK3    DGSEM(6)        60       1          1                2
+    'mwa_dgsem_7.dat'       SSP_RK3    DGSEM(7)        60       1          1                2
+    'mwa_dgsem_8.dat'       SSP_RK3    DGSEM(8)        60       1          1                2
+    'mwa_dgsem_9.dat'       SSP_RK3    DGSEM(9)        60       1          1                2
+% %     'mwa_dgiga_1.dat'       SSP_RK3     DGIGA(9,2,0)    60       1          inf             4
 % %     'mwa_dgiga_2.dat'       SSP_RK3     DGIGA(8,2,0)    60       1          inf             5
 % %     'mwa_dgiga_3.dat'       SSP_RK3     DGIGA(7,2,0)    60       1          inf             6
 };
@@ -63,7 +62,7 @@ for i = 1:I
             runData(i).eigenmodes = 1:J; % store all eigenmodes
         end
         runData(i).eigenmodes(runData(i).eigenmodes > J) = []; % throw away inexistent modes
-        for j = runData(i).eigenmodes % loop over eigenmodes
+        for j = runData(i).eigenmodes % loop over requested eigenmodes
             fprintf(fileID,'%d\t%d\t%.12g\t%.12g\t%.12g\t%.12g\t%.12g\n',[j*ones(size(n)); n; k/J; real(kMod(j,:))/J; imag(kMod(j,:))/J; CFL*imag(kMod(j,:)); CFL*real(kMod(j,:))]);
             fprintf(fileID,'\n');
         end
@@ -73,13 +72,15 @@ for i = 1:I
             continue
         end
         figure(runData(i).fig)
-        hold on
         subplot(2,2,1)
-        plot(k/J,real(kMod(runData(i).eigenmodes,:))/J)
+        plot(k/J,real(kMod(runData(i).eigenmodes,:))/J,'.-')
+        hold on
         subplot(2,2,3)
-        plot(k/J,imag(kMod(runData(i).eigenmodes,:))/J)
+        plot(k/J,imag(kMod(runData(i).eigenmodes,:))/J,'.-')
+        hold on
         subplot(2,2,[2 4])
         plot(-1i*kMod(runData(i).eigenmodes,:).'*CFL,'.-')
+        hold on
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     catch me
        warning('Run %d of %d did not succeed.\n "%s"',i,I,getReport(me))

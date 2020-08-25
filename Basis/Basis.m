@@ -181,8 +181,9 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
                 beta = 1; % default to upwind
             end
             if nargin < 3
-                wavenumbers = pi*this.basisCount*linspace(-1,1,this.basisCount*61); % 61 generating patterns (resolution)
-            elseif ~any(wavenumbers == 0)
+                wavenumbers = pi*this.basisCount*linspace(-1,1,this.basisCount*60); % 60 generating patterns (resolution)
+            end
+            if ~any(wavenumbers == 0)
                 wavenumbers = sort([wavenumbers 0]); % add the zeroth wavenumber (it is necessary to detect the physical eigenmode)
             end
             % Preallocation:

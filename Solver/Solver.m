@@ -142,13 +142,7 @@ classdef Solver < matlab.mixin.SetGet
                 ceq = [];
             end
             theta = reshape(space.getFourierFootprint(varargin{:}),1,[]); % 1D array
-            problem.options = optimoptions('fmincon','Display','notify-detailed');
-            problem.solver = 'fmincon';
-            problem.objective = @(CFL) - CFL; % maximize the Courant number
-            problem.x0 = 1;
-            problem.lb = 0;
-            problem.nonlcon = @nonlcon;
-            CFL = fmincon(problem);
+            CFL = fmincon(@(CFL) -CFL, 1,[],[],[],[],0,[],@nonlcon,optimoptions('fmincon','Display','notify'));
         end
         %% Solver status
         function info = getInfo(this)

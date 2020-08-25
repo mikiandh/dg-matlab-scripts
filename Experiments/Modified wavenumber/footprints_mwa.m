@@ -13,9 +13,7 @@ addpath('../../Solver')
 
 %% Spatial discretizations
 discs = {
-    %DGIGA(7,2,0)
-    DGIGA(8,2,0)
-    %DGIGA(9,2,0)
+    DGSEM(1)
     };
 
 %% Temporal discretization
