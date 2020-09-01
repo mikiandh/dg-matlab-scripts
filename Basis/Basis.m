@@ -198,13 +198,33 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
                 eigenvals(:,n) = eigs(R,this.basisCount);
                 % Enforce a consistent ordering:
                 if n > 1
-                    [~,ids] = min(abs(eigenvals(:,n) - eigenvals(:,n-1).'),[],2); % mind the dot! (transpose vs. ctranspose)
-                    eigenvals(ids,n) = eigenvals(:,n);
+                    [~,i] = min(abs(eigenvals(:,n) - eigenvals(:,n-1).'),[],2); % i(l): eigenmode that the l-th eigenvalue belongs to
+                    j = find(sum(abs(eigenvals(i,n-1) - eigenvals(i,n-1).') < 1e-12) > 1); % ambiguous eigenvalues (assigned to the same eigenmode or almost equal in the previous wavemode)
+                    if ~isempty(j) && n > 2
+                        k = unique([i(j)' find(sum(1:numel(i) == i) == 0)]); % suspicious eigenmodes (assigned to >1 or <1 eigenvalues, or with almost equal eigenvalues in the previous wavemode)
+                        [~,ii] = min(abs(eigenvals(j,n).' - 2*eigenvals(k,n-1) + eigenvals(k,n-2)),[],2); % suspicious eigenmode that each ambiguous eigenvalue belongs to
+                        ii(sum(ii == ii') > 1) = find(sum(1:numel(ii) == ii) ~= 1); % assign remaining eigenmodes to remaining eigenvalues 'as is' (if any are still ambiguous)
+                        i(j) = k(ii); % j-th eigenvalue actually corresponds to the k(ii)-th eigenmode
+                    end
+                    eigenvals(i,n) = eigenvals(:,n);
                 end
             end
-            % Sort eigenmodes (physical first):
-            [~,ids] = sort(abs(eigenvals(:,wavenumbers==0)));
-            eigenvals = eigenvals(ids,:);
+            % Sort eigenmodes:
+            [~,ids] = sort(vecnorm(imag(eigenvals) + wavenumbers,1,2)); % increasing L1-error with exact dispersion relation
+            eigenvals = eigenvals(ids,:); % physical first
+        end
+        function displayModifiedWavenumbers(this,varargin)
+            % Plots the modified wavenumbers of the discretization (a
+            % priori approach) as 3D waves.
+            [z,k] = this.getFourierFootprint(varargin{:});
+            z = z/this.basisCount;
+            k = k/this.basisCount;
+            plot3(k,-imag(z),real(z),k,k,0*k,'--k')
+            xlabel('$\kappa/J$','Interpreter','LaTex')
+            ylabel('$\Re(\tilde{\kappa})/J$','Interpreter','LaTex')
+            zlabel('$\Im(\tilde{\kappa})/J$','Interpreter','LaTex')
+            view(110,15)
+            axis equal
         end
     end
     methods (Access = protected)
