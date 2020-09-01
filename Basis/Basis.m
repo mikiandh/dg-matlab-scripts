@@ -207,7 +207,8 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
                 end
             end
             % Sort eigenmodes:
-            [~,ids] = sort(vecnorm(imag(eigenvals) + wavenumbers,1,2)); % increasing L1-error with exact dispersion relation
+            isInRange = wavenumbers/this.basisCount > -pi/2 & wavenumbers/this.basisCount < pi/2; % subset of wavenumbers to consider
+            [~,ids] = sort(vecnorm(imag(eigenvals(:,isInRange)) + wavenumbers(:,isInRange),2,2)); % increasing L2-error with exact dispersion relation
             eigenvals = eigenvals(ids,:); % physical first
         end
         function displayModifiedWavenumbers(this,varargin)
