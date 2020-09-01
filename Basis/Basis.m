@@ -183,9 +183,6 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             if nargin < 3
                 wavenumbers = pi*this.basisCount*linspace(-1,1,this.basisCount*60); % 60 generating patterns (resolution)
             end
-            if ~any(wavenumbers == 0)
-                wavenumbers = sort([wavenumbers 0]); % add the zeroth wavenumber (it is necessary to detect the physical eigenmode)
-            end
             % Preallocation:
             eigenvals = complex(zeros(this.basisCount,numel(wavenumbers)));
             % Operator assembly (vectorized):
