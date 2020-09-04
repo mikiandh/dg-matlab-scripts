@@ -1,6 +1,8 @@
 classdef FR < Lagrange
     properties
-        param % value for the "c" parameter in VCJH-class correction functions
+        param % user-provided VCJH-class parameter (char or float)
+        c % value for the "c" parameter in VCJH-class correction functions
+        eta % idem, "eta" parameter
         correctionsL % array of p+1 "gradient of left correction function" values
         correctionsR
         auxMassMatrix % mass matrix if FR was using Lagrange test functions (it is not)
@@ -25,9 +27,10 @@ classdef FR < Lagrange
                         return
                     end
                 % Derivative of the correction function at solution points:
-                eta = this.getEtaParameter(param,this.order);
+                this.eta = this.getEtaParameter(param,this.degree);
+                this.c = this.getParameter(this.eta,this.degree);
                 dPn = Legendre.getLegendreAndDerivatives(this.degree+2,this.nodeCoords');
-                this.correctionsR = this.rightVCJH(eta,dPn(this.degree:end,:));
+                this.correctionsR = this.rightVCJH(this.eta,dPn(this.degree:end,:));
                 this.correctionsL = - flip(this.correctionsR);
                 % Mass and gradient matrices (Dirac delta test functions):
                 this.massMatrix = eye(this.basisCount);

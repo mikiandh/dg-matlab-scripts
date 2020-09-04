@@ -12,7 +12,6 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
         right
         massMatrix % inner products between every basis function (row) and test function (column)
         gradientMatrix % inner products between every basis function (row) and test function first derivative (column)
-        fourierMatrix, fourierMatrixL, fourierMatrixR % residual operator matrix terms, used in the MWA (left-multiplying to a column vector of Fourier DOFs)
         dofCoords % positions associated with each degree of freedom
         breakCoords % positions where the approximate solution experiences a reduction in smoothness
         nodeCoords
