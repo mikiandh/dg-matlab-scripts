@@ -13,11 +13,17 @@ addpath('../../Solver')
 
 %% Spatial discretizations
 discs = {
-    DGSEM(1)
+    FR('max',2)
+    FR('max',3)
+    FR('max',4)
+    FR('max',5)
+    FR('max',8)
+    FR('max',30)
+    FR('max',119)
     };
 
 %% Temporal discretization
-time = SSP_RK3;
+time = SSP_RK4_10;
 
 %% Extra parameters
 % Upwinding ratio for Riemann fluxes, from -1 (downwind) to 1 (upwind):
