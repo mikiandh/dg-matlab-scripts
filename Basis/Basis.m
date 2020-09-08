@@ -209,6 +209,8 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             isInRange = wavenumbers/this.basisCount > -pi/2 & wavenumbers/this.basisCount < pi/2; % subset of wavenumbers to consider
             [~,ids] = sort(vecnorm(imag(eigenvals(:,isInRange)) + wavenumbers(:,isInRange),2,2)); % increasing L2-error with exact dispersion relation
             eigenvals = eigenvals(ids,:); % physical first
+            [~,ids] = sort(polyarea(real(eigenvals(2:end,:)),imag(eigenvals(2:end,:)),2)); % increasing "shadow size" in the complex plane
+            eigenvals(2:end,:) = eigenvals(ids+1,:); % "weirdest ones" next
         end
         function displayModifiedWavenumbers(this,varargin)
             % Plots the modified wavenumbers of the discretization (a
