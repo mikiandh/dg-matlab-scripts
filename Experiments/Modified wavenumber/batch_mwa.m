@@ -86,59 +86,53 @@ inputData = {
 %     'mwa_fr_30_max.dat'         SSP_RK3    FR('max',30)  	60       1          1                13
 %     'mwa_fr_119_max.dat'        SSP_RK3    FR('max',119) 	60       1          1                13
 % DGIGA
-%  "Bubbling" phenomenon
-    'mwa_dgiga_7_2_0.dat'        SSP_RK3    DGIGA(7,2,0)   	60       1          1                14
-    'mwa_dgiga_8_2_0.dat'        SSP_RK3    DGIGA(8,2,0)   	60       1          1                14
-    'mwa_dgiga_9_2_0.dat'        SSP_RK3    DGIGA(9,2,0)   	60       1          1:3              14
-    'mwa_dgiga_2_7_0.dat'        SSP_RK3    DGIGA(2,6,0)   	60       1          1                15
-    'mwa_dgiga_2_8_0.dat'        SSP_RK3    DGIGA(2,7,0)   	60       1          1                15
-    'mwa_dgiga_2_9_0.dat'        SSP_RK3    DGIGA(2,8,0)   	60       1          1:3              15
-    'mwa_dgiga_24_2.dat'         SSP_RK3    DGIGA(24,2)   	60       1          1:3              16
-    'mwa_dgiga_24_3.dat'         SSP_RK3    DGIGA(24,3)   	60       1          1                16
-    'mwa_dgiga_24_4.dat'         SSP_RK3    DGIGA(24,4)   	60       1          1                16
-%-------------------------------------------------------------------------------------------------------
-%  Bernstein
-    'mwa_dgiga_1_3_all.dat'     SSP_RK3    DGIGA(1,3)   	60       1          inf              17
-    'mwa_dgiga_1_2.dat'         SSP_RK3    DGIGA(1,2)   	60       1          1                18
-    'mwa_dgiga_1_3.dat'         SSP_RK3    DGIGA(1,3)   	60       1          1                18
-    'mwa_dgiga_1_4.dat'         SSP_RK3    DGIGA(1,4)   	60       1          1                18
-    'mwa_dgiga_1_5.dat'         SSP_RK3    DGIGA(1,5)   	60       1          1                18
-%-------------------------------------------------------------------------------------------------------
-%  Degree-refinement
-    'mwa_dgiga_4_2.dat'         SSP_RK3    DGIGA(4,2)   	60       1          1                19
-    'mwa_dgiga_4_3.dat'         SSP_RK3    DGIGA(4,3)   	60       1          1                19
-    'mwa_dgiga_4_4.dat'         SSP_RK3    DGIGA(4,4)   	60       1          1                19
-    'mwa_dgiga_4_5.dat'         SSP_RK3    DGIGA(4,5)   	60       1          1                19
-    'mwa_dgiga_32_2.dat'        SSP_RK3    DGIGA(32,2)   	60       1          1:3              20
-    'mwa_dgiga_32_3.dat'        SSP_RK3    DGIGA(32,3)   	60       1          1                20
-    'mwa_dgiga_32_4.dat'        SSP_RK3    DGIGA(32,4)   	60       1          1                20
-    'mwa_dgiga_32_5.dat'        SSP_RK3    DGIGA(32,5)   	60       1          1                20
-    'mwa_dgiga_2_2_0.dat'       SSP_RK3    DGIGA(2,2,0)   	60       1          1                21
-    'mwa_dgiga_2_3_0.dat'       SSP_RK3    DGIGA(2,3,0)   	60       1          1                21
-    'mwa_dgiga_2_4_0.dat'       SSP_RK3    DGIGA(2,4,0)   	60       1          1                21
-    'mwa_dgiga_2_5_0.dat'       SSP_RK3    DGIGA(2,5,0)   	60       1          1                21
-    'mwa_dgiga_16_2_0.dat'      SSP_RK3    DGIGA(16,2,0)   	60       1          1:5              22
-    'mwa_dgiga_16_3_0.dat'      SSP_RK3    DGIGA(16,3,0)   	60       1          1:7              22
-    'mwa_dgiga_16_4_0.dat'      SSP_RK3    DGIGA(16,4,0)   	60       1          1:11             22
-    'mwa_dgiga_16_5_0.dat'      SSP_RK3    DGIGA(16,5,0)   	60       1          1:19             22
-%-------------------------------------------------------------------------------------------------------
-%  Span-refinement
+    'mwa_dgiga_1_2.dat'         SSP_RK3   DGIGA(1,2)      	60       1          1                17
+    'mwa_dgiga_1_3.dat'         SSP_RK3   DGIGA(1,3)        60       1          1                17
+    'mwa_dgiga_1_4.dat'         SSP_RK3   DGIGA(1,4)     	60       1          1                17
+    'mwa_dgiga_1_5.dat'         SSP_RK3   DGIGA(1,5)     	60       1          1                17
+    
+    'mwa_dgiga_2_2_0.dat'       SSP_RK3    DGIGA(2,2,0)   	60       1          1                18
+    'mwa_dgiga_2_2.dat'         SSP_RK3    DGIGA(2,2)   	60       1          1                19
+    'mwa_dgiga_2_3_0.dat'       SSP_RK3    DGIGA(2,3,0)   	60       1          1                18
+    'mwa_dgiga_2_3.dat'         SSP_RK3    DGIGA(2,3)   	60       1          1                19
+    'mwa_dgiga_2_4_0.dat'       SSP_RK3    DGIGA(2,4,0)   	60       1          1                18
+	'mwa_dgiga_2_4_1.dat'       SSP_RK3    DGIGA(2,4,1)   	60       1          1                26
+	'mwa_dgiga_2_4_2.dat'       SSP_RK3    DGIGA(2,4,2)   	60       1          1                26
+    'mwa_dgiga_2_4.dat'         SSP_RK3    DGIGA(2,4)   	60       1          1                19
+    'mwa_dgiga_2_5_0.dat'       SSP_RK3    DGIGA(2,5,0)   	60       1          1                18
+    'mwa_dgiga_2_5.dat'         SSP_RK3    DGIGA(2,5)   	60       1          1                19
+    
+    'mwa_dgiga_4_2_0.dat'       SSP_RK3    DGIGA(4,2,0)   	60       1          1                20
+    'mwa_dgiga_4_2.dat'         SSP_RK3    DGIGA(4,2)   	60       1          1                21
+    'mwa_dgiga_4_3_0.dat'       SSP_RK3    DGIGA(4,3,0)   	60       1          1                20
+    'mwa_dgiga_4_3.dat'         SSP_RK3    DGIGA(4,3)   	60       1          1                21
+    'mwa_dgiga_4_4_0.dat'       SSP_RK3    DGIGA(4,4,0)   	60       1          1                20
+	'mwa_dgiga_4_4_1.dat'       SSP_RK3    DGIGA(4,4,1)   	60       1          1                27
+	'mwa_dgiga_4_4_2.dat'       SSP_RK3    DGIGA(4,4,2)   	60       1          1                27
+    'mwa_dgiga_4_4.dat'         SSP_RK3    DGIGA(4,4)   	60       1          1                21
+    'mwa_dgiga_4_5_0.dat'       SSP_RK3    DGIGA(4,5,0)   	60       1          1:3              20
+    'mwa_dgiga_4_5.dat'         SSP_RK3    DGIGA(4,5)   	60       1          1                21
+    
+    'mwa_dgiga_8_2_0.dat'       SSP_RK3    DGIGA(8,2,0)   	60       1          1                22
     'mwa_dgiga_8_2.dat'         SSP_RK3    DGIGA(8,2)   	60       1          1                23
-    'mwa_dgiga_16_2.dat'        SSP_RK3    DGIGA(16,2)   	60       1          1                23
-    'mwa_dgiga_8_5.dat'         SSP_RK3    DGIGA(8,5)   	60       1          1                24
+    'mwa_dgiga_8_3_0.dat'       SSP_RK3    DGIGA(8,3,0)   	60       1          1:3              22
+    'mwa_dgiga_8_3.dat'         SSP_RK3    DGIGA(8,3)   	60       1          1                23
+    'mwa_dgiga_8_4_0.dat'       SSP_RK3    DGIGA(8,4,0)   	60       1          1:5              22
+	'mwa_dgiga_8_4_1.dat'       SSP_RK3    DGIGA(8,4,1)   	60       1          1                28
+	'mwa_dgiga_8_4_2.dat'       SSP_RK3    DGIGA(8,4,2)   	60       1          1                28
+    'mwa_dgiga_8_4.dat'         SSP_RK3    DGIGA(8,4)   	60       1          1                23
+    'mwa_dgiga_8_5_0.dat'       SSP_RK3    DGIGA(8,5,0)   	60       1          1:7              22
+    'mwa_dgiga_8_5.dat'         SSP_RK3    DGIGA(8,5)   	60       1          1                23
+	
+	'mwa_dgiga_16_2.dat'        SSP_RK3    DGIGA(16,2)   	60       1          1                24
+    'mwa_dgiga_16_3.dat'        SSP_RK3    DGIGA(16,3)   	60       1          1                24
+    'mwa_dgiga_16_4.dat'        SSP_RK3    DGIGA(16,4)   	60       1          1                24
     'mwa_dgiga_16_5.dat'        SSP_RK3    DGIGA(16,5)   	60       1          1                24
-    'mwa_dgiga_4_2_0.dat'       SSP_RK3    DGIGA(4,2,0)   	60       1          1                25
-    'mwa_dgiga_8_2_0.dat'       SSP_RK3    DGIGA(8,2,0)   	60       1          1                25
-    'mwa_dgiga_4_5_0.dat'       SSP_RK3    DGIGA(4,5,0)   	60       1          1:3              26
-    'mwa_dgiga_8_5_0.dat'       SSP_RK3    DGIGA(8,5,0)   	60       1          1:7              26
-%-------------------------------------------------------------------------------------------------------
-%  Smoothness-refinement
-    'mwa_dgiga_2_4_1.dat'       SSP_RK3    DGIGA(2,4,1)   	60       1          1                27
-    'mwa_dgiga_2_4_2.dat'       SSP_RK3    DGIGA(2,4,2)   	60       1          1                27
-    'mwa_dgiga_2_4.dat'         SSP_RK3    DGIGA(2,4)   	60       1          1                27
-    'mwa_dgiga_16_4_1.dat'      SSP_RK3    DGIGA(16,4,1)   	60       1          1:3              28
-    'mwa_dgiga_16_4_2.dat'      SSP_RK3    DGIGA(16,4,2)   	60       1          1                28
-    'mwa_dgiga_16_4.dat'        SSP_RK3    DGIGA(16,4)   	60       1          1                28
+	
+	'mwa_dgiga_32_2.dat'        SSP_RK3    DGIGA(32,2)   	60       1          1:3              25
+    'mwa_dgiga_32_3.dat'        SSP_RK3    DGIGA(32,3)   	60       1          1                25
+    'mwa_dgiga_32_4.dat'        SSP_RK3    DGIGA(32,4)   	60       1          1                25
+    'mwa_dgiga_32_5.dat'        SSP_RK3    DGIGA(32,5)   	60       1          1                25
 };
 
 %% Setup
