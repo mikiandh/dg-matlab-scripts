@@ -14,83 +14,83 @@ addpath('../../Basis')
 %% Input
 inputData = {
     'Filename'                  'Time'     'Space'         	'K'      'beta'     'eigenmodes'     'fig'
-% % DGSEM
-%     'mwa_fv_upwind.dat'         SSP_RK3    DGSEM(0)        	60       1          inf              1
-%     'mwa_fv_center.dat'         SSP_RK3    DGSEM(0)        	60       0          inf              1
-% %-------------------------------------------------------------------------------------------------------
-%     'mwa_dgsem_2_all.dat'       SSP_RK3    DGSEM(2)        	60       1          inf              2
-%     'mwa_dgsem_3_all.dat'       SSP_RK3    DGSEM(3)        	60       1          inf              3
-%     'mwa_dgsem_4_all.dat'       SSP_RK3    DGSEM(4)        	60       1          inf              4
-% %-------------------------------------------------------------------------------------------------------
-%     'mwa_dgsem_0.dat'           SSP_RK3    DGSEM(0)        	60       1          1                5
-%     'mwa_dgsem_1.dat'           SSP_RK3    DGSEM(1)        	60       1          1                5
-%     'mwa_dgsem_2.dat'           SSP_RK3    DGSEM(2)        	60       1          1                5
-%     'mwa_dgsem_3.dat'           SSP_RK3    DGSEM(3)        	60       1          1                5
-%     'mwa_dgsem_4.dat'           SSP_RK3    DGSEM(4)        	60       1          1                5
-%     'mwa_dgsem_5.dat'           SSP_RK3    DGSEM(5)        	60       1          1                5 
-% %-------------------------------------------------------------------------------------------------------
-%     'mwa_dgsem_9.dat'           SSP_RK3    DGSEM(9)        	60       1          1                6
-%     'mwa_dgsem_18.dat'          SSP_RK3    DGSEM(18)       	60       1          1                6
-%     'mwa_dgsem_33.dat'          SSP_RK3    DGSEM(33)       	60       1          1                6
-%     'mwa_dgsem_63.dat'          SSP_RK3    DGSEM(63)       	60       1          1                6
-%     'mwa_dgsem_119.dat'         SSP_RK3    DGSEM(119)      	60       1          1                6
-% % FR	
-%     'mwa_fr_2_min_all.dat'      SSP_RK3    FR('min',2)     	60       1          inf              7
-%     'mwa_fr_2_dg_all.dat'       SSP_RK3    FR('DG',2)     	60       1          inf              7
-%     'mwa_fr_2_ga_all.dat'       SSP_RK3    FR('Ga',2)      	60       1          inf              7
-%     'mwa_fr_2_lulo_all.dat'     SSP_RK3    FR('LumpLo',2)  	60       1          inf              7
-%     'mwa_fr_2_max_all.dat'      SSP_RK3    FR('max',2)     	60       1          inf              7
-%     'mwa_fr_3_min_all.dat'      SSP_RK3    FR('min',3)     	60       1          inf              8
-%     'mwa_fr_3_dg_all.dat'       SSP_RK3    FR('DG',3)     	60       1          inf              8
-%     'mwa_fr_3_ga_all.dat'       SSP_RK3    FR('Ga',3)      	60       1          inf              8
-%     'mwa_fr_3_lulo_all.dat'     SSP_RK3    FR('LumpLo',3)  	60       1          inf              8
-%     'mwa_fr_3_max_all.dat'      SSP_RK3    FR('max',3)     	60       1          inf              8
-% %-------------------------------------------------------------------------------------------------------
-%     'mwa_fr_2_min.dat'          SSP_RK3    FR('min',2)     	60       1          1                9
-%     'mwa_fr_3_min.dat'          SSP_RK3    FR('min',3)     	60       1          1                9
-%     'mwa_fr_4_min.dat'          SSP_RK3    FR('min',4)     	60       1          1                9
-%     'mwa_fr_5_min.dat'          SSP_RK3    FR('min',5)     	60       1          1                9
-%     'mwa_fr_8_min.dat'          SSP_RK3    FR('min',8)     	60       1          1                9
-%     'mwa_fr_30_min.dat'         SSP_RK3    FR('min',30)    	60       1          1                9
-%     'mwa_fr_119_min.dat'        SSP_RK3    FR('min',119)   	60       1          1                9
-% %-------------------------------------------------------------------------------------------------------
-%     'mwa_fr_2_dg.dat'           SSP_RK3    FR('DG',2)      	60       1          1                10
-%     'mwa_fr_3_dg.dat'           SSP_RK3    FR('DG',3)      	60       1          1                10
-%     'mwa_fr_4_dg.dat'           SSP_RK3    FR('DG',4)      	60       1          1                10
-%     'mwa_fr_5_dg.dat'           SSP_RK3    FR('DG',5)      	60       1          1                10
-%     'mwa_fr_8_dg.dat'           SSP_RK3    FR('DG',8)      	60       1          1                10
-%     'mwa_fr_30_dg.dat'          SSP_RK3    FR('DG',30)     	60       1          1                10
-%     'mwa_fr_119_dg.dat'         SSP_RK3    FR('DG',119)    	60       1          1                10
-% %-------------------------------------------------------------------------------------------------------
-%     'mwa_fr_2_ga.dat'           SSP_RK3    FR('Ga',2)      	60       1          1                11
-%     'mwa_fr_3_ga.dat'           SSP_RK3    FR('Ga',3)      	60       1          1                11
-%     'mwa_fr_4_ga.dat'           SSP_RK3    FR('Ga',4)      	60       1          1                11
-%     'mwa_fr_5_ga.dat'           SSP_RK3    FR('Ga',5)      	60       1          1                11
-%     'mwa_fr_8_ga.dat'           SSP_RK3    FR('Ga',8)      	60       1          1                11
-%     'mwa_fr_30_ga.dat'          SSP_RK3    FR('Ga',30)     	60       1          1                11
-%     'mwa_fr_119_ga.dat'         SSP_RK3    FR('Ga',119)    	60       1          1                11
-% %-------------------------------------------------------------------------------------------------------
-%     'mwa_fr_2_lulo.dat'         SSP_RK3    FR('LumpLo',2)  	60       1          1                12
-%     'mwa_fr_3_lulo.dat'         SSP_RK3    FR('LumpLo',3)  	60       1          1                12
-%     'mwa_fr_4_lulo.dat'         SSP_RK3    FR('LumpLo',4)  	60       1          1                12
-%     'mwa_fr_5_lulo.dat'         SSP_RK3    FR('LumpLo',5)  	60       1          1                12
-%     'mwa_fr_8_lulo.dat'         SSP_RK3    FR('LumpLo',8)  	60       1          1                12
-%     'mwa_fr_30_lulo.dat'        SSP_RK3    FR('LumpLo',30) 	60       1          1                12
-%     'mwa_fr_119_lulo.dat'       SSP_RK3    FR('LumpLo',119)	60       1          1                12
-% %-------------------------------------------------------------------------------------------------------
-%     'mwa_fr_2_max.dat'          SSP_RK3    FR('max',2)   	60       1          1                13
-%     'mwa_fr_3_max.dat'          SSP_RK3    FR('max',3)   	60       1          1                13
-%     'mwa_fr_4_max.dat'          SSP_RK3    FR('max',4)   	60       1          1                13
-%     'mwa_fr_5_max.dat'          SSP_RK3    FR('max',5)   	60       1          1                13
-%     'mwa_fr_8_max.dat'          SSP_RK3    FR('max',8)   	60       1          1                13
-%     'mwa_fr_30_max.dat'         SSP_RK3    FR('max',30)  	60       1          1                13
-%     'mwa_fr_119_max.dat'        SSP_RK3    FR('max',119) 	60       1          1                13
+% DGSEM
+    'mwa_fv_upwind.dat'         SSP_RK3    DGSEM(0)        	60       1          inf              1
+    'mwa_fv_center.dat'         SSP_RK3    DGSEM(0)        	60       0          inf              1
+%-------------------------------------------------------------------------------------------------------
+    'mwa_dgsem_2_all.dat'       SSP_RK3    DGSEM(2)        	60       1          inf              2
+    'mwa_dgsem_3_all.dat'       SSP_RK3    DGSEM(3)        	60       1          inf              3
+    'mwa_dgsem_4_all.dat'       SSP_RK3    DGSEM(4)        	60       1          inf              4
+%-------------------------------------------------------------------------------------------------------
+    'mwa_dgsem_0.dat'           SSP_RK3    DGSEM(0)        	60       1          1                5
+    'mwa_dgsem_1.dat'           SSP_RK3    DGSEM(1)        	60       1          1                5
+    'mwa_dgsem_2.dat'           SSP_RK3    DGSEM(2)        	60       1          1                5
+    'mwa_dgsem_3.dat'           SSP_RK3    DGSEM(3)        	60       1          1                5
+    'mwa_dgsem_4.dat'           SSP_RK3    DGSEM(4)        	60       1          1                5
+    'mwa_dgsem_5.dat'           SSP_RK3    DGSEM(5)        	60       1          1                5 
+%-------------------------------------------------------------------------------------------------------
+    'mwa_dgsem_9.dat'           SSP_RK3    DGSEM(9)        	60       1          1                6
+    'mwa_dgsem_18.dat'          SSP_RK3    DGSEM(18)       	60       1          1                6
+    'mwa_dgsem_33.dat'          SSP_RK3    DGSEM(33)       	60       1          1                6
+    'mwa_dgsem_63.dat'          SSP_RK3    DGSEM(63)       	60       1          1                6
+    'mwa_dgsem_119.dat'         SSP_RK3    DGSEM(119)      	60       1          1                6
+% FR	
+    'mwa_fr_2_min_all.dat'      SSP_RK3    FR('min',2)     	60       1          inf              7
+    'mwa_fr_2_dg_all.dat'       SSP_RK3    FR('DG',2)     	60       1          inf              7
+    'mwa_fr_2_ga_all.dat'       SSP_RK3    FR('Ga',2)      	60       1          inf              7
+    'mwa_fr_2_lulo_all.dat'     SSP_RK3    FR('LumpLo',2)  	60       1          inf              7
+    'mwa_fr_2_max_all.dat'      SSP_RK3    FR('max',2)     	60       1          inf              7
+    'mwa_fr_3_min_all.dat'      SSP_RK3    FR('min',3)     	60       1          inf              8
+    'mwa_fr_3_dg_all.dat'       SSP_RK3    FR('DG',3)     	60       1          inf              8
+    'mwa_fr_3_ga_all.dat'       SSP_RK3    FR('Ga',3)      	60       1          inf              8
+    'mwa_fr_3_lulo_all.dat'     SSP_RK3    FR('LumpLo',3)  	60       1          inf              8
+    'mwa_fr_3_max_all.dat'      SSP_RK3    FR('max',3)     	60       1          inf              8
+%-------------------------------------------------------------------------------------------------------
+    'mwa_fr_2_min.dat'          SSP_RK3    FR('min',2)     	60       1          1                9
+    'mwa_fr_3_min.dat'          SSP_RK3    FR('min',3)     	60       1          1                9
+    'mwa_fr_4_min.dat'          SSP_RK3    FR('min',4)     	60       1          1                9
+    'mwa_fr_5_min.dat'          SSP_RK3    FR('min',5)     	60       1          1                9
+    'mwa_fr_8_min.dat'          SSP_RK3    FR('min',8)     	60       1          1                9
+    'mwa_fr_30_min.dat'         SSP_RK3    FR('min',30)    	60       1          1                9
+    'mwa_fr_119_min.dat'        SSP_RK3    FR('min',119)   	60       1          1                9
+%-------------------------------------------------------------------------------------------------------
+    'mwa_fr_2_dg.dat'           SSP_RK3    FR('DG',2)      	60       1          1                10
+    'mwa_fr_3_dg.dat'           SSP_RK3    FR('DG',3)      	60       1          1                10
+    'mwa_fr_4_dg.dat'           SSP_RK3    FR('DG',4)      	60       1          1                10
+    'mwa_fr_5_dg.dat'           SSP_RK3    FR('DG',5)      	60       1          1                10
+    'mwa_fr_8_dg.dat'           SSP_RK3    FR('DG',8)      	60       1          1                10
+    'mwa_fr_30_dg.dat'          SSP_RK3    FR('DG',30)     	60       1          1                10
+    'mwa_fr_119_dg.dat'         SSP_RK3    FR('DG',119)    	60       1          1                10
+%-------------------------------------------------------------------------------------------------------
+    'mwa_fr_2_ga.dat'           SSP_RK3    FR('Ga',2)      	60       1          1                11
+    'mwa_fr_3_ga.dat'           SSP_RK3    FR('Ga',3)      	60       1          1                11
+    'mwa_fr_4_ga.dat'           SSP_RK3    FR('Ga',4)      	60       1          1                11
+    'mwa_fr_5_ga.dat'           SSP_RK3    FR('Ga',5)      	60       1          1                11
+    'mwa_fr_8_ga.dat'           SSP_RK3    FR('Ga',8)      	60       1          1                11
+    'mwa_fr_30_ga.dat'          SSP_RK3    FR('Ga',30)     	60       1          1                11
+    'mwa_fr_119_ga.dat'         SSP_RK3    FR('Ga',119)    	60       1          1                11
+%-------------------------------------------------------------------------------------------------------
+    'mwa_fr_2_lulo.dat'         SSP_RK3    FR('LumpLo',2)  	60       1          1                12
+    'mwa_fr_3_lulo.dat'         SSP_RK3    FR('LumpLo',3)  	60       1          1                12
+    'mwa_fr_4_lulo.dat'         SSP_RK3    FR('LumpLo',4)  	60       1          1                12
+    'mwa_fr_5_lulo.dat'         SSP_RK3    FR('LumpLo',5)  	60       1          1                12
+    'mwa_fr_8_lulo.dat'         SSP_RK3    FR('LumpLo',8)  	60       1          1                12
+    'mwa_fr_30_lulo.dat'        SSP_RK3    FR('LumpLo',30) 	60       1          1                12
+    'mwa_fr_119_lulo.dat'       SSP_RK3    FR('LumpLo',119)	60       1          1                12
+%-------------------------------------------------------------------------------------------------------
+    'mwa_fr_2_max.dat'          SSP_RK3    FR('max',2)   	60       1          1                13
+    'mwa_fr_3_max.dat'          SSP_RK3    FR('max',3)   	60       1          1                13
+    'mwa_fr_4_max.dat'          SSP_RK3    FR('max',4)   	60       1          1                13
+    'mwa_fr_5_max.dat'          SSP_RK3    FR('max',5)   	60       1          1                13
+    'mwa_fr_8_max.dat'          SSP_RK3    FR('max',8)   	60       1          1                13
+    'mwa_fr_30_max.dat'         SSP_RK3    FR('max',30)  	60       1          1                13
+    'mwa_fr_119_max.dat'        SSP_RK3    FR('max',119) 	60       1          1                13
 % DGIGA
     'mwa_dgiga_1_2.dat'         SSP_RK3   DGIGA(1,2)      	60       1          1                17
     'mwa_dgiga_1_3.dat'         SSP_RK3   DGIGA(1,3)        60       1          1                17
     'mwa_dgiga_1_4.dat'         SSP_RK3   DGIGA(1,4)     	60       1          1                17
     'mwa_dgiga_1_5.dat'         SSP_RK3   DGIGA(1,5)     	60       1          1                17
-    
+%-------------------------------------------------------------------------------------------------------    
     'mwa_dgiga_2_2_0.dat'       SSP_RK3    DGIGA(2,2,0)   	60       1          1                18
     'mwa_dgiga_2_2.dat'         SSP_RK3    DGIGA(2,2)   	60       1          1                19
     'mwa_dgiga_2_3_0.dat'       SSP_RK3    DGIGA(2,3,0)   	60       1          1                18
@@ -101,7 +101,7 @@ inputData = {
     'mwa_dgiga_2_4.dat'         SSP_RK3    DGIGA(2,4)   	60       1          1                19
     'mwa_dgiga_2_5_0.dat'       SSP_RK3    DGIGA(2,5,0)   	60       1          1                18
     'mwa_dgiga_2_5.dat'         SSP_RK3    DGIGA(2,5)   	60       1          1                19
-    
+%-------------------------------------------------------------------------------------------------------    
     'mwa_dgiga_4_2_0.dat'       SSP_RK3    DGIGA(4,2,0)   	60       1          1                20
     'mwa_dgiga_4_2.dat'         SSP_RK3    DGIGA(4,2)   	60       1          1                21
     'mwa_dgiga_4_3_0.dat'       SSP_RK3    DGIGA(4,3,0)   	60       1          1                20
@@ -112,7 +112,7 @@ inputData = {
     'mwa_dgiga_4_4.dat'         SSP_RK3    DGIGA(4,4)   	60       1          1                21
     'mwa_dgiga_4_5_0.dat'       SSP_RK3    DGIGA(4,5,0)   	60       1          1:3              20
     'mwa_dgiga_4_5.dat'         SSP_RK3    DGIGA(4,5)   	60       1          1                21
-    
+%-------------------------------------------------------------------------------------------------------    
     'mwa_dgiga_8_2_0.dat'       SSP_RK3    DGIGA(8,2,0)   	60       1          1                22
     'mwa_dgiga_8_2.dat'         SSP_RK3    DGIGA(8,2)   	60       1          1                23
     'mwa_dgiga_8_3_0.dat'       SSP_RK3    DGIGA(8,3,0)   	60       1          1:3              22
@@ -123,16 +123,24 @@ inputData = {
     'mwa_dgiga_8_4.dat'         SSP_RK3    DGIGA(8,4)   	60       1          1                23
     'mwa_dgiga_8_5_0.dat'       SSP_RK3    DGIGA(8,5,0)   	60       1          1:7              22
     'mwa_dgiga_8_5.dat'         SSP_RK3    DGIGA(8,5)   	60       1          1                23
-	
+%-------------------------------------------------------------------------------------------------------	
 	'mwa_dgiga_16_2.dat'        SSP_RK3    DGIGA(16,2)   	60       1          1                24
     'mwa_dgiga_16_3.dat'        SSP_RK3    DGIGA(16,3)   	60       1          1                24
     'mwa_dgiga_16_4.dat'        SSP_RK3    DGIGA(16,4)   	60       1          1                24
     'mwa_dgiga_16_5.dat'        SSP_RK3    DGIGA(16,5)   	60       1          1                24
-	
+%-------------------------------------------------------------------------------------------------------	
 	'mwa_dgiga_32_2.dat'        SSP_RK3    DGIGA(32,2)   	60       1          1:3              25
     'mwa_dgiga_32_3.dat'        SSP_RK3    DGIGA(32,3)   	60       1          1                25
     'mwa_dgiga_32_4.dat'        SSP_RK3    DGIGA(32,4)   	60       1          1                25
     'mwa_dgiga_32_5.dat'        SSP_RK3    DGIGA(32,5)   	60       1          1                25
+%-------------------------------------------------------------------------------------------------------
+    'mwa_dgiga_1_21.dat'        SSP_RK3    DGIGA(1,21)   	60       1          1                29
+    'mwa_dgiga_20_2.dat'        SSP_RK3    DGIGA(20,2)   	60       1          1                29
+    'mwa_dgiga_11_11.dat'       SSP_RK3    DGIGA(11,11)   	60       1          1                29
+    'mwa_dgiga_7_3_0.dat'       SSP_RK3    DGIGA(7,3,0)   	60       1          1:3              29
+%-------------------------------------------------------------------------------------------------------
+    'mwa_dgiga_2_7_0_all.dat'   SSP_RK3    DGIGA(2,7,0)   	50       1          inf              30
+    'mwa_dgiga_2_8_0_all.dat'   SSP_RK3    DGIGA(2,8,0)   	40       1          inf              30
 };
 
 %% Setup
