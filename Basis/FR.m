@@ -17,6 +17,8 @@ classdef FR < Lagrange
             end
             if nargin > 1
                 if this.order == 1 % trivial case (1st order FV)
+                    this.c = nan;
+                    this.eta = nan;
                     this.correctionsR = 0.5;
                     this.correctionsL = -0.5;
                 else
