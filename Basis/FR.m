@@ -12,29 +12,60 @@ classdef FR < Lagrange
         function this = FR(param,varargin)
             this@Lagrange(varargin{:});
             this.auxMassMatrix = this.massMatrix;
-            switch nargin
-                case 0
-                    this.param = 0; % defaults to DG if no correction function is specified
-                    return;
-                case 1
-                    this.param = param;
-                    return;
-                otherwise
-                    this.param = param;
-                    if this.order == 1 % trivial case (1st order FV)
-                        this.correctionsR = 0.5;
-                        this.correctionsL = -0.5;
-                        return
+            if nargin > 0
+                this.param = param;
+            end
+            if nargin > 1
+                if this.order == 1 % trivial case (1st order FV)
+                    this.correctionsR = 0.5;
+                    this.correctionsL = -0.5;
+                else
+                    % Deduce VCJH parameters 'c' and 'eta':
+                    p = factorial(this.degree);
+                    a = factorial(2*this.degree)/(2^this.degree*(p)^2);
+                    if isnumeric(this.param)
+                        warning("Assuming 'eta' was given. Consider using {'eta',%g} to avoid ambiguity.",this.param);
+                        this.param = {'eta',this.param};
                     end
-                % Derivative of the correction function at solution points:
-                this.eta = this.getEtaParameter(param,this.degree);
-                this.c = this.getParameter(this.eta,this.degree);
-                dPn = Legendre.getLegendreAndDerivatives(this.degree+2,this.nodeCoords');
-                this.correctionsR = this.rightVCJH(this.eta,dPn(this.degree:end,:));
-                this.correctionsL = - flip(this.correctionsR);
-                % Mass and gradient matrices (Dirac delta test functions):
-                this.massMatrix = eye(this.basisCount);
-                this.gradientMatrix = this.derivatives;
+                    if iscell(this.param) % VCJH-type scheme
+                        if isscalar(this.param)
+                            error("Inconsistent input. Specify {<name>,<value>} or <name> or <value>.")
+                        end
+                        switch this.param{1}
+                            case 'c'
+                                this.c = this.param{2};
+                                this.eta = 0.5*this.param{2}*(2*this.degree+1)*(a*p)^2;
+                            case 'eta'
+                                this.c = this.param{2}/(0.5*(2*this.degree+1)*(a*p)^2);
+                                this.eta = this.param{2};
+                            otherwise
+                                error("Unknown option '%s'. Expected either 'eta' or 'c'.",this.param{1})
+                        end
+                    else % Huynh-type scheme
+                        switch this.param
+                            case 'min'
+                                this.eta = -.5; % 'safe' minimum (halfway towards unsafe)
+                            case 'DG'
+                                this.eta = 0;
+                            case 'Ga'
+                                this.eta = this.degree/(this.degree+1);
+                            case 'LumpLo'
+                                this.eta = (this.degree+1)/this.degree;
+                            case 'max'
+                                this.eta = 1e16; % not-to-large number
+                            otherwise
+                                error('Correction function unknown (%s).',this.param)
+                        end
+                        this.c = this.eta/(0.5*(2*this.degree+1)*(a*p)^2);
+                    end
+                    % Derivative of the correction function at solution points:
+                    dPn = Legendre.getLegendreAndDerivatives(this.degree+2,this.nodeCoords');
+                    this.correctionsR = this.rightVCJH(this.eta,dPn(this.degree:end,:));
+                    this.correctionsL = - flip(this.correctionsR);
+                    % Mass and gradient matrices (Dirac delta test functions):
+                    this.massMatrix = eye(this.basisCount);
+                    this.gradientMatrix = this.derivatives;
+                end
             end
         end
         %% Instantiate from prototype
@@ -46,7 +77,13 @@ classdef FR < Lagrange
             % Adds the VCJH correction function parameter to this basis's
             % one line descriptor.
             name = getName@Lagrange(this);
-            aux = sprintf('%s(%s)',class(this),num2str(this.param));
+            if iscell(this.param)
+                aux = sprintf('%s(%s = %g)',class(this),this.param{:});
+            elseif isnumeric(this.param)
+                aux = sprintf('%s(eta = %g)',class(this),this.eta);
+            else
+                aux = sprintf('%s(%s)',class(this),this.param);
+            end
             name = strrep(name,class(this),aux);
         end
         %% L2 projection (extension)
@@ -90,57 +127,14 @@ classdef FR < Lagrange
             %            locations.
             g = 0.5*(legendre(2,:) + (eta*legendre(1,:) + legendre(3,:))/(eta+1));
         end
-        %% VCJH parameter 'eta' from degree and parameter 'c'
-        function eta = getEtaParameter(param,degree)
-            % Evaluates eq. 3.45 from Vincent et. al. 2011.
-            %
-            % Arguments
-            %  param: VCJH parameter (can also be a character array)
-            %  degree: degree of the correction function (NOT discretization)
-            %
-            p = factorial(degree);
-            a = factorial(2*degree)/(2^degree*(p)^2);
-            % VCJH-type scheme:
-            if isa(param,'double')
-                eta = 0.5*param*(2*degree+1)*(a*p)^2;
-                return;
-            end
-            % Huyn-type schemes:
-            switch param
-                case 'min'
-                    eta = -.5; % 'safe' minimum (halfway towards unsafe)
-                case 'DG'
-                    eta = 0;
-                case 'Ga'
-                    eta = degree/(degree+1);
-                case 'LumpLo'
-                    eta = (degree+1)/degree;
-                case 'max'
-                    eta = 1e16; % not-to-large number
-                otherwise
-                    error('Correction function unknown.')
-            end
-        end
-        %% VCJH parameter 'c' from degree and parameter 'eta'
-        function param = getParameter(param,degree)
-            % Returns the value for 'c' that would result in a given 'eta'.
-            %
-            % Arguments
-            %  param: VCJH parameter (in: eta; out: c)
-            %  degree: degree of the correction function (NOT discretization)
-            %
-            p = factorial(degree);
-            a = factorial(2*degree)/(2^degree*(p)^2);
-            param = param/(0.5*(2*degree+1)*(a*p)^2);
-        end
         %% Correction functions and derivatives
-        function [gL,dgL,gR,dgR] = getCorrectionFunctionAndDerivative(c,p,xi)
+        function [gL,dgL,gR,dgR] = getCorrectionFunctionAndDerivative(eta,p,xi)
             % Returns the p+1 degree correction functions and their 
-            % derivative (left and right), obtained using a given "c" value
+            % derivative (left and right), obtained using a given "eta" value
             % (VCJH-type correction functions), sampled at given locations. 
             %
             % Arguments
-            %  c: VCJH parameter (e.g. c = 0 <-> DG)
+            %  eta: VCJH parameter (e.g. eta = 0 <-> DG)
             %  p: degree of the solution polynomial
             %  xi: sample locations (1D row array)
             %
@@ -156,7 +150,6 @@ classdef FR < Lagrange
                 dgR = 0.5+0*xi;
                 return;
             end
-            eta = FR.getEtaParameter(c,p);
             [dPn,Pn] = Legendre.getLegendreAndDerivatives(p+2,xi);
             Pn = Pn(p:end,:);
             gR = FR.rightVCJH(eta,Pn);
