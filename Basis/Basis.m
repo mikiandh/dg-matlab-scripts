@@ -225,6 +225,46 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             view(110,15)
             axis equal
         end
+        function orders = getOrder(this,varargin)
+            % Returns a theoretical global order of convergence
+            % in a spectral sense, i.e. associated with the dissipation &
+            % dispersion error (and not the actual truncation error), a la
+            % Vincent et. al. 2011, eq. 4.17.
+            %
+            % Optional arguments
+            %  'k': wavenumbers (not scaled) to be sampled. The output will
+            %       be a 2D array, where each row represents an eigenmode
+            %       and each column a (given) wavenumber. Eigenmodes are
+            %       NOT guaranteed to be sorted.
+            %
+            %  'upw': upwind ratio for the numerical flux.
+            %
+            %  'allWavemodes': if true, output every wavemode's order.
+            %
+            %  'allEigenmodes': if true, output every eigenmode's order.
+            %
+            p = inputParser;
+            addOptional(p,'wavenumbers',...
+                linspace(-3,3,64)*this.basisCount,... avoids 0 and +-pi*J
+                @isnumeric);
+            addOptional(p,'upwind',1,@isscalar);
+            addOptional(p,'allWavemodes',false,@islogical);
+            addOptional(p,'allEigenmodes',false,@islogical);
+            parse(p,varargin{:});
+            k0 = p.Results.wavenumbers/2; % coarse mesh wavenumbers
+            [k,~,ik] = unique([p.Results.wavenumbers k0]); % k(ik) == [p.Results.wavenumbers k0]
+            w = 1i*this.getFourierFootprint(p.Results.upwind,k); % modified wavenumbers
+            errors = abs(w(:,ik) - k(ik)); % rows <-> eigenmodes
+            orders = log(errors(:,1:(end/2))) - log(errors(:,(end/2+1):end));
+            orders = orders/log(2) - 1;
+            if ~p.Results.allEigenmodes
+                orders(2:end,:) = [];
+            end
+            if ~p.Results.allWavemodes && ~isscalar(k0)
+                isOut = (k0 < 0) | [isoutlier(diff(orders(1,:))) false];
+                orders = max(orders(:,~isOut),[],2);
+            end
+        end
     end
     methods (Access = protected)
         %% Assemble Fourier residual matrices (DG)
