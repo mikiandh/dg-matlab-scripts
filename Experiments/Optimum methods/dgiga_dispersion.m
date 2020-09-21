@@ -14,18 +14,21 @@ addpath('../../Solver')
 addpath('../../Basis')
 
 %% Setup
-J = [3 4 5 6]; % 8 11 15 20];
+J = 5;%[3 4 5 6 8 11 15 20];
 pMin = 0*J; % minimum degree required
-switch 2
+switch 0
+    case 0
+        objFun = @(basis) objFun_exactBeforeCutoff(basis);
+        name = 'dgiga_dispersion_exact';
     case 1
         objFun = @(basis) objFun_peakPosition(basis,.5);
-        name = 'dgiga_dispersion_peak50';
+        name = 'dgiga_dispersion_peak0.05';
     case 2
         objFun = @(basis) objFun_proportionalDissipation(basis,1,true);
         name = 'dgiga_dispersion_prop100';
 end
 time = SSP_RK3;
-export = struct('dat',true,'fig',true,'tikz',false);
+export = struct('dat',false,'fig',true,'tikz',false);
 
 %% Preprocess
 try
@@ -39,7 +42,7 @@ tbl = array2table(zeros(numel(J),8),'VariableNames',{'J','pMin','k','p','s','rel
 
 %% Minimization
 I = numel(J);
-parfor i = 1:I
+for i = 1:I
     try
         % Generate all possible candidates:
         [p,s] = meshgrid(1:J(i)-1,0:J(i)-2);
@@ -52,42 +55,44 @@ parfor i = 1:I
         f = zeros(1,sum(isOk(:)));
         %%%
         figure
-        hold on
         xlabel('\kappa')
+        yyaxis left
+        plot([0 pi*J(i)],[0 pi*J(i)],'--')
+        ylabel('\Re(\omega)')
+        yyaxis right
+        plot([0 pi*J(i)],[0 0],'--')
+        ylabel('\Im(\omega)')
+        hold on
         %%%
-        for j = 1:numel(f)
+        % Compute (in parallel):
+        D = parallel.pool.DataQueue;
+        D.afterEach(@plotFun_single);
+        parfor j = 1:numel(f)
             basis = DGIGA(k(j),p(j),s(j));
             f(j) = objFun(basis);
             %%%
             [w,w0] = basis.getFourierFootprint;
             w = 1i*w(1,w0 > 0);
             w0(w0 < 0) = [];
-            yyaxis left
-            plot(w0,real(w),':','DisplayName',sprintf('f = %g',f(j)),'Tag',['disp_' num2str(j)]);
-            ylabel('\Re(\omega)')
-            yyaxis right
-            plot(w0,imag(w),':','Tag',['diss_' num2str(j)]);
-            ylabel('\Im(\omega)')
+            send(D, {j,w0,w,f(j)})
             %%%
-        end
+        end        
         % Extract optimum:
         [~,j] = min(f);
         basis = DGIGA(k(j),p(j),s(j));
         %%%
         yyaxis left
         set(findobj(get(gca,'Children'),'Tag',['disp_' num2str(j)]),'LineStyle','-');
-        set(refline(1,0),'LineStyle','--')
         yyaxis right
         set(findobj(get(gca,'Children'),'Tag',['diss_' num2str(j)]),'LineStyle','-');
-        set(refline(0,0),'LineStyle','--')
         title(sprintf('DGIGA, J = %d (%d combinations)',J(i),numel(f)))
         %%%
-        tbl{i,:} = [J(i) pMin(i) k(j) p(j) s(j) f(j)./f(k==1)-1 basis.getOrder time.optimizeCFL(basis)]; %#ok<PFBNS>
+        tbl{i,:} = [J(i) pMin(i) k(j) p(j) s(j) f(j)./f(k==1)-1 basis.getOrder time.optimizeCFL(basis)];
         fprintf('\nRun %d of %d:\n',i,I)
         disp(tbl(i,:))
         drawnow
         %%%
-        if export.fig %#ok<PFBNS>
+        if export.fig
             saveas(gcf,[name '_' num2str(i) '.fig']);
         end
         if export.tikz
@@ -101,7 +106,7 @@ parfor i = 1:I
 end
 
 %% Postprocess
-tblOut = sortrows([tblIn; tbl],'p');
+tblOut = sortrows([tblIn; tbl],'J');
 clc
 disp(tblOut)
 if export.dat

@@ -1,6 +1,6 @@
 clc
 clear
-%close all
+close all
 
 % This script solves the following nonlinear, scalar, real-valued
 % optimization problem:
@@ -17,11 +17,12 @@ addpath('../../Basis')
 p = [2 3 4 5]; %7 10 14 19];
 time = SSP_RK3;
 objFun = @(eta,p) -time.optimizeCFL(FR({'eta',eta},p));
-filename = 'fr_stability.dat';
+name = 'fr_stability';
+export = struct('dat',false,'fig',true,'tikz',false);
 
 %% Preprocess
 try
-    tblIn = readtable(filename);
+    tblIn = readtable([name '.dat']);
     p(any(p == tblIn.p)) = []; % drop repeated degrees
 catch
     tblIn = table; % empty table
@@ -30,7 +31,7 @@ end
 %% Minimization
 I = numel(p);
 tbl = array2table(zeros(numel(p),7),'VariableNames',{'p','eta','c','exitFlag','relCost','A_T','CFL'});
-for i = 1:I
+parfor i = 1:I
     try
         options = optimset('PlotFcn',{
             @(varargin) plotFun_eigenvalues(p(i),varargin{:})
@@ -42,6 +43,16 @@ for i = 1:I
         tbl{i,:} = [p(i) basis.eta basis.c flag badness basis.getOrder CFL];
         fprintf('\nRun %d of %d:\n',i,I)
         disp(tbl(i,:))
+        drawnow
+        %%%
+        if export.fig %#ok<PFBNS>
+            saveas(gcf,[name '_' num2str(i) '.fig']);
+        end
+        if export.tikz
+            cleanfigure
+            matlab2tikz([name '_' num2str(i) '.tikz'],'showInfo',false)
+        end
+        %%%
     catch me
        warning("Run %d (p = %d) failed with error:\n '%s'",i,p(i),getReport(me))
     end
@@ -49,5 +60,8 @@ end
 
 %% Postprocess
 tblOut = sortrows([tblIn; tbl],'p');
-clc, disp(tblOut)
-writetable(tblOut,filename,'Delimiter','tab')
+clc
+disp(tblOut)
+if export.dat
+    writetable(tblOut,[name '.dat'],'Delimiter','tab')
+end

@@ -26,16 +26,16 @@ switch state
                 delete(findobj(get(gca,'Children'),'Tag','old'));
                 hNew = findobj(get(gca,'Children'),'Tag','new');
                 hOld = copy(hNew,gca);
-                set(hOld,{'Color','Tag'},{'b','old'});
+                set(hOld,{'LineStyle','Tag'},{':','old'});
                 delete(hNew)
             end
         end
         yyaxis left
-        plot(k,-imag(z(1,:)),'-r',...
+        plot(k,-imag(z(1,:)),'-',...
             'DisplayName',sprintf('eta = %g (f = %g)',eta,optimValues.fval),...
             'Tag','new')
         yyaxis right
-        plot(k,real(z(1,:)),'-r','Tag','new')
+        plot(k,real(z(1,:)),'-','Tag','new')
         yyaxis left
         legend(get(gca,'Children'),'Location','South')
 end

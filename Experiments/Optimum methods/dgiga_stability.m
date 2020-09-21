@@ -1,6 +1,6 @@
 clc
 clear
-%close all
+close all
 
 % This script solves the following nonlinear, 3-dimensional, integer-valued
 % optimization problem:
@@ -16,11 +16,12 @@ addpath('../../Basis')
 J = [3 4 5 6]; % 8 11 15 20];
 pMin = 0*J; % minimum degree required
 time = SSP_RK3;
-filename = 'dgiga_stability.dat';
+name = 'dgiga_stability';
+export = struct('dat',false,'fig',false,'tikz',false);
 
 %% Preprocess
 try
-    tblIn = readtable(filename);
+    tblIn = readtable([name '.dat']);
     J(any(J == tblIn.J & pMin == tblIn.pMin)) = []; % drop repeated runs
     J(J < 2) = []; % drop FV methods
 catch
@@ -55,7 +56,9 @@ parfor i = 1:I
 end
 
 %% Postprocess
-tblOut = sortrows([tblIn; tbl],'p');
+tblOut = sortrows([tblIn; tbl],'J');
 clc
 disp(tblOut)
-writetable(tblOut,filename,'Delimiter','tab')
+if export.dat
+    writetable(tblOut,[name '.dat'],'Delimiter','tab')
+end
