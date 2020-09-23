@@ -100,7 +100,7 @@ classdef Solver < matlab.mixin.SetGet
                 this.updateTimeDelta(mesh)
             end
             % Initialize solver monitor (shows initial condition):
-            this.monitor.initialize(mesh)
+            this.monitor.initialize(mesh,p.Results.initialCondition)
             if this.waitForKey
                 fprintf('Paused. Press key to continue...');
                 pause

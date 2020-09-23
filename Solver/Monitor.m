@@ -62,7 +62,7 @@ classdef Monitor < handle
             this.titleHeight = this.titleHeight/this.figurePosition(4);
         end
         %% Initialize
-        function initialize(this,mesh)
+        function initialize(this,mesh,fun)
             % Initializes a figure with a 2D arrangement of subplots.
             %
             % The left column shows one solution component per row, over
@@ -154,7 +154,7 @@ classdef Monitor < handle
                 % Solution samples:
                 t = mesh.elements(k).states(:,1:numel(x0));
                 y = mesh.elements(k).interpolateStateAtCoords(x);
-                z = this.solver.exactSolution(this.solver.timeNow,x);
+                z = fun(x); % passed by the solver (either initial condition or exact solution)
                 for i = this.rows
                     this.hExact(i,k) = plot(this.hAxes(i,1),x,z(i,:),'LineStyle','--','Color','k');
                     this.hDiscrete(i,k) = plot(this.hAxes(i,1),x,y(i,:),'LineStyle','-','Color',this.cDiscrete(k,:));
