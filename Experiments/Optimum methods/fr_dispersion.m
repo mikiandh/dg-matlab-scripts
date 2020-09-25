@@ -15,9 +15,9 @@ addpath('../../Basis')
 
 %% Setup
 p = 5; % [2 3 4 5 7 10 14 19];
-switch 0
+switch 4
     case 0
-        objFun = @(eta,p) objFun_exactBeforeCutoff(FR({'eta',eta},p));
+        objFun = @(eta,p) objFun_exactBeforeCutoff(FR({'eta',eta},p),.9);
         name = 'fr_dispersion_exact';
     case 1
         objFun = @(eta,p) objFun_peakPosition(FR({'eta',eta},p),.5);
@@ -26,8 +26,11 @@ switch 0
         objFun = @(eta,p) objFun_proportionalDissipation(FR({'eta',eta},p),1,true);
         name = 'fr_dispersion_prop100';
     case 3
-        objFun = @(eta,p) objFun_proportionalDissipation(FR({'eta',eta},p),0,false);
-        name = 'fr_dispersion_prop0';
+        objFun = @(eta,p) objFun_Asthana2015(FR({'eta',eta},p));
+        name = 'fr_dispersion_asthana';
+    case 4
+        objFun = @(eta,p) objFun_Adams2015(FR({'eta',eta},p));
+        name = 'fr_dispersion_adams';
 end
 time = SSP_RK3;
 export = struct('dat',false,'fig',true,'tikz',false);
@@ -42,8 +45,8 @@ end
 
 %% Minimization
 I = numel(p);
-tbl = array2table(zeros(I,7),'VariableNames',{'p','eta','c','exitFlag','relCost','A_T','CFL'});
-parfor i = 1:I
+tbl = array2table(zeros(I,8),'VariableNames',{'p','eta','c','exitFlag','relCost','A_T','CFL','e1'});
+for i = 1:I
     try
         options = optimset('PlotFcn',{
             @(varargin) plotFun_dispDiss(p(i),varargin{:})
@@ -51,7 +54,7 @@ parfor i = 1:I
         [eta,badness,flag] = fminbnd(@(x) objFun(x,p(i)),-1,5,options);
         basis = FR({'eta',eta},p(i));
         badness = badness/objFun(0,p(i)) - 1; % relative to DG
-        tbl{i,:} = [p(i) basis.eta basis.c flag badness basis.getOrder time.optimizeCFL(basis)];
+        tbl{i,:} = [p(i) basis.eta basis.c flag badness basis.getOrder time.optimizeCFL(basis) resolvingEfficiency(basis)];
         fprintf('\nRun %d of %d:\n',i,I)
         disp(tbl(i,:))
         drawnow
