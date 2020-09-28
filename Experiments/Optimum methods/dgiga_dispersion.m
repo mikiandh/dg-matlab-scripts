@@ -14,21 +14,12 @@ addpath('../../Solver')
 addpath('../../Basis')
 
 %% Setup
-J = 5;%[3 4 5 6 8 11 15 20];
-pMin = 0*J; % minimum degree required
-switch 0
-    case 0
-        objFun = @(basis) objFun_exactBeforeCutoff(basis);
-        name = 'dgiga_dispersion_exact';
-    case 1
-        objFun = @(basis) objFun_peakPosition(basis,.5);
-        name = 'dgiga_dispersion_peak0.05';
-    case 2
-        objFun = @(basis) objFun_proportionalDissipation(basis,1,true);
-        name = 'dgiga_dispersion_prop100';
-end
+J = [2 3 4 5 7 10 14 19];
+pMin = repelem(0,numel(J)); % minimum degree required
+objFun = @(basis) objFun_Asthana2015(basis);
+name = 'dgiga_dispersion';
 time = SSP_RK3;
-export = struct('dat',false,'fig',true,'tikz',false);
+export = struct('dat',false,'fig',false,'tikz',false);
 
 %% Preprocess
 try

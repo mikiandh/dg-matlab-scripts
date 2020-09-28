@@ -212,6 +212,16 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             [~,ids] = sort(polyarea(real(eigenvals(2:end,:)),imag(eigenvals(2:end,:)),2)); % increasing "shadow size" in the complex plane
             eigenvals(2:end,:) = eigenvals(ids+1,:); % "weirdest ones" next
         end
+        function [k0,varargout] = getModifedWavenumbers(this,varargin)
+            % Returns the exact wavenumbers, then modified ones (one mode
+            % per output, physical first) of this basis.
+            % Dimensionless, but not scaled (range is 0 to pi*J).
+            if nargout > this.basisCount+1
+                error('Too many eigenmodes were requested.')
+            end
+            [z,k0] = this.getFourierFootprint(varargin{:});
+            varargout(1:nargout-1) = num2cell(1i*z(nargout-1,:),2);
+        end
         function displayModifiedWavenumbers(this,varargin)
             % Plots the modified wavenumbers of the discretization (a
             % priori approach) as 3D waves.
@@ -263,6 +273,51 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             if ~p.Results.allWavemodes && ~isscalar(k0)
                 isOut = (k0 < 0) | [isoutlier(diff(orders(1,:))) false];
                 orders = max(orders(:,~isOut),[],2);
+            end
+        end
+        function [kc,k,kM] = getCutoffWavenumber(this,varargin)
+            % Estimates the '1%' wavenumber (dimensionless but not scaled)
+            % of the physical eigenmode of this basis, recursively.
+            %
+            persistent kc0
+            if isempty(kc0)
+                kc0 = 0;
+            end
+            [k,kM] = this.getModifedWavenumbers(varargin{:});
+            n = find(exp(imag(kM/this.basisCount)) <= 0.99 & k > 0,1,'first'); % '1% rule' cutoff wavemode
+            kc = k(n);
+            if abs(kc - kc0) < 1e-4 && kc ~= kc0
+                return % converged
+            else
+                kc0 = kc; %#ok<NASGU>
+                k = [k(1:n-1) mean(k(n-1:n)) k(n:end)];
+                if nargin == 1
+                    beta = 1;
+                else
+                    beta = varargin{1};
+                end
+                kc = this.getCutoffWavenumber(beta,k);
+            end
+            kc0 = []; % clear it (just in case)
+        end
+        function [r,k0,k1] = getDispDissRatios(this,varargin)
+            % Returns the ratio between dispersion and dissipation effects,
+            % a la Adams et al., 2015 (i.e. using group velocity).
+            %
+            p = inputParser;
+            addOptional(p,'beta',1,@(x) validateattributes(x, {'double'},{'scalar'}));
+            addOptional(p,'eps',1e-2,@isnumeric);
+            parse(p,varargin{:});
+            [k0,k1] = this.getModifedWavenumbers(p.Results.beta);
+            k1(k0 < 0) = [];
+            k0(k0 < 0) = [];
+            if isnan(p.Results.eps)
+                n = find(imag(k1) <= -0.01 & k0 > 0,1,'first'); % '1% rule' cutoff wavemode
+                r = -abs(gradient(real(k1),k0)-1)./imag(k1);
+                r(1:n) = nan;
+            else
+                r = abs(gradient(real(k1),k0)-1) + p.Results.eps;
+                r = r./(-imag(k1) + p.Results.eps);
             end
         end
     end

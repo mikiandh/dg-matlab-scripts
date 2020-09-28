@@ -1,42 +1,64 @@
-function stop = plotFun_dispDiss(p,eta,optimValues,state,varargin)
-% Plots the dispersion and dissipation relations of the current iteration
-% in an FR optimization problem.
-% Compares them with those of the previous iteration, DG's, and exact ones.
+function stop = plotFun_dispDiss(eta,optimValues,state,p,i,export)
+% Plots the dispersion and dissipation relations(blue lines), as well as
+% their ratio (a la Adams et al., 2015), in red, and the cutoff wavenumber
+% (a la Moura et al. 2015), in black, of the current iteration in an FR
+% optimization problem. Compares them with those of DG (dotted lines).
 stop = false;
 switch state
     case 'init' % set up the plot
-        [z,k] = FR('DG',p).getFourierFootprint;
+        
+        [r,k,kM] = FR('DG',p).getDispDissRatios;
+        kc = k(find(imag(kM) <= -.01,1,'first')); % cheap estimation (good enough)
+        
         hold on
         yyaxis left
-        plot(k,k,'--k','DisplayName','Exact','Tag','exactDisp')
-        plot(k,-imag(z(1,:)),':k','DisplayName','eta = 0','Tag','refDisp')
-        ylabel \Re(\omega*)
+        ylabel '\Re(\kappa_m), \Im(\kappa_m)'
+        plot([kc kc],[min(imag(kM)) max(real(kM))],':k')
+        plot([kc kc],[min(imag(kM)) max(real(kM))],'-k')
+        
+        plot([0 k(end)],[0 k(end)],'--')
+        plot(k,real(kM),':')
+        plot(k,real(kM),'-')
+        
+        plot([0 k(end)],[0 0],'--')
+        plot(k,imag(kM),':')
+        plot(k,imag(kM),'-')
+        
         yyaxis right
-        plot(k,0*k,'--k','Tag','exactDiss')
-        plot(k,real(z(1,:)),':k','Tag','refDiss')
-        ylabel \Im(\omega*)
-        xlabel \kappa*
-        xlim([0 inf])
-        title(sprintf('Degree: %d',p))
+        ylabel '|d\Re(\kappa_m)/d\kappa - 1|/|\Re(\kappa_m)|'
+        plot(k,r,':')
+        plot(k,r,'-')
+        
+        hold off
+        xlabel '\kappa'
     case 'iter'
-        [z,k] = FR({'eta',eta},p).getFourierFootprint;
-        if optimValues.iteration > 0
-            for side = ["left" "right"]
-                yyaxis(side)
-                delete(findobj(get(gca,'Children'),'Tag','old'));
-                hNew = findobj(get(gca,'Children'),'Tag','new');
-                hOld = copy(hNew,gca);
-                set(hOld,{'LineStyle','Tag'},{':','old'});
-                delete(hNew)
+        basis = FR({'eta',eta},p);
+        [r,k,kM] = basis.getDispDissRatios;
+        kc = k(find(imag(kM) <= -.01,1,'first'));
+        
+        title(sprintf('%s - iter.: %d',basis.getName,optimValues.iteration))
+        yyaxis left
+        h = get(gca,'Children');
+        yyaxis right
+        h = [h; get(gca,'Children')];
+        set(h([1 4 7 9]),{'XData','YData'},{
+            k,imag(kM)
+            k,real(kM)
+            [kc kc],[min(imag(kM)) max(real(kM))]
+            k,r
+            })
+        if export.gif
+            try
+                im = frame2im(getframe(gcf)); % will fail inside a parfor
+            catch
+                return
+            end
+            [imind,cm] = rgb2ind(im,256);
+            if optimValues.iteration == 0
+                imwrite(imind,cm,[export.name '_' num2str(i) '.gif'],'gif','Loopcount',inf);
+            else
+                imwrite(imind,cm,[export.name '_' num2str(i) '.gif'],'gif','WriteMode','append');
             end
         end
-        yyaxis left
-        plot(k,-imag(z(1,:)),'-',...
-            'DisplayName',sprintf('eta = %g (f = %g)',eta,optimValues.fval),...
-            'Tag','new')
-        yyaxis right
-        plot(k,real(z(1,:)),'-','Tag','new')
-        yyaxis left
-        legend(get(gca,'Children'),'Location','South')
 end
 end
