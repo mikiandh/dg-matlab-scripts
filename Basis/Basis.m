@@ -159,11 +159,12 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             end
         end
         %% Fourier eigenvalues
-        function [eigenvals,wavenumbers] = getFourierFootprint(this,beta,wavenumbers)
+        function [eigenvals,wavenumbers,energies] = getFourierFootprint(this,beta,wavenumbers)
             % Returns all eigenvalues of the (dimensionless) residual
             % operator in Fourier space for the inviscid advection
             % equation. Look up 'modified wavenumber analysis' for 
-            % details (e.g. Van den Abeele, 2009).
+            % details; e.g. Van den Abeele (2009) and Alhawwary and Wang
+            % (2018).
             %
             % Input
             %  beta: upwind ratio (usually 1 to 0)
@@ -176,6 +177,9 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             %             "physical" eigenmode.
             %  wavenumbers: actual array of wavenumbers used.
             %
+            %  energies: 2D array of relative energies associated to each
+            %            eigenmode, for every wavemode.
+            %
             if nargin < 2
                 beta = 1; % default to upwind
             end
@@ -184,14 +188,21 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             end
             % Preallocation:
             eigenvals = complex(zeros(this.basisCount,numel(wavenumbers)));
+            energies = zeros(size(eigenvals));
             % Operator assembly (vectorized):
             [E,leftE,rightE] = this.getFourierMatrices(beta);
             coefsL = exp(-1i*wavenumbers.');
             coefsR = coefsL';
-            % Eigenvalues:
+            % Eigenvalues and eigenvectors:
             for n = 1:numel(wavenumbers)
                 R = this.massMatrix \ (E + coefsL(n)*leftE + coefsR(n)*rightE);
-                eigenvals(:,n) = eigs(R,this.basisCount);
+                [V,D] = eigs(R,this.basisCount);
+                eigenvals(:,n) = diag(D);
+                % Relative eigenmode energies:
+                v = ones(this.basisCount,1);
+                energies(:,n) = abs(V \ v).^2;
+                energies(:,n) = energies(:,n)./sum(energies(:,n));
+                
                 % Enforce a consistent ordering:
                 if n > 1
                     [~,i] = min(abs(eigenvals(:,n) - eigenvals(:,n-1).'),[],2); % i(l): eigenmode that the l-th eigenvalue belongs to
@@ -212,6 +223,7 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             [~,ids] = sort(polyarea(real(eigenvals(2:end,:)),imag(eigenvals(2:end,:)),2)); % increasing "shadow size" in the complex plane
             eigenvals(2:end,:) = eigenvals(ids+1,:); % "weirdest ones" next
         end
+        %% Modified wavenumbers
         function [k0,varargout] = getModifedWavenumbers(this,varargin)
             % Returns the exact wavenumbers, then modified ones (one mode
             % per output, physical first) of this basis.
@@ -222,6 +234,7 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             [z,k0] = this.getFourierFootprint(varargin{:});
             varargout(1:nargout-1) = num2cell(1i*z(nargout-1,:),2);
         end
+        %% Block wave 3D plot
         function displayModifiedWavenumbers(this,varargin)
             % Plots the modified wavenumbers of the discretization (a
             % priori approach) as 3D waves.
@@ -235,6 +248,7 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             view(110,15)
             axis equal
         end
+        %% Superconvergence
         function orders = getOrder(this,varargin)
             % Returns a theoretical global order of convergence
             % in a spectral sense, i.e. associated with the dissipation &
@@ -275,50 +289,52 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
                 orders = max(orders(:,~isOut),[],2);
             end
         end
-        function [kc,k,kM] = getCutoffWavenumber(this,varargin)
-            % Estimates the '1%' wavenumber (dimensionless but not scaled)
-            % of the physical eigenmode of this basis, recursively.
+        %% Well-resolved wavnumber
+        function kf = getResolvingWavenumber(this,varargin)
+            % Highest (dimensionless, but not scaled) well-resolved
+            % wavenumber, based on relative error threshold (Lele, 1992).
             %
-            persistent kc0
-            if isempty(kc0)
-                kc0 = 0;
-            end
-            [k,kM] = this.getModifedWavenumbers(varargin{:});
-            n = find(exp(imag(kM/this.basisCount)) <= 0.99 & k > 0,1,'first'); % '1% rule' cutoff wavemode
-            kc = k(n);
-            if abs(kc - kc0) < 1e-4 && kc ~= kc0
-                return % converged
-            else
-                kc0 = kc; %#ok<NASGU>
-                k = [k(1:n-1) mean(k(n-1:n)) k(n:end)];
-                if nargin == 1
-                    beta = 1;
-                else
-                    beta = varargin{1};
-                end
-                kc = this.getCutoffWavenumber(beta,k);
-            end
-            kc0 = []; % clear it (just in case)
+            % Parse inputs:
+            p = inputParser;
+            addParameter(p,'rtol',1e-2,@isnumeric);
+            addOptional(p,'beta',1,@(x) validateattributes(x, {'double'},{'scalar'}));
+            parse(p,varargin{:});
+            varargin = struct2cell(p.Unmatched);
+            % Launch an iterative search:
+            kf = this.findWavenumber(...
+                @(k,kM) abs(kM./k - 1) >= p.Results.rtol & k > 0,...
+                0,p.Results.beta,varargin{:});
         end
+        %% Cutoff wavenumber
+        function kc = getCutoffWavenumber(this,varargin)
+            % Estimates a cutoff wavenumber (dimensionless but not scaled)
+            % of the physical eigenmode of this basis, using the '1% rule'
+            % (Moura et al., 2015).
+            %
+            % Parse inputs:
+            p = inputParser;
+            addOptional(p,'beta',1,@(x) validateattributes(x, {'double'},{'scalar'}));
+            parse(p,varargin{:});
+            varargin = struct2cell(p.Unmatched);
+            % Launch an iterative search:
+            kc = this.findWavenumber(...
+                @(k,kM) exp(imag(kM)/this.basisCount) <= .99 & k > 0,...
+                0,p.Results.beta,varargin{:});
+        end
+        %% Dispersion to dissipation ratio
         function [r,k0,k1] = getDispDissRatios(this,varargin)
             % Returns the ratio between dispersion and dissipation effects,
             % a la Adams et al., 2015 (i.e. using group velocity).
             %
             p = inputParser;
             addOptional(p,'beta',1,@(x) validateattributes(x, {'double'},{'scalar'}));
-            addOptional(p,'eps',1e-2,@isnumeric);
+            addOptional(p,'eps',1e-3,@isfinite);
             parse(p,varargin{:});
             [k0,k1] = this.getModifedWavenumbers(p.Results.beta);
             k1(k0 < 0) = [];
             k0(k0 < 0) = [];
-            if isnan(p.Results.eps)
-                n = find(imag(k1) <= -0.01 & k0 > 0,1,'first'); % '1% rule' cutoff wavemode
-                r = -abs(gradient(real(k1),k0)-1)./imag(k1);
-                r(1:n) = nan;
-            else
-                r = abs(gradient(real(k1),k0)-1) + p.Results.eps;
-                r = r./(-imag(k1) + p.Results.eps);
-            end
+            r = -imag(k1)/this.basisCount + p.Results.eps;
+            r = (abs(gradient(real(k1),k0)-1) + p.Results.eps)./r;
         end
     end
     methods (Access = protected)
@@ -328,6 +344,32 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             A = 2*this.gradientMatrix.' + sparse((1-beta)*this.left*this.left.' - (1+beta)*this.right*this.right.');
             B = (1+beta)*sparse(this.left*this.right.'); % upwind
             C = (-1+beta)*sparse(this.right*this.left.'); % downwind
+        end
+        %% Find wavenumber according to criterion
+        function kf = findWavenumber(this,criterion,k0,beta,varargin)
+            % Given 1D arrays of baseline and modified wavenumbers,
+            % estimates the smallest baseline wavenumber that satisfies a
+            % given criterion.
+            %
+            % Calls itself recursively until the result converges.
+            %
+            % Arguments:
+            %  criterion: @(k,kMod), returning a logical array
+            %  k0: seed
+            %  beta: upwinding ratio
+            %  varargin: (optional) array of wavenumbers to search in
+            %
+            [k,kM] = this.getModifedWavenumbers(beta,varargin{:});
+            n = find(criterion(k,kM),1,'first');
+            kf = k(n);
+            if isempty(kf)
+                kf = nan;
+                return; % no solution exists
+            elseif kf ~= k0 && abs(kf - k0) < 1e-4 && n > 1
+                return % converged
+            end
+            k = [k(2:n-1) mean(k(n-1:n)) k(n:end)]; % bisection (of sorts)
+            kf = findWavenumber(this,criterion,kf,beta,k); % try again
         end
     end
     methods (Static, Access = protected, Sealed)
