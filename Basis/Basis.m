@@ -289,7 +289,7 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
                 orders = max(orders(:,~isOut),[],2);
             end
         end
-        %% Well-resolved wavnumber
+        %% Well-resolved wavenumber
         function kf = getResolvingWavenumber(this,varargin)
             % Highest (dimensionless, but not scaled) well-resolved
             % wavenumber, based on relative error threshold (Lele, 1992).
@@ -335,6 +335,100 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             k0(k0 < 0) = [];
             r = -imag(k1)/this.basisCount + p.Results.eps;
             r = (abs(gradient(real(k1),k0)-1) + p.Results.eps)./r;
+        end
+        %% Dispersion relation plots
+        function displayDispDiss(this,varargin)
+            % Plots dispersion, dissipation and their ratio, each in a
+            % different subplot, along with the well-resolved range and
+            % cutoff wavenumber, in the current figure.
+            %
+            % Only the physical eigenmode, and only positive wavenumbers.
+            %
+            % Arguments:
+            %  beta: (optional) upwinding ratio
+            %  wavenumbers: (optional) wavenumbers to sample
+            %
+            % Get data:
+            [r,k0,k1] = this.getDispDissRatios(varargin{:});
+            kf = this.getResolvingWavenumber(varargin{:});
+            kc = this.getCutoffWavenumber(varargin{:});
+            % Scale it:
+            k0 = k0/this.basisCount;
+            k1 = k1/this.basisCount;
+            kf = kf/this.basisCount;
+            kc = kc/this.basisCount;
+            % Set it up:
+            refData = {k0([1 end]),[0 0],[1 1]};
+            numData = {real(k1) imag(k1) r};
+            yLabels = {
+                '$$\frac{\tilde{\kappa}^*_\Re}{J}$$'
+                '$$\frac{\tilde{\kappa}^*_\Im}{J}$$'
+                '$$\frac{J |\frac{d\tilde{\kappa}^*_\Re}{d\kappa} - 1|}{-\tilde{\kappa}^*_\Im}$$'
+            };
+            % Plot it: 
+            for i = 1:3
+                subplot(3,3,3*(i-1)+[1 2])
+                if isempty(get(gca,'Children'))
+                    plot(k0([1 end]),refData{i},'--k','DisplayName','Ideal')
+                end
+                hold on
+                h = plot(k0,numData{i},'DisplayName',this.getName);
+                plot([kf kf],[min(numData{i}) max(numData{i})],'--','Color',h.Color,'DisplayName',['DNS; ' this.getName])
+                plot([kc kc],[min(numData{i}) max(numData{i})],':','Color',h.Color,'DisplayName',['LES; ' this.getName])
+                hold off
+                xlabel('$$\frac{\kappa^*}{J}$$','Interpreter','Latex')
+                ylabel(yLabels{i},'Interpreter','Latex')
+            end
+            % Add a separate legend:
+            g = subplot(3,3,3:3:9);
+            set(g,'Visible','off')
+            h = get(gcf,'Children');
+            legend(g,h(end).Children,'Location','best')
+        end
+        %% Damping plot
+        function displayDamping(this,varargin)
+            % Plots:
+            %  1) the #DOFs crossed, for each wavelet, at which its 
+            %     amplitude is reduced by ~0.632.
+            %  2) the reduction in amplitude, for each wavelet, after
+            %     crossing 1 DOF.
+            %
+            % Only the physical eigenmode, and only positive wavenumbers.
+            %
+            % Arguments:
+            %  beta: (optional) upwinding ratio
+            %  wavenumbers: (optional) wavenumbers to sample
+            %
+            % Get data:
+            [r,k0] = this.getDispDissRatios(varargin{:});
+            kf = this.getResolvingWavenumber(varargin{:});
+            kc = this.getCutoffWavenumber(varargin{:});
+            % Scale it:
+            k0 = k0/this.basisCount;
+            kf = kf/this.basisCount;
+            kc = kc/this.basisCount;
+            % Set it up:
+            numData = {r 1-exp(-1./r)};
+            yLabels = {
+                '$$\chi = \frac{J |\frac{d\tilde{\kappa}^*_\Re}{d\kappa} - 1|}{-\tilde{\kappa}^*_\Im}$$'
+                '$$1 - \exp\left(-\frac{1}{\chi}\right)$$'
+            };
+            % Plot it: 
+            for i = 1:2
+                subplot(2,3,3*(i-1)+[1 2])
+                hold on
+                h = plot(k0,numData{i},'DisplayName',this.getName);
+                plot([kf kf],[min(numData{i}) max(numData{i})],'--','Color',h.Color,'DisplayName',['DNS; ' this.getName])
+                plot([kc kc],[min(numData{i}) max(numData{i})],':','Color',h.Color,'DisplayName',['LES; ' this.getName])
+                hold off
+                xlabel('$$\frac{\kappa^*}{J}$$','Interpreter','Latex')
+                ylabel(yLabels{i},'Interpreter','Latex')
+            end
+            % Add a separate legend:
+            g = subplot(2,3,3:3:6);
+            set(g,'Visible','off')
+            h = get(gcf,'Children');
+            legend(g,h(end).Children,'Location','best')
         end
     end
     methods (Access = protected)
