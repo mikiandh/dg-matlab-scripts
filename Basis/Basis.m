@@ -159,18 +159,22 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             end
         end
         %% Fourier eigenvalues
-        function [eigenvals,wavenumbers,energies] = getFourierFootprint(this,beta,wavenumbers)
+        function [eigenvals,wavenumbers,energies] = getFourierFootprint(this,varargin)
             % Returns all eigenvalues of the (dimensionless) residual
             % operator in Fourier space for the inviscid advection
             % equation. Look up 'modified wavenumber analysis' for 
             % details; e.g. Van den Abeele (2009) and Alhawwary and Wang
             % (2018).
             %
-            % Input
-            %  beta: upwind ratio (usually 1 to 0)
+            % Input (optional)
+            %  upwind: amount of upwinding (usually 1 or 0)
             %  wavenumbers: 1D array of (exact, real) wavenumbers associated
             %               with the columns of the eigenvalue matrix
             %               (default: 61 wavemodes, uniformly around zero).
+            %  order: group eigenmodes such that:
+            %                1) each mode's Block wave is smooth
+            %             or
+            %                2) each mode has similar energy content
             % Output
             %  eigenvals: 2D array of eigenvalues (row: eigenmode; column: 
             %             wavemode). Sorted such that the 1st row is the
@@ -180,17 +184,19 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             %  energies: 2D array of relative energies associated to each
             %            eigenmode, for every wavemode.
             %
-            if nargin < 2
-                beta = 1; % default to upwind
-            end
-            if nargin < 3
-                wavenumbers = pi*this.basisCount*linspace(-1,1,this.basisCount*60); % 60 generating patterns (resolution)
-            end
+            p = inputParser;
+            addParameter(p,'upwind',1,@isscalar);
+            addParameter(p,'wavenumbers',...
+                pi*this.basisCount*linspace(-1,1,this.basisCount*60),... % 60 generating patterns (resolution)
+                @isnumeric);
+            addParameter(p,'order','default',@ischar); % seek eigenmodes that are smooth, regardless of energy content
+            parse(p,varargin{:});
             % Preallocation:
+            wavenumbers = p.Results.wavenumbers;
             eigenvals = complex(zeros(this.basisCount,numel(wavenumbers)));
             energies = zeros(size(eigenvals));
             % Operator assembly (vectorized):
-            [E,leftE,rightE] = this.getFourierMatrices(beta);
+            [E,leftE,rightE] = this.getFourierMatrices(p.Results.upwind);
             coefsL = exp(-1i*wavenumbers.');
             coefsR = coefsL';
             % Eigenvalues and eigenvectors:
@@ -198,55 +204,60 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
                 R = this.massMatrix \ (E + coefsL(n)*leftE + coefsR(n)*rightE);
                 [V,D] = eigs(R,this.basisCount);
                 eigenvals(:,n) = diag(D);
+                % Fourier 'L2' coefficients:
+                v = this.massMatrix \ Algorithms.quadvgk(...
+                    @(xi) this.sampleAt(xi).*exp(1i*wavenumbers(n)*.5*(1+xi)),...
+                    [this.breakCoords(1:end-1); this.breakCoords(2:end)],...
+                    this.basisCount...
+                );
+                %%% Fourier 'interpolatory' coefficients %%%%%%%%%%%%
+                % v = exp(1i*wavenumbers(n)*.5*(1+this.dofCoords)); %
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 % Relative eigenmode energies:
-                v = ones(this.basisCount,1);
                 energies(:,n) = abs(V \ v).^2;
                 energies(:,n) = energies(:,n)./sum(energies(:,n));
-                
                 % Enforce a consistent ordering:
                 if n > 1
-                    [~,i] = min(abs(eigenvals(:,n) - eigenvals(:,n-1).'),[],2); % i(l): eigenmode that the l-th eigenvalue belongs to
-                    j = find(sum(abs(eigenvals(i,n-1) - eigenvals(i,n-1).') < 1e-12) > 1); % ambiguous eigenvalues (assigned to the same eigenmode or almost equal in the previous wavemode)
-                    if ~isempty(j) && n > 2
-                        k = unique([i(j)' find(sum(1:numel(i) == i) == 0)]); % suspicious eigenmodes (assigned to >1 or <1 eigenvalues, or with almost equal eigenvalues in the previous wavemode)
-                        [~,ii] = min(abs(eigenvals(j,n).' - 2*eigenvals(k,n-1) + eigenvals(k,n-2)),[],2); % suspicious eigenmode that each ambiguous eigenvalue belongs to
-                        ii(sum(ii == ii') > 1) = find(sum(1:numel(ii) == ii) ~= 1); % assign remaining eigenmodes to remaining eigenvalues 'as is' (if any are still ambiguous)
-                        i(j) = k(ii); % j-th eigenvalue actually corresponds to the k(ii)-th eigenmode
+                    switch p.Results.order
+                        case 'energy'
+                            [energies(:,n),i] = sort(energies(:,n),'descend');
+                            eigenvals(:,n) = eigenvals(i,n);
+                        otherwise
+                            [~,i] = min(abs(eigenvals(:,n) - eigenvals(:,n-1).'),[],2); % i(l): eigenmode that the l-th eigenvalue belongs to
+                            j = find(sum(abs(eigenvals(i,n-1) - eigenvals(i,n-1).') < 1e-12) > 1); % ambiguous eigenvalues (assigned to the same eigenmode or almost equal in the previous wavemode)
+                            if ~isempty(j) && n > 2
+                                k = unique([i(j)' find(sum(1:numel(i) == i) == 0)]); % suspicious eigenmodes (assigned to >1 or <1 eigenvalues, or with almost equal eigenvalues in the previous wavemode)
+                                [~,ii] = min(abs(eigenvals(j,n).' - 2*eigenvals(k,n-1) + eigenvals(k,n-2)),[],2); % suspicious eigenmode that each ambiguous eigenvalue belongs to
+                                ii(sum(ii == ii') > 1) = find(sum(1:numel(ii) == ii) ~= 1); % assign remaining eigenmodes to remaining eigenvalues 'as is' (if any are still ambiguous)
+                                i(j) = k(ii); % j-th eigenvalue actually corresponds to the k(ii)-th eigenmode
+                            end
+                            eigenvals(i,n) = eigenvals(:,n);
+                            energies(i,n) = energies(:,n);
                     end
-                    eigenvals(i,n) = eigenvals(:,n);
                 end
             end
             % Sort eigenmodes:
             isInRange = wavenumbers/this.basisCount > -pi/2 & wavenumbers/this.basisCount < pi/2; % subset of wavenumbers to consider
             [~,ids] = sort(vecnorm(imag(eigenvals(:,isInRange)) + wavenumbers(:,isInRange),2,2)); % increasing L2-error with exact dispersion relation
             eigenvals = eigenvals(ids,:); % physical first
+            energies = energies(ids,:);
             [~,ids] = sort(polyarea(real(eigenvals(2:end,:)),imag(eigenvals(2:end,:)),2)); % increasing "shadow size" in the complex plane
             eigenvals(2:end,:) = eigenvals(ids+1,:); % "weirdest ones" next
+            energies(2:end,:) = energies(ids+1,:);
         end
         %% Modified wavenumbers
-        function [k0,varargout] = getModifedWavenumbers(this,varargin)
+        function [k0,varargout] = getModifiedWavenumbers(this,varargin)
             % Returns the exact wavenumbers, then modified ones (one mode
-            % per output, physical first) of this basis.
-            % Dimensionless, but not scaled (range is 0 to pi*J).
+            % per output) of this basis; dimensionless, but not scaled
+            % (range is 0 to pi*J).
+            %
             if nargout > this.basisCount+1
                 error('Too many eigenmodes were requested.')
             end
+            % Compute the stuff:
             [z,k0] = this.getFourierFootprint(varargin{:});
-            varargout(1:nargout-1) = num2cell(1i*z(nargout-1,:),2);
-        end
-        %% Block wave 3D plot
-        function displayModifiedWavenumbers(this,varargin)
-            % Plots the modified wavenumbers of the discretization (a
-            % priori approach) as 3D waves.
-            [z,k] = this.getFourierFootprint(varargin{:});
-            z = z/this.basisCount;
-            k = k/this.basisCount;
-            plot3(k,-imag(z),real(z),k,k,0*k,'--k')
-            xlabel('$\kappa/J$','Interpreter','LaTex')
-            ylabel('$\Re(\tilde{\kappa})/J$','Interpreter','LaTex')
-            zlabel('$\Im(\tilde{\kappa})/J$','Interpreter','LaTex')
-            view(110,15)
-            axis equal
+            % Determine which modes to output:
+            varargout(1:nargout-1) = num2cell(1i*z(1:nargout-1,:),2);
         end
         %% Superconvergence
         function orders = getOrder(this,varargin)
@@ -268,16 +279,17 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             %  'allEigenmodes': if true, output every eigenmode's order.
             %
             p = inputParser;
-            addOptional(p,'wavenumbers',...
+            p.KeepUnmatched = true;
+            addParameter(p,'wavenumbers',...
                 linspace(-3,3,64)*this.basisCount,... avoids 0 and +-pi*J
                 @isnumeric);
-            addOptional(p,'upwind',1,@isscalar);
-            addOptional(p,'allWavemodes',false,@islogical);
-            addOptional(p,'allEigenmodes',false,@islogical);
+            addParameter(p,'allWavemodes',false,@islogical);
+            addParameter(p,'allEigenmodes',false,@islogical);
             parse(p,varargin{:});
+            varargin = [fields(p.Unmatched) struct2cell(p.Unmatched)]';
             k0 = p.Results.wavenumbers/2; % coarse mesh wavenumbers
             [k,~,ik] = unique([p.Results.wavenumbers k0]); % k(ik) == [p.Results.wavenumbers k0]
-            w = 1i*this.getFourierFootprint(p.Results.upwind,k); % modified wavenumbers
+            w = 1i*this.getFourierFootprint('wavenumbers',k,varargin{:}); % modified wavenumbers
             errors = abs(w(:,ik) - k(ik)); % rows <-> eigenmodes
             orders = log(errors(:,1:(end/2))) - log(errors(:,(end/2+1):end));
             orders = orders/log(2) - 1;
@@ -296,14 +308,14 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             %
             % Parse inputs:
             p = inputParser;
-            addParameter(p,'rtol',1e-2,@isnumeric);
-            addOptional(p,'beta',1,@(x) validateattributes(x, {'double'},{'scalar'}));
+            p.KeepUnmatched = true;
+            addParameter(p,'rtol',1e-2,@isfinite);
             parse(p,varargin{:});
-            varargin = struct2cell(p.Unmatched);
+            varargin = [fields(p.Unmatched) struct2cell(p.Unmatched)]';
             % Launch an iterative search:
             kf = this.findWavenumber(...
                 @(k,kM) abs(kM./k - 1) >= p.Results.rtol & k > 0,...
-                0,p.Results.beta,varargin{:});
+                0,varargin{:});
         end
         %% Cutoff wavenumber
         function kc = getCutoffWavenumber(this,varargin)
@@ -311,15 +323,10 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             % of the physical eigenmode of this basis, using the '1% rule'
             % (Moura et al., 2015).
             %
-            % Parse inputs:
-            p = inputParser;
-            addOptional(p,'beta',1,@(x) validateattributes(x, {'double'},{'scalar'}));
-            parse(p,varargin{:});
-            varargin = struct2cell(p.Unmatched);
             % Launch an iterative search:
             kc = this.findWavenumber(...
                 @(k,kM) exp(imag(kM)/this.basisCount) <= .99 & k > 0,...
-                0,p.Results.beta,varargin{:});
+                0,varargin{:});
         end
         %% Dispersion to dissipation ratio
         function [r,k0,k1] = getDispDissRatios(this,varargin)
@@ -327,26 +334,154 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             % a la Adams et al., 2015 (i.e. using group velocity).
             %
             p = inputParser;
-            addOptional(p,'beta',1,@(x) validateattributes(x, {'double'},{'scalar'}));
-            addOptional(p,'eps',1e-3,@isfinite);
+            p.KeepUnmatched = true;
+            addParameter(p,'eps',1e-3,@isfinite);
             parse(p,varargin{:});
-            [k0,k1] = this.getModifedWavenumbers(p.Results.beta);
+            varargin = [fields(p.Unmatched) struct2cell(p.Unmatched)]';
+            [k0,k1] = this.getModifiedWavenumbers(varargin{:});
             k1(k0 < 0) = [];
             k0(k0 < 0) = [];
             r = -imag(k1)/this.basisCount + p.Results.eps;
             r = (abs(gradient(real(k1),k0)-1) + p.Results.eps)./r;
         end
-        %% Dispersion relation plots
+        %% Block wave 3D plot
+        function displayModifiedWavenumbers(this,varargin)
+            % Plots the modified wavenumbers of the discretization (a
+            % priori approach) as 3D waves.
+            [z,k] = this.getFourierFootprint(varargin{:});
+            z = z/this.basisCount;
+            k = k/this.basisCount;
+            plot3(k,-imag(z),real(z),k,k,0*k,'--k')
+            xlabel('$\kappa^*/J$','Interpreter','LaTex')
+            ylabel('$\Re(\tilde{\kappa}^*)/J$','Interpreter','LaTex')
+            zlabel('$\Im(\tilde{\kappa}^*)/J$','Interpreter','LaTex')
+            view(110,15)
+            axis equal
+        end
+        %% Single-mode dispersion & dissipation
         function displayDispDiss(this,varargin)
+            % Plots the real and complex parts of the physical or dominant
+            % eigenmode (depending on optional input).
+            %
+            % Compute:
+            [k0,k1] = this.getModifiedWavenumbers(varargin{:});
+            k0 = k0/this.basisCount;
+            k1 = k1/this.basisCount;
+            % Setup plots:
+            subplot(2,1,1)
+            if isempty(get(gca,'Children'))
+                plot(k0([1 end]),k0([1 end]),'--k','DisplayName','Exact disp.')
+                xlabel('$\frac{\kappa^*}{J}$','Interpreter','LaTex')
+                ylabel('$\frac{\tilde{\kappa}^*_\Re}{J}$','Interpreter','LaTex')
+            end
+            hold on
+            subplot(2,1,2)
+            if isempty(get(gca,'Children'))
+                plot(k0([1 end]),[0 0],'--k','DisplayName','Exact diss.')
+                xlabel('$\frac{\kappa^*}{J}$','Interpreter','LaTex')
+                ylabel('$\frac{\tilde{\kappa}^*_\Im}{J}$','Interpreter','LaTex')
+            end
+            hold on
+            % Plot disp. and diss.:
+            subplot(2,1,1)
+            plot(k0,real(k1),'DisplayName',this.getName)
+            subplot(2,1,2)
+            plot(k0,imag(k1),'DisplayName',this.getName)
+            % Finishing touches:
+            for i = 1:2
+                subplot(2,1,i)
+                legend('Location','northwest')
+                hold off
+            end
+        end
+        %% Energy-weighted mean dispersion & dissipation
+        function displayDispDissMean(this,varargin)
+            % Plots the real and complex parts of the energy-weighted
+            % average among all eigenmodes.
+            %
+            % Compute:
+            [z,k,e] = this.getFourierFootprint(varargin{:});
+            z = sum(z.*e)/this.basisCount; % weighted average
+            k = k/this.basisCount;
+            % Setup plots:
+            subplot(2,1,1)
+            if isempty(get(gca,'Children'))
+                plot(k([1 end]),k([1 end]),'--k','DisplayName','Exact disp.')
+                xlabel('$\frac{\kappa^*}{J}$','Interpreter','LaTex')
+                ylabel('$\frac{\tilde{\kappa}^*_\Re}{J}$','Interpreter','LaTex')
+            end
+            hold on
+            subplot(2,1,2)
+            if isempty(get(gca,'Children'))
+                plot(k([1 end]),[0 0],'--k','DisplayName','Exact diss.')
+                xlabel('$\frac{\kappa^*}{J}$','Interpreter','LaTex')
+                ylabel('$\frac{\tilde{\kappa}^*_\Im}{J}$','Interpreter','LaTex')
+            end
+            hold on
+            % Plot disp. and diss.:
+            subplot(2,1,1)
+            plot(k,-imag(z),'DisplayName',[this.getName ' (averaged)'])
+            subplot(2,1,2)
+            plot(k,real(z),'DisplayName',[this.getName ' (averaged)'])
+            % Finishing touches:
+            for i = 1:2
+                subplot(2,1,i)
+                legend('Location','northwest')
+                hold off
+            end
+        end
+        %% Dispersion & dissipation colored by energy content
+        function displayDispDissEnergy(this,varargin)
+            % Plots the real and complex parts of every modified wavenumber
+            % associated to each baseline one, each in a separate scatter
+            % subplot.
+            %
+            % Colors each point according to its relative energy content.
+            %
+            % Compute:
+            [z,k,e] = this.getFourierFootprint(varargin{:});
+            z = z/this.basisCount;
+            k = k/this.basisCount;
+            % Setup plots:
+            sz = 1+10*(1-tanh(this.basisCount/10)); % ensures 10 >= sz > 1
+            colormap jet
+            subplot(2,1,1)
+            if isempty(get(gca,'Children'))
+                plot(k([1 end]),k([1 end]),'--k','DisplayName','Exact disp.')
+                xlabel('$\frac{\kappa^*}{J}$','Interpreter','LaTex')
+                ylabel('$\frac{\tilde{\kappa}^*_\Re}{J}$','Interpreter','LaTex')
+            end
+            hold on
+            subplot(2,1,2)
+            if isempty(get(gca,'Children'))
+                plot(k([1 end]),[0 0],'--k','DisplayName','Exact diss.')
+                xlabel('$\frac{\kappa^*}{J}$','Interpreter','LaTex')
+                ylabel('$\frac{\tilde{\kappa}^*_\Im}{J}$','Interpreter','LaTex')
+            end
+            hold on
+            % Plot disp. and diss.:
+            for i = 1:this.basisCount
+                subplot(2,1,1)
+                scatter(k,-imag(z(i,:)),sz,e(i,:),'filled','DisplayName',sprintf('%s (mode %d)',this.getName,i))
+                subplot(2,1,2)
+                scatter(k,real(z(i,:)),sz,e(i,:),'filled','DisplayName',sprintf('%s (mode %d)',this.getName,i))
+            end
+            % Finishing touches:
+            for i = 1:2
+                subplot(2,1,i)
+                legend('Location','northwest')
+                hcb = colorbar('eastoutside');
+                hcb.Label.String = 'Relative energy';
+                hold off
+            end
+        end
+        %% Dispersion, dissipation and their ratio
+        function displayDispDissRatio(this,varargin)
             % Plots dispersion, dissipation and their ratio, each in a
             % different subplot, along with the well-resolved range and
             % cutoff wavenumber, in the current figure.
             %
             % Only the physical eigenmode, and only positive wavenumbers.
-            %
-            % Arguments:
-            %  beta: (optional) upwinding ratio
-            %  wavenumbers: (optional) wavenumbers to sample
             %
             % Get data:
             [r,k0,k1] = this.getDispDissRatios(varargin{:});
@@ -430,6 +565,20 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             h = get(gcf,'Children');
             legend(g,h(end).Children,'Location','best')
         end
+        %% Eigenmode energy content
+        function displayEnergy(this,varargin)
+            % Plots the relative energy content in each eigenmode.
+            %
+            [~,k,e] = this.getFourierFootprint(varargin{:});
+            hold on
+            h = plot(k/this.basisCount,e);
+            set(h,{'DisplayName'},...
+                compose('%s (mode %d)',this.getName,1:this.basisCount)')
+            hold off
+            xlabel('$\frac{\kappa^*}{J}$','Interpreter','LaTex')
+            ylabel('$\Gamma$','Interpreter','LaTex')
+            legend('Location','west')
+        end
     end
     methods (Access = protected)
         %% Assemble Fourier residual matrices (DG)
@@ -440,30 +589,31 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             C = (-1+beta)*sparse(this.right*this.left.'); % downwind
         end
         %% Find wavenumber according to criterion
-        function kf = findWavenumber(this,criterion,k0,beta,varargin)
+        function kf = findWavenumber(this,criterion,k0,varargin)
             % Given 1D arrays of baseline and modified wavenumbers,
             % estimates the smallest baseline wavenumber that satisfies a
             % given criterion.
             %
-            % Calls itself recursively until the result converges.
+            % Iterates until the result converges.
             %
             % Arguments:
             %  criterion: @(k,kMod), returning a logical array
             %  k0: seed
-            %  beta: upwinding ratio
-            %  varargin: (optional) array of wavenumbers to search in
+            %  varargin: (optional) passed on
             %
-            [k,kM] = this.getModifedWavenumbers(beta,varargin{:});
-            n = find(criterion(k,kM),1,'first');
-            kf = k(n);
-            if isempty(kf)
-                kf = nan;
-                return; % no solution exists
-            elseif kf ~= k0 && abs(kf - k0) < 1e-4 && n > 1
-                return % converged
+            [k,kM] = this.getModifiedWavenumbers(varargin{:});
+            kf = k0;
+            while kf == k0 || abs(kf - k0) > 1e-4
+                n = find(criterion(k,kM),1,'first');
+                if isempty(n) || n == 1
+                    kf = nan;
+                    return
+                end
+                k0 = kf;
+                kf = k(n);
+                k = [k(2:n-1) mean(k(n-1:n)) k(n:end)]; % bisection (of sorts)
+                [k,kM] = this.getModifiedWavenumbers(varargin{:},'wavenumbers',k);
             end
-            k = [k(2:n-1) mean(k(n-1:n)) k(n:end)]; % bisection (of sorts)
-            kf = findWavenumber(this,criterion,kf,beta,k); % try again
         end
     end
     methods (Static, Access = protected, Sealed)
