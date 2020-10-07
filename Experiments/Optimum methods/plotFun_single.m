@@ -1,8 +1,8 @@
 function plotFun_single(inputCell)
-[j,k,w,f] = inputCell{:};
+[j,k,w,name] = inputCell{:};
 yyaxis left
-plot(k,real(w),':','DisplayName',sprintf('f = %g',f),'Tag',['disp_' num2str(j)])
+plot(k,real(w),':','DisplayName',[name ' (disp.)'],'Tag',['disp_' num2str(j)])
 yyaxis right
-plot(k,imag(w),':','Tag',['diss_' num2str(j)])
+plot(k,imag(w),':','DisplayName',[name ' (diss.)'],'Tag',['diss_' num2str(j)])
 drawnow('limitrate')
 end

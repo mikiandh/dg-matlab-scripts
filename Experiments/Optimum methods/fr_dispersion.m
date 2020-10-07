@@ -14,7 +14,7 @@ addpath('../../Solver')
 addpath('../../Basis')
 
 %% Setup
-p = 5;%[2 3 4 5 7 10 14 19];
+p = logspacei(2,19,10);
 objFun = @(eta,p) objFun_Asthana2015(FR({'eta',eta},p));
 time = SSP_RK3;
 export = struct('name','fr_dispersion',...

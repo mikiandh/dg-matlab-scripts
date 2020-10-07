@@ -332,6 +332,7 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
         function [r,k0,k1] = getDispDissRatios(this,varargin)
             % Returns the ratio between dispersion and dissipation effects,
             % a la Adams et al., 2015 (i.e. using group velocity).
+            % Only for nonnegative wavenumbers.
             %
             p = inputParser;
             p.KeepUnmatched = true;
@@ -483,10 +484,24 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             %
             % Only the physical eigenmode, and only positive wavenumbers.
             %
+            % Parser:
+            p = inputParser;
+            p.KeepUnmatched = true;
+            addParameter(p,'showCutoff','both',@ischar);
+            parse(p,varargin{:});
+            varargin = [fields(p.Unmatched) struct2cell(p.Unmatched)]';
             % Get data:
             [r,k0,k1] = this.getDispDissRatios(varargin{:});
-            kf = this.getResolvingWavenumber(varargin{:});
-            kc = this.getCutoffWavenumber(varargin{:});
+            if any(strcmpi(p.Results.showCutoff,{'resolving','DNS','both'}))
+                kf = this.getResolvingWavenumber(varargin{:});
+            else
+                kf = nan;
+            end
+            if any(strcmpi(p.Results.showCutoff,{'1%','LES','both'}))
+                kc = this.getCutoffWavenumber(varargin{:});
+            else
+                kc = nan;
+            end
             % Scale it:
             k0 = k0/this.basisCount;
             k1 = k1/this.basisCount;
@@ -508,8 +523,8 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
                 end
                 hold on
                 h = plot(k0,numData{i},'DisplayName',this.getName);
-                plot([kf kf],[min(numData{i}) max(numData{i})],'--','Color',h.Color,'DisplayName',['DNS; ' this.getName])
-                plot([kc kc],[min(numData{i}) max(numData{i})],':','Color',h.Color,'DisplayName',['LES; ' this.getName])
+                plot([kf kf],[min(numData{i}) max(numData{i})],'--','Color',h.Color,'DisplayName',['Resolv. cutoff; ' this.getName])
+                plot([kc kc],[min(numData{i}) max(numData{i})],':','Color',h.Color,'DisplayName',['1% diss. cutoff; ' this.getName])
                 hold off
                 xlabel('$$\frac{\kappa^*}{J}$$','Interpreter','Latex')
                 ylabel(yLabels{i},'Interpreter','Latex')

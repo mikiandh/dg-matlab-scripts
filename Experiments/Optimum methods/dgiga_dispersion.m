@@ -14,9 +14,9 @@ addpath('../../Solver')
 addpath('../../Basis')
 
 %% Setup
-J = [2 3 4 5 7 10 14 19];
+J = logspacei(3,20,10);
 pMin = repelem(0,numel(J)); % minimum degree required
-objFun = @(basis) objFun_Asthana2015(basis);
+objFun = @(basis) objFun_Asthana2015(basis); %objFun_DispDissRatio(basis); %
 name = 'dgiga_dispersion';
 time = SSP_RK3;
 export = struct('dat',false,'fig',false,'tikz',false);
@@ -48,10 +48,10 @@ for i = 1:I
         figure
         xlabel('\kappa')
         yyaxis left
-        plot([0 pi*J(i)],[0 pi*J(i)],'--')
+        plot([0 pi*J(i)],[0 pi*J(i)],'--','DisplayName','Exact (disp.)')
         ylabel('\Re(\omega)')
         yyaxis right
-        plot([0 pi*J(i)],[0 0],'--')
+        plot([0 pi*J(i)],[0 0],'--','DisplayName','Exact (diss.)')
         ylabel('\Im(\omega)')
         hold on
         %%%
@@ -65,9 +65,9 @@ for i = 1:I
             [w,w0] = basis.getFourierFootprint;
             w = 1i*w(1,w0 > 0);
             w0(w0 < 0) = [];
-            send(D, {j,w0,w,f(j)})
+            send(D, {j,w0,w,basis.getName})
             %%%
-        end        
+        end
         % Extract optimum:
         [~,j] = min(f);
         basis = DGIGA(k(j),p(j),s(j));
