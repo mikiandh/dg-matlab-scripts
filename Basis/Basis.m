@@ -159,7 +159,8 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             end
         end
         %% Fourier eigenvalues
-        function [eigenvals,wavenumbers,energies] = getFourierFootprint(this,varargin)
+        function [eigenvals,wavenumbers,energies,eigamps,dofamps,...
+                eigvecmat] = getFourierFootprint(this,varargin)
             % Returns all eigenvalues of the (dimensionless) residual
             % operator in Fourier space for the inviscid advection
             % equation. Look up 'modified wavenumber analysis' for 
@@ -171,7 +172,7 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             %  wavenumbers: 1D array of (exact, real) wavenumbers associated
             %               with the columns of the eigenvalue matrix
             %               (default: 61 wavemodes, uniformly around zero).
-            %  order: group eigenmodes such that:
+            %  criterion: group eigenmodes such that:
             %                1) each mode's Block wave is smooth
             %             or
             %                2) each mode has similar energy content
@@ -184,17 +185,31 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             %  energies: 2D array of relative energies associated to each
             %            eigenmode, for every wavemode.
             %
+            %  eigamps: 2D array of eigenmode Fourier coeffs.
+            %
+            %  dofamps: 2D array of dof-wise Fourier coeffs, as obtained by
+            %           projecting the I.C. (== V*eigamps iff t = 0).
+            %
+            %  eigvecmat: 3D array of eigenvectors, page: wavenumber;
+            %               column: eigenvector; row: eigenmode.
+            %
             p = inputParser;
             addParameter(p,'upwind',1,@isscalar);
-            addParameter(p,'wavenumbers',...
-                pi*this.basisCount*linspace(-1,1,this.basisCount*60),... % 60 generating patterns (resolution)
-                @isnumeric);
-            addParameter(p,'order','default',@ischar); % seek eigenmodes that are smooth, regardless of energy content
+            addParameter(p,'elementCount',128,@isfinite);
+            addParameter(p,'wavenumbers',[],@isnumeric); % default case depends on 'elementCount' (see below)
+            addParameter(p,'criterion','default',@ischar); % how to decide which eigenvalue belongs to which eigenmode
             parse(p,varargin{:});
+            % If no wavenumbers are requested, generate from element count:
+            if any(strcmp('wavenumbers',p.UsingDefaults))
+                M = floor(this.basisCount*p.Results.elementCount/2);
+                wavenumbers = 2*pi/p.Results.elementCount*(-M:M);
+            end
             % Preallocation:
-            wavenumbers = p.Results.wavenumbers;
             eigenvals = complex(zeros(this.basisCount,numel(wavenumbers)));
             energies = zeros(size(eigenvals));
+            eigamps = eigenvals;
+            dofamps = eigenvals;
+            eigvecmat = repmat(permute(eigenvals,[3 1 2]),this.basisCount,1,1);
             % Operator assembly (vectorized):
             [E,leftE,rightE] = this.getFourierMatrices(p.Results.upwind);
             coefsL = exp(-1i*wavenumbers.');
@@ -202,27 +217,33 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             % Eigenvalues and eigenvectors:
             for n = 1:numel(wavenumbers)
                 R = this.massMatrix \ (E + coefsL(n)*leftE + coefsR(n)*rightE);
-                [V,D] = eigs(R,this.basisCount);
+                [eigvecmat(:,:,n),D] = eigs(R,this.basisCount);
                 eigenvals(:,n) = diag(D);
                 % Fourier 'L2' coefficients:
-                v = this.massMatrix \ Algorithms.quadvgk(...
+                dofamps(:,n) = this.massMatrix \ Algorithms.quadvgk(...
                     @(xi) this.sampleAt(xi).*exp(1i*wavenumbers(n)*.5*(1+xi)),...
                     [this.breakCoords(1:end-1); this.breakCoords(2:end)],...
                     this.basisCount...
                 );
-                %%% Fourier 'interpolatory' coefficients %%%%%%%%%%%%
-                % v = exp(1i*wavenumbers(n)*.5*(1+this.dofCoords)); %
-                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                %%% Fourier 'interpolatory' coefficients 
+                % dofamps(:,n) = exp(1i*wavenumbers(n)*.5*(1+this.dofCoords));
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                % Fourier eigenmode amplitudes:
+                eigamps(:,n) = eigvecmat(:,:,n) \ dofamps(:,n);
                 % Relative eigenmode energies:
-                energies(:,n) = abs(V \ v).^2;
+                energies(:,n) = abs(eigamps(:,n)).^2;
                 energies(:,n) = energies(:,n)./sum(energies(:,n));
                 % Enforce a consistent ordering:
                 if n > 1
-                    switch p.Results.order
-                        case 'energy'
+                    switch p.Results.criterion
+                        case 'none'
+                            % do nothing
+                        case 'energy' % place the most energetic eigenmode first (screws up the rest)
                             [energies(:,n),i] = sort(energies(:,n),'descend');
                             eigenvals(:,n) = eigenvals(i,n);
-                        otherwise
+                            eigamps(:,n) = eigamps(i,n);
+                            eigvecmat(:,:,n) = eigvecmat(:,i,n);
+                        otherwise % seek eigenmodes that are smooth, regardless of energy content
                             [~,i] = min(abs(eigenvals(:,n) - eigenvals(:,n-1).'),[],2); % i(l): eigenmode that the l-th eigenvalue belongs to
                             j = find(sum(abs(eigenvals(i,n-1) - eigenvals(i,n-1).') < 1e-12) > 1); % ambiguous eigenvalues (assigned to the same eigenmode or almost equal in the previous wavemode)
                             if ~isempty(j) && n > 2
@@ -233,23 +254,32 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
                             end
                             eigenvals(i,n) = eigenvals(:,n);
                             energies(i,n) = energies(:,n);
+                            eigamps(i,n) = eigamps(:,n);
+                            eigvecmat(:,i,n) = eigvecmat(:,:,n);
                     end
                 end
             end
             % Sort eigenmodes:
+            if n == 1 || strcmp(p.Results.criterion,'none')
+                return
+            end
             isInRange = wavenumbers/this.basisCount > -pi/2 & wavenumbers/this.basisCount < pi/2; % subset of wavenumbers to consider
             [~,ids] = sort(vecnorm(imag(eigenvals(:,isInRange)) + wavenumbers(:,isInRange),2,2)); % increasing L2-error with exact dispersion relation
             eigenvals = eigenvals(ids,:); % physical first
             energies = energies(ids,:);
+            eigamps = eigamps(ids,:);
+            eigvecmat = eigvecmat(:,ids,:);
             [~,ids] = sort(polyarea(real(eigenvals(2:end,:)),imag(eigenvals(2:end,:)),2)); % increasing "shadow size" in the complex plane
             eigenvals(2:end,:) = eigenvals(ids+1,:); % "weirdest ones" next
             energies(2:end,:) = energies(ids+1,:);
+            eigamps(2:end,:) = eigamps(ids+1,:);
+            eigvecmat(:,2:end,:) = eigvecmat(:,ids+1,:);
         end
         %% Modified wavenumbers
         function [k0,varargout] = getModifiedWavenumbers(this,varargin)
             % Returns the exact wavenumbers, then modified ones (one mode
             % per output) of this basis; dimensionless, but not scaled
-            % (range is 0 to pi*J).
+            % (range is -pi*J to pi*J).
             %
             if nargout > this.basisCount+1
                 error('Too many eigenmodes were requested.')
@@ -258,6 +288,19 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             [z,k0] = this.getFourierFootprint(varargin{:});
             % Determine which modes to output:
             varargout(1:nargout-1) = num2cell(1i*z(1:nargout-1,:),2);
+        end
+        %% Energy-weighted mean modified wavenumber
+        function [k0,k] = getMeanWavenumbers(this,varargin)
+            % Returns the exact and energy-weighted mean wavenumbers of
+            % this basis; dimensionless, but not scaled (range is 0 to
+            % pi*J).
+            %
+            if nargout > this.basisCount+1
+                error('Too many eigenmodes were requested.')
+            end
+            % Compute the stuff:
+            [k,k0,e] = this.getFourierFootprint(varargin{:},'criterion','energy');
+            k = sum(1i*k.*e,1); % weighted average
         end
         %% Superconvergence
         function orders = getOrder(this,varargin)
@@ -345,6 +388,84 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             r = -imag(k1)/this.basisCount + p.Results.eps;
             r = (abs(gradient(real(k1),k0)-1) + p.Results.eps)./r;
         end
+        %% Disp. & diss. errors
+        function [k,angs,amps,mode] = getDispDissErrors(this,varargin)
+            % Returns the "standard" dissipation and dispersion error
+            % measures a la Vanharen et al. (2017): rate of energy loss
+            % (amplitudes) and phase shift (angles), respectively, for each
+            % wavemode.
+            %
+            % Arguments
+            %  t: (required) array of sample instants (I.C. is at t = 0).
+            %  mode: which eigenmodes to compute the errors for;
+            %              valid values are: 'combined' (default),
+            %              'mean', 'first' (either physical or dominant,
+            %              depending on other input).
+            %
+            %  <...>: passed on to Basis.getFourierFootprint.
+            %
+            % Outputs
+            %  k: 1D array of wavenumbers
+            %  angs: 2D array of phase shift angles (row: time instant;
+            %        column: wavemode).
+            %  amps: idem, for amplification factors.
+            %
+            p = inputParser;
+            p.KeepUnmatched = true;
+            addRequired(p,'t',@isnumeric);
+            addParameter(p,'mode','combined',@ischar);
+            parse(p,varargin{:});
+            varargin = [fields(p.Unmatched) struct2cell(p.Unmatched)]';
+            t = p.Results.t(:); % ensure it is a row array
+            mode = p.Results.mode; % will output later
+            switch mode
+                case 'combined'
+                    [z,k,~,dofs,dofsL2,V] = this.getFourierFootprint(varargin{:});
+                    % Evaluate Fourier coeffs. at given times:
+                    t = permute(t,[3 2 1]);
+                    dofsL2 = dofsL2.*exp(-1i*k.*t); % dofs x wavemodes x time
+                    dofs = dofs.*exp(z.*t); % eigenmodes x wavemodes x time
+                    % Convert eigenmode coeffs. to dof coeffs.:
+                    dofs = permute(dofs,[1 3 2]); % eigenmodes x time x wavemodes
+                    for i = 1:size(V,3)
+                        dofs(:,:,i) = V(:,:,i)*dofs(:,:,i); % dofs x time x wavemodes
+                    end
+                    % Evaluate errors:
+                    angs = zeros(numel(t),numel(k));
+                    amps = angs;
+                    ampsL2 = amps;
+                    dofsL2 = permute(dofsL2,[3 2 1]); % time x wavemodes x dofs
+                    dofs = permute(dofs,[2 3 1]); % time x wavemodes x dofs
+                    for j = 1:this.basisCount
+                        for r = 1:this.basisCount
+                            angs = angs + dofs(:,:,j).*conj(dofsL2(:,:,r))*this.massMatrix(j,r);
+                            amps = amps + dofs(:,:,j).*conj(dofs(:,:,r))*this.massMatrix(j,r);
+                            ampsL2 = ampsL2 + dofsL2(:,:,j).*conj(dofsL2(:,:,r))*this.massMatrix(j,r);
+                        end
+                    end
+                    % Phase angles ('unwrapped' and 'offset-corrected'):
+                    angs = angle(angs);
+                    [~,id] = min(abs(k));
+                    offset = angs(:,id);
+                    angs = unwrap(angs);
+                    offset = offset - angs(:,id);
+                    angs = angs + offset;
+                    % Amplification factors:
+                    amps = sqrt(amps./ampsL2);
+                    return % finished
+                case 'mean'
+                    [k,kM] = this.getMeanWavenumbers(varargin{:});
+                case 'physical'
+                    [k,kM] = this.getModifiedWavenumbers(varargin{:},'criterion','default');
+                case 'dominant'
+                    [k,kM] = this.getModifiedWavenumbers(varargin{:},'criterion','energy');
+                otherwise
+                    error("Invalid value '%s' for argument 'eigenmodes'. Options are: 'combined', 'mean', 'physical' or 'dominant'.",mode)
+            end
+            % Finish cases 'mean' and 'first':
+            angs = (real(kM) - k).*t;
+            amps = exp((imag(kM) - 0*k).*t);
+        end
         %% Block wave 3D plot
         function displayModifiedWavenumbers(this,varargin)
             % Plots the modified wavenumbers of the discretization (a
@@ -401,9 +522,9 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             % average among all eigenmodes.
             %
             % Compute:
-            [z,k,e] = this.getFourierFootprint(varargin{:});
-            z = sum(z.*e)/this.basisCount; % weighted average
+            [k,kMean] = this.getMeanWavenumbers(varargin{:});
             k = k/this.basisCount;
+            kMean = kMean/this.basisCount;
             % Setup plots:
             subplot(2,1,1)
             if isempty(get(gca,'Children'))
@@ -421,9 +542,9 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             hold on
             % Plot disp. and diss.:
             subplot(2,1,1)
-            plot(k,-imag(z),'DisplayName',[this.getName ' (averaged)'])
+            plot(k,real(kMean),'DisplayName',[this.getName ' (averaged)'])
             subplot(2,1,2)
-            plot(k,real(z),'DisplayName',[this.getName ' (averaged)'])
+            plot(k,imag(kMean),'DisplayName',[this.getName ' (averaged)'])
             % Finishing touches:
             for i = 1:2
                 subplot(2,1,i)
@@ -593,6 +714,50 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             xlabel('$\frac{\kappa^*}{J}$','Interpreter','LaTex')
             ylabel('$\Gamma$','Interpreter','LaTex')
             legend('Location','west')
+        end
+        %% Combined mode errors
+        function displayDispDissErrors(this,t,varargin)
+            % Plots the disp. and diss. errors as in a combined mode
+            % analysis a la Alhawwary and Wang (2018).
+            %
+            % Arguments
+            %  t: time instant(s) for which to compute the errors
+            %  <...>: passed on to Basis.getDispDissErrors
+            %
+            % Get the data:
+            [k,angs,amps,mode] = this.getDispDissErrors(t,varargin{:});
+            k = k/this.basisCount;
+            angs = abs(angs)/this.basisCount;
+            % Setup plots:
+            subplot(2,1,1)
+            if isempty(get(gca,'Children'))
+                plot(k([1 end]),[0 0],'--k','DisplayName','Exact disp.')
+                xlabel('$\frac{\kappa^*}{J}$','Interpreter','LaTex')
+                ylabel('$\frac{|\psi^*(t)|}{J}$','Interpreter','LaTex')
+            end
+            hold on
+            subplot(2,1,2)
+            if isempty(get(gca,'Children'))
+                plot(k([1 end]),[1 1],'--k','DisplayName','Exact diss.')
+                xlabel('$\frac{\kappa^*}{J}$','Interpreter','LaTex')
+                ylabel('$G(t)$','Interpreter','LaTex')
+            end
+            hold on
+            % Plot disp. and diss.:
+            subplot(2,1,1)
+            h = plot(k,angs);
+            set(h,{'DisplayName'},compose('%s (%s, t = %g)',this.getName,mode,t)')
+            set(gca,'YScale','log')
+            subplot(2,1,2)
+            h = plot(k,amps);
+            set(h,{'DisplayName'},compose('%s (%s, t = %g)',this.getName,mode,t)')
+            % Finishing touches:
+            for i = 1:2
+                subplot(2,1,i)
+                legend('Location','best')
+                xlim([0 pi])
+                hold off
+            end
         end
     end
     methods (Access = protected)
