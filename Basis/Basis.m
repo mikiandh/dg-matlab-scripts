@@ -215,19 +215,18 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             coefsL = exp(-1i*wavenumbers.');
             coefsR = coefsL';
             % Eigenvalues and eigenvectors:
+            auxElement = Element(this,[-1 1]); % auxiliary element, used for projecting I.C.
             for n = 1:numel(wavenumbers)
                 R = this.massMatrix \ (E + coefsL(n)*leftE + coefsR(n)*rightE);
                 [eigvecmat(:,:,n),D] = eigs(R,this.basisCount);
                 eigenvals(:,n) = diag(D);
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 % Fourier 'L2' coefficients:
-                dofamps(:,n) = this.massMatrix \ Algorithms.quadvgk(...
-                    @(xi) this.sampleAt(xi).*exp(1i*wavenumbers(n)*.5*(1+xi)),...
-                    [this.breakCoords(1:end-1); this.breakCoords(2:end)],...
-                    this.basisCount...
-                );
-                %%% Fourier 'interpolatory' coefficients 
+                this.project(auxElement,@(xi) exp(1i*wavenumbers(n)*.5*(1+xi)));
+                dofamps(:,n) = auxElement.states;
+                % Fourier 'interpolatory' coefficients:
                 % dofamps(:,n) = exp(1i*wavenumbers(n)*.5*(1+this.dofCoords));
-                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 % Fourier eigenmode amplitudes:
                 eigamps(:,n) = eigvecmat(:,:,n) \ dofamps(:,n);
                 % Relative eigenmode energies:
@@ -399,8 +398,8 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             %  t: (required) array of sample instants (I.C. is at t = 0).
             %  mode: which eigenmodes to compute the errors for;
             %              valid values are: 'combined' (default),
-            %              'mean', 'first' (either physical or dominant,
-            %              depending on other input).
+            %              'mean' (not recommended), 'physical',
+            %              'dominant' and 'superposition'.
             %
             %  <...>: passed on to Basis.getFourierFootprint.
             %
@@ -431,18 +430,11 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
                         dofs(:,:,i) = V(:,:,i)*dofs(:,:,i); % dofs x time x wavemodes
                     end
                     % Evaluate errors:
-                    angs = zeros(numel(t),numel(k));
-                    amps = angs;
-                    ampsL2 = amps;
-                    dofsL2 = permute(dofsL2,[3 2 1]); % time x wavemodes x dofs
-                    dofs = permute(dofs,[2 3 1]); % time x wavemodes x dofs
-                    for j = 1:this.basisCount
-                        for r = 1:this.basisCount
-                            angs = angs + dofs(:,:,j).*conj(dofsL2(:,:,r))*this.massMatrix(j,r);
-                            amps = amps + dofs(:,:,j).*conj(dofs(:,:,r))*this.massMatrix(j,r);
-                            ampsL2 = ampsL2 + dofsL2(:,:,j).*conj(dofsL2(:,:,r))*this.massMatrix(j,r);
-                        end
-                    end
+                    [angs,amps,ampsL2] = this.getComplexScalarProduct(...
+                        [1 2; 1 1; 2 2],... <dofs,dofsL2>, <dofs,dofs>, <dofsL2,dofsL2>
+                        permute(dofs,[2 3 1]),... time x wavemodes x dofs
+                        permute(dofsL2,[3 2 1])... idem
+                    );
                     % Phase angles ('unwrapped' and 'offset-corrected'):
                     angs = angle(angs);
                     [~,id] = min(abs(k));
@@ -452,6 +444,22 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
                     angs = angs + offset;
                     % Amplification factors:
                     amps = sqrt(amps./ampsL2);
+                    if any(vecnorm(imag(amps),2,2) > 10*eps)
+                        warning('Detected amplification factors with significant imaginary parts. Is this basis ill-conditioned?')
+                    else
+                        amps = real(amps); % quietly remove small imaginary noise
+                    end
+                    return % finished
+                case 'superposition'
+                    % Pseudo-combined effect via weighted addition of
+                    % individual eigenmodes (Asthana & Jameson's idea)
+                    [z,k,e] = this.getFourierFootprint(varargin{:});
+                    angs = zeros(numel(t),numel(k));
+                    amps = angs;
+                    for i = 1:this.basisCount
+                        angs = angs + e(i,:).*(-imag(z(i,:)) - k).*t;
+                        amps = amps + e(i,:).*exp((real(z(i,:)) - 0*k).*t);
+                    end
                     return % finished
                 case 'mean'
                     [k,kM] = this.getMeanWavenumbers(varargin{:});
@@ -460,9 +468,9 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
                 case 'dominant'
                     [k,kM] = this.getModifiedWavenumbers(varargin{:},'criterion','energy');
                 otherwise
-                    error("Invalid value '%s' for argument 'eigenmodes'. Options are: 'combined', 'mean', 'physical' or 'dominant'.",mode)
+                    error("Invalid value '%s' for argument 'eigenmodes'. Options are: 'combined', 'mean', 'physical', 'dominant' and 'superposition'.",mode)
             end
-            % Finish cases 'mean' and 'first':
+            % Finish single mode cases:
             angs = (real(kM) - k).*t;
             amps = exp((imag(kM) - 0*k).*t);
         end
@@ -727,30 +735,29 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             % Get the data:
             [k,angs,amps,mode] = this.getDispDissErrors(t,varargin{:});
             k = k/this.basisCount;
-            angs = abs(angs)/this.basisCount;
             % Setup plots:
             subplot(2,1,1)
             if isempty(get(gca,'Children'))
-                plot(k([1 end]),[0 0],'--k','DisplayName','Exact disp.')
+                plot(k([1 end]),[0 0],'--k','DisplayName','Exact (no phase shift)')
                 xlabel('$\frac{\kappa^*}{J}$','Interpreter','LaTex')
-                ylabel('$\frac{|\psi^*(t)|}{J}$','Interpreter','LaTex')
+                ylabel('$\frac{|\Delta\psi(t)|}{J}$','Interpreter','LaTex')
             end
             hold on
             subplot(2,1,2)
             if isempty(get(gca,'Children'))
-                plot(k([1 end]),[1 1],'--k','DisplayName','Exact diss.')
+                plot(k([1 end]),[1 1],'--k','DisplayName','Exact (no damping)')
                 xlabel('$\frac{\kappa^*}{J}$','Interpreter','LaTex')
                 ylabel('$G(t)$','Interpreter','LaTex')
             end
             hold on
             % Plot disp. and diss.:
             subplot(2,1,1)
-            h = plot(k,angs);
-            set(h,{'DisplayName'},compose('%s (%s, t = %g)',this.getName,mode,t)')
+            h = plot(k,abs(angs)/this.basisCount);
+            set(h,{'DisplayName'},compose('%s (%s, t* = %g)',this.getName,mode,t)')
             set(gca,'YScale','log')
             subplot(2,1,2)
             h = plot(k,amps);
-            set(h,{'DisplayName'},compose('%s (%s, t = %g)',this.getName,mode,t)')
+            set(h,{'DisplayName'},compose('%s (%s, t* = %g)',this.getName,mode,t)')
             % Finishing touches:
             for i = 1:2
                 subplot(2,1,i)
@@ -793,6 +800,41 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
                 kf = k(n);
                 k = [k(2:n-1) mean(k(n-1:n)) k(n:end)]; % bisection (of sorts)
                 [k,kM] = this.getModifiedWavenumbers(varargin{:},'wavenumbers',k);
+            end
+        end
+        %% Complex scalar product(s)
+        function [varargout] = getComplexScalarProduct(this,perms,varargin)
+            % Computes the scalar product operator between two complex
+            % functions assumed to exist in the trial space spanned by
+            % this basis.
+            %
+            % This is the operator that defines the L2 norm in a complex
+            % space (or something like that, I'm not a mathematician); in
+            % any case, it is the one defined in Vanharen et al. (2017) and
+            % used in Alhawwary and Wang (2018) to study combined mode
+            % spectral analysis stuffs.
+            %
+            % This version assumes that this basis spans both trial and
+            % test spaces; for e.g. FR, it needs to be overriden.
+            %
+            % Arguments
+            %  perms: 2D array of permutations to compute. Row: output
+            %         variable (permutation); column: input variable.
+            %         Number of columns must be 2 (this is a binary op.),
+            %         and the number of rows must be <=(nargin-2)^2.
+            %  varargin: list of 3D arrays of dofs; each page is assumed to
+            %            correspond to a different basis function. The
+            %            other two are reserved for, e.g., time instants
+            %            and wavenumbers.
+            %
+            massVec = permute(... array of nonzero mass matrix entries
+                full(this.massMatrix(this.pairs(3,:))),[1 3 2]);
+            % Loop over requested permutations:
+            for i = nargout:-1:1
+                varargout{i} = sum(... discrete complex inner product
+                    varargin{perms(i,1)}(:,:,this.pairs(1,:)).*...
+                    conj(varargin{perms(i,2)}(:,:,this.pairs(2,:))).*...
+                    massVec,3); % unrolled AND vectorized
             end
         end
     end

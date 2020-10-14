@@ -169,5 +169,19 @@ classdef FR < Lagrange
             B = -(1+beta)*sparse(this.correctionsL.'*this.right.'); % upwind
             C = -(1-beta)*sparse(this.correctionsR.'*this.left.'); % downwind
         end
+        %% Complex scalar product (override)
+        function [varargout] = getComplexScalarProduct(this,perms,varargin)
+            % Computes the scalar product operator between two complex
+            % functions assumed to exist in the trial space spanned by
+            % this basis.
+            %
+            % See the overridden method (of the parent class) for details.
+            %
+            % Loop over requested input pairs:
+            massMatDiag = permute(diag(this.auxMassMatrix),[3,2,1]);
+            for i = nargout:-1:1
+                varargout{i} = sum(varargin{perms(i,1)}.*conj(varargin{perms(i,2)}).*massMatDiag,3);
+            end
+        end
     end
 end
