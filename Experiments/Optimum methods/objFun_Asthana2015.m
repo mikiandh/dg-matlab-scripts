@@ -1,12 +1,27 @@
-function f = objFun_Asthana2015(basis)
+function F = objFun_Asthana2015(basis)
 % Objective function from Asthana & Jameson (2015).
 %
 % I/O
 %  basis: discretization to evaluate
 %  ---
-%  f: cost <-> badness <-> penalty (smaller is better)
+%  F: cost <-> badness <-> penalty (smaller is better)
 %
-[z,k,e] = basis.getFourierFootprint('order','energy');
-f = trapz(k,abs(1 - exp(1i*100*(k - 1i*z))).*e,2);
-f = sum(f)/(2*basis.basisCount*pi); % I prefer this normalization
+t = 100;
+
+% %%% Vanilla version %%%
+%     function f = fun(k)
+%         [z,k,e] = basis.getFourierFootprint('criterion','energy','wavenumbers',k);
+%         f = abs(1 - exp(1i*t*(k - 1i*z))).*e;
+%     end
+% %%%%%%%%%%%%%%%%%%%%%%%
+
+%%% Combined mode version %%%
+    function f = fun(k)
+        [~,angs,amps] = basis.getAngAmp(t,'wavenumbers',k);
+        f = abs(1 - amps.*exp(1i*angs));
+    end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+F = integral(@fun,0,pi*basis.basisCount);
+F = F/(basis.basisCount*pi); % I prefer this normalization
 end

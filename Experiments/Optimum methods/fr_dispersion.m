@@ -14,12 +14,12 @@ addpath('../../Solver')
 addpath('../../Basis')
 
 %% Setup
-p = logspacei(2,19,10);
+p = logspacei(2,19,8);
 objFun = @(eta,p) objFun_Asthana2015(FR({'eta',eta},p));
 time = SSP_RK3;
 export = struct('name','fr_dispersion',...
-    'dat',false,...
-    'fig',false,...
+    'dat',true,...
+    'fig',true,...
     'gif',false,... incompatible with parfor, sorry
     'tikz',false);
 
@@ -33,16 +33,30 @@ end
 
 %% Minimization
 I = numel(p);
-tbl = array2table(zeros(I,8),'VariableNames',{'p','eta','c','exitFlag','relCost','A_T','CFL','e1'});
+tbl = array2table(zeros(I,13),'VariableNames',{'p','eta','c','Badness','relBadness','Order','relOrder','Resol','relResol','Cutoff','relCutoff','CFL_RK3','relCFL_RK3'});
 parfor i = 1:I
     try
         options = optimset('PlotFcn',{
             @(varargin) plotFun_dispDiss(varargin{:},p(i),i,export)
         });
-        [eta,badness,flag] = fminbnd(@(x) objFun(x,p(i)),-1,5,options);
-        basis = FR({'eta',eta},p(i));
-        badness = badness/objFun(0,p(i)) - 1; % relative to DG
-        tbl{i,:} = [p(i) basis.eta basis.c flag badness basis.getOrder time.optimizeCFL(basis) basis.getCutoffWavenumber/basis.basisCount/pi];
+        [eta,badness] = fminbnd(@(x) objFun(x,p(i)),-1,5,options);
+        optimum = FR({'eta',eta},p(i));
+        baseline = DGSEM(p(i));
+        tbl{i,:} = [
+            p(i)
+            optimum.eta
+            optimum.c
+            badness
+            objFun_Asthana2015(baseline)
+            optimum.getOrder
+            baseline.getOrder
+            optimum.getResolvingWavenumber/optimum.basisCount/pi
+            baseline.getResolvingWavenumber/baseline.basisCount/pi
+            optimum.getCutoffWavenumber/optimum.basisCount/pi
+            baseline.getCutoffWavenumber/baseline.basisCount/pi
+            time.optimizeCFL(optimum)
+            time.optimizeCFL(baseline)
+        ]'; %#ok<PFBNS>
         fprintf('\nRun %d of %d:\n',i,I)
         disp(tbl(i,:))
         drawnow
@@ -61,6 +75,7 @@ parfor i = 1:I
 end
 
 %% Postprocess
+tbl{:,5:2:end} = tbl{:,4:2:end-1}./tbl{:,5:2:end} - 1; % relative changes over baseline
 tblOut = sortrows([tblIn; tbl],'p');
 clc
 disp(tblOut)

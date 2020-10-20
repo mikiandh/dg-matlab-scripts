@@ -7,7 +7,7 @@ stop = false;
 switch state
     case 'init' % set up the plot
         
-        [r,k,kM] = FR('DG',p).getDispDissRatios;
+        [r,k,kM] = FR('DG',p).getDispDissRatios('combined');
         kc = k(find(imag(kM) <= -.01,1,'first')); % cheap estimation (good enough)
         
         hold on
@@ -33,7 +33,7 @@ switch state
         xlabel '\kappa'
     case 'iter'
         basis = FR({'eta',eta},p);
-        [r,k,kM] = basis.getDispDissRatios;
+        [r,k,kM] = basis.getDispDissRatios('combined');
         kc = k(find(imag(kM) <= -.01,1,'first'));
         
         title(sprintf('%s - iter.: %d',basis.getName,optimValues.iteration))

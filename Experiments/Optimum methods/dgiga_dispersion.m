@@ -14,12 +14,12 @@ addpath('../../Solver')
 addpath('../../Basis')
 
 %% Setup
-J = logspacei(3,20,10);
+J = logspacei(3,20,8);
 pMin = repelem(0,numel(J)); % minimum degree required
-objFun = @(basis) objFun_Asthana2015(basis); %objFun_DispDissRatio(basis); %
+objFun = @objFun_Asthana2015;
 name = 'dgiga_dispersion';
 time = SSP_RK3;
-export = struct('dat',false,'fig',false,'tikz',false);
+export = struct('dat',true,'fig',true,'tikz',false);
 
 %% Preprocess
 try
@@ -29,10 +29,34 @@ try
 catch
     tblIn = table; % empty table
 end
-tbl = array2table(zeros(numel(J),8),'VariableNames',{'J','pMin','k','p','s','relCost','A_T','CFL'});
 
 %% Minimization
 I = numel(J);
+tbl = array2table(zeros(I,23),'VariableNames',{
+    'J'
+    'pMin'
+    'k'
+    'p'
+    's'
+    'Cond'
+    'relCond_Bern'
+    'relCond_Lagr'
+    'Badness'
+    'relBadness_Bern'
+    'relBadness_Lagr'
+    'Order'
+    'relOrder_Bern'
+    'relOrder_Lagr'
+    'Resol'
+    'relResol_Bern'
+    'relResol_Lagr'
+    'Cutoff'
+    'relCutoff_Bern'
+    'relCutoff_Lagr'
+    'CFL_RK3'
+    'relCFL_RK3_Bern'
+    'relCFL_RK3_Lagr'
+    });
 for i = 1:I
     try
         % Generate all possible candidates:
@@ -62,15 +86,12 @@ for i = 1:I
             basis = DGIGA(k(j),p(j),s(j));
             f(j) = objFun(basis);
             %%%
-            [w,w0] = basis.getFourierFootprint;
-            w = 1i*w(1,w0 > 0);
-            w0(w0 < 0) = [];
-            send(D, {j,w0,w,basis.getName})
+            [w0,w] = basis.getCombinedWavenumbers;
+            send(D, {j,w0(w0 >= 0),w(w0 >= 0),basis.getName})
             %%%
         end
         % Extract optimum:
         [~,j] = min(f);
-        basis = DGIGA(k(j),p(j),s(j));
         %%%
         yyaxis left
         set(findobj(get(gca,'Children'),'Tag',['disp_' num2str(j)]),'LineStyle','-');
@@ -78,7 +99,33 @@ for i = 1:I
         set(findobj(get(gca,'Children'),'Tag',['diss_' num2str(j)]),'LineStyle','-');
         title(sprintf('DGIGA, J = %d (%d combinations)',J(i),numel(f)))
         %%%
-        tbl{i,:} = [J(i) pMin(i) k(j) p(j) s(j) f(j)./f(k==1)-1 basis.getOrder time.optimizeCFL(basis)];
+        optimum = DGIGA(k(j),p(j),s(j));
+        baselines = [DGIGA(1,p(k == 1)) DGSEM(p(k == 1))];
+        tbl{i,:} = [
+            J(i)
+            pMin(i)
+            k(j)
+            p(j)
+            s(j)
+            cond(full(optimum.massMatrix))
+            cond(full(baselines(1).massMatrix))
+            cond(full(baselines(2).massMatrix))
+            f(j)
+            f(k == 1)
+            objFun_Asthana2015(baselines(2))
+            optimum.getOrder
+            baselines(1).getOrder
+            baselines(2).getOrder
+            optimum.getResolvingWavenumber/optimum.basisCount/pi
+            baselines(1).getResolvingWavenumber/baselines(1).basisCount/pi
+            baselines(2).getResolvingWavenumber/baselines(2).basisCount/pi
+            optimum.getCutoffWavenumber/optimum.basisCount/pi
+            baselines(1).getCutoffWavenumber/baselines(1).basisCount/pi
+            baselines(2).getCutoffWavenumber/baselines(2).basisCount/pi
+            time.optimizeCFL(optimum)
+            time.optimizeCFL(baselines(1))
+            time.optimizeCFL(baselines(2))
+        ]';
         fprintf('\nRun %d of %d:\n',i,I)
         disp(tbl(i,:))
         drawnow
@@ -97,6 +144,7 @@ for i = 1:I
 end
 
 %% Postprocess
+tbl{:,[7:3:end 8:3:end]} = tbl{:,[6:3:end-2 6:3:end-2]}./tbl{:,[7:3:end 8:3:end]} - 1; % relative changes over baseline
 tblOut = sortrows([tblIn; tbl],'J');
 clc
 disp(tblOut)
