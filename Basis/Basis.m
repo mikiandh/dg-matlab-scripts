@@ -405,41 +405,58 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             kc = abs(fzero(@fun,0)); % root closest to zero (either side)
         end
         %% Dispersion to dissipation ratio
-        function [r,k0,k1] = getDispDissRatios(this,mode,varargin)
+        function [k0,r0,R] = getDispDissRatio(this,varargin)
             % Returns the ratio between dispersion and dissipation effects,
-            % a la Adams et al., 2015 (i.e. using group velocity).
-            % Only for nonnegative wavenumbers.
+            % a la Adams et al., 2015 (i.e. using group velocity), but
+            % generalized to high order discretizations (i.e. energy-
+            % weighted average).
             %
+            % Arguments
+            %  'eps': small value, used to resolve indeterminations
+            %  <...>: passed on to other methods
+            % 
+            % Outputs
+            %  k: wavenumbers sampled
+            %  r: energy-weighted average ratio
+            %  R: L1 norm of the ratio, over the underresolved portion
+            %
+            % Parser:
             p = inputParser;
             p.KeepUnmatched = true;
-            addParameter(p,'eps',1e-3,@isfinite);
+            addParameter(p,'eps',0,@isfinite); % 0, since I skip low waven.
+            addParameter(p,'rtol',1e-2,@isfinite);
+            addParameter(p,'AbsTol',1e-5,@isfinite);
+            addParameter(p,'RelTol',1e-3,@isfinite);
             parse(p,varargin{:});
             varargin = [fields(p.Unmatched) struct2cell(p.Unmatched)]';
-            switch mode
-                case 'single'
-                    [k0,k1] = this.getModifiedWavenumbers(varargin{:});
-                case 'combined'
-                    [k0,k1] = this.getCombinedWavenumbers(varargin{:});
-                case 'mean'
-                    [z,k0,e] = this.getFourierFootprint(varargin{:});
-                    k1 = 1i*z(:,k0 >= 0);
-                    e(:,k0 < 0) = [];
-                    k0(k0 < 0) = [];
-                    r = 0.*k0;
-                    for i = 1:this.basisCount
-                        num = abs(gradient(real(k1(i,:)),k0) - 1) + p.Results.eps;
-                        den = -imag(k1(i,:))/this.basisCount + p.Results.eps;
-                        r = r + e(i,:).*num./den;
-                    end
-                    k1 = sum(k1.*e,1);
-                    return
-                otherwise
-                    error("Unknown 'mode' value '%s'; options are: 'single', 'mean' or 'combined'.",p.Results.mode)
+            % Function samples (will double as seeds):
+            function r = meanRatio(k,x,y,e)
+                r = zeros(1,numel(k));
+                for i = 1:this.basisCount
+                    num = gradient(x(i,:),k);
+                    num = this.basisCount*abs(1 - num) + p.Results.eps;
+                    r = r + e(i,:).*num./(-y(i,:) + p.Results.eps);
+                end
             end
-            k1(k0 < 0) = [];
-            k0(k0 < 0) = [];
-            r = -imag(k1)/this.basisCount + p.Results.eps;
-            r = (abs(gradient(real(k1),k0)-1) + p.Results.eps)./r;
+            kf = this.getResolvingWavenumber('rtol',p.Results.rtol);
+            [z0,k0,e0] = this.getFourierFootprint(varargin{:});
+            isUsed = k0 >= kf;
+            k0(~isUsed) = [];
+            r0 = meanRatio(k0,-imag(z0(:,isUsed)),real(z0(:,isUsed)),e0(:,isUsed));
+            if nargout < 3
+                return % skip the (very costly!) integration
+            end
+            % Function norm (via adaptive quadrature):
+            function r = fun(k)
+                % Sample:
+                k1 = unique([k0 k]);
+                [z1,~,e1] = this.getFourierFootprint(varargin{:},'wavenumbers',k1);
+                % Compute the ratio:
+                r = meanRatio(k1,-imag(z1),real(z1),e1)*(k1' == k); % unsort + downsample
+            end
+            R = integral(@fun,kf,pi*this.basisCount,...
+                'AbsTol',p.Results.AbsTol,'RelTol',p.Results.RelTol);
+            R = R/(pi*this.basisCount - kf);
         end
         %% Angle and amplification
         function [k,angs,amps,mode] = getAngAmp(this,varargin)
@@ -524,59 +541,6 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             % Finish single mode cases:
             angs = (-real(kM) + k).*t;
             amps = exp((imag(kM) - 0*k).*t);
-        end
-        %% Ang. to amp. ratio norm
-        function R = getAngAmpRatioNorm(this,varargin)
-            % Returns the L1 norm of the ratio between dispersion and
-            % dissipation, in terms of combined mode errors.
-            %
-            % Only over the badly-resolved range!
-            %
-            % Parser:
-            p = inputParser;
-            p.KeepUnmatched = true;
-            addRequired(p,'t',@isnumeric);
-            addParameter(p,'gradient',true,@islogical);
-            addParameter(p,'rtol',1e-2,@isfinite);
-            addParameter(p,'AbsTol',1e-6,@isfinite);
-            addParameter(p,'RelTol',1e-4,@isfinite);
-            parse(p,varargin{:});
-            varargin = [fields(p.Unmatched) struct2cell(p.Unmatched)]';
-            % Phase lag seeds:
-            kf = this.getResolvingWavenumber('rtol',p.Results.rtol);
-            [k0,lag0,~] = this.getAngAmp(p.Results.t,varargin{:});
-            lag0(:,k0 < kf) = [];
-            k0(:,k0 < kf) = [];
-            % Function to integrate:
-            function r = fun(k)
-                % Sample:
-                [~,lag,amp] = this.getAngAmp(p.Results.t,varargin{:},'wavenumbers',k);
-                % Unwrap the phase lag (multiply-valued):
-                [k1,ids] = unique([k0 k]);
-                lag1 = [lag0 lag]; % resample
-                lag1 = lag1(:,ids); % sort
-                lag1 = unwrap(lag1,pi,2); % unwrap
-                % Compute the ratio:
-                if p.Results.gradient
-                    for i = 1:numel(p.Results.t)
-                        lag1(i,:) = gradient(lag1(i,:),k1);
-                    end
-                else
-                    lag1 = lag1./k1;
-                end
-                r = lag1*(k1' == k); % unsort + downsample (linear trans.)
-                r = -this.basisCount*abs(r)./log(amp);
-                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                 plot(k,lag1*(k1' == k),'+-',k,amp,'x-',k,r,'*-')  %
-                 drawnow limitrate                                 %
-                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            end
-            % Adaptive quadrature:
-            R = integral(@fun,kf,pi*this.basisCount,...
-                'AbsTol',p.Results.AbsTol,...
-                'RelTol',p.Results.RelTol,...
-                'ArrayValued',numel(p.Results.t) > 1);
-            R = R/(pi*this.basisCount - kf);
         end
         %% Block wave 3D plot
         function displayModifiedWavenumbers(this,varargin)
@@ -764,12 +728,13 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             % Parser:
             p = inputParser;
             p.KeepUnmatched = true;
+            addParameter(p,'t',1,@isnumeric);
             addParameter(p,'showCutoff','both',@ischar);
-            addParameter(p,'mode','combined',@ischar);
             parse(p,varargin{:});
             varargin = [fields(p.Unmatched) struct2cell(p.Unmatched)]';
             % Get data:
-            [r,k0,k1] = this.getDispDissRatios(p.Results.mode,varargin{:});
+            [k,angs,amps,mode] = this.getAngAmp(p.Results.t,varargin{:});
+            [kH,meanRatio] = this.getDispDissRatio(varargin{:});
             if any(strcmpi(p.Results.showCutoff,{'resolving','DNS','both'}))
                 kf = this.getResolvingWavenumber(varargin{:});
             else
@@ -781,31 +746,39 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
                 kc = nan;
             end
             % Scale it:
-            k0 = k0/this.basisCount;
-            k1 = k1/this.basisCount;
+            k = k/this.basisCount;
+            kH = kH/this.basisCount;
+            angs = angs/this.basisCount;
             kf = kf/this.basisCount;
             kc = kc/this.basisCount;
             % Set it up:
-            refData = {k0([1 end]),[0 0],[1 1]};
-            numData = {real(k1) imag(k1) r};
+            refData = {[0 0],[1 1],[1 1]};
+            xData = {k k kH};
+            yData = {angs amps meanRatio};
             yLabels = {
-                '$$\frac{\tilde{\kappa}^*_\Re}{J}$$'
-                '$$\frac{\tilde{\kappa}^*_\Im}{J}$$'
-                '$$\frac{J |\frac{d\tilde{\kappa}^*_\Re}{d\kappa} - 1|}{-\tilde{\kappa}^*_\Im}$$'
+                '$$\frac{\Delta\Psi}{J}$$'
+                '$$G$$'
+                '$$\overline{\chi}$$'
             };
             % Plot it: 
             for i = 1:3
                 subplot(3,3,3*(i-1)+[1 2])
                 if isempty(get(gca,'Children'))
-                    plot(k0([1 end]),refData{i},'--k','DisplayName','Ideal')
+                    plot(k([1 end]),refData{i},'--k','DisplayName','Ideal')
                 end
                 hold on
-                h = plot(k0,numData{i},'DisplayName',this.getName);
-                plot([kf kf],[min(numData{i}) max(numData{i})],'--','Color',h.Color,'DisplayName',['Resolv. cutoff; ' this.getName])
-                plot([kc kc],[min(numData{i}) max(numData{i})],':','Color',h.Color,'DisplayName',['1% diss. cutoff; ' this.getName])
+                h = plot(xData{i},yData{i});
+                if i == 3
+                    set(h,'DisplayName',this.getName)
+                else
+                    set(h,{'DisplayName'},compose('%s (%s, t = %d)',this.getName,mode,p.Results.t)')
+                end
+                plot([kf kf],[min(min(yData{i})) max(max(yData{i}))],'--','Color',h(1).Color,'DisplayName',['\kappa_f, ' this.getName])
+                plot([kc kc],[min(min(yData{i})) max(max(yData{i}))],':','Color',h(1).Color,'DisplayName',['\kappa_c, ' this.getName])
                 hold off
                 xlabel('$$\frac{\kappa^*}{J}$$','Interpreter','Latex')
                 ylabel(yLabels{i},'Interpreter','Latex')
+                xlim([0 pi])
             end
             % Add a separate legend:
             g = subplot(3,3,3:3:9);
