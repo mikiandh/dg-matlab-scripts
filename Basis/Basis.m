@@ -369,27 +369,10 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             end
         end
         %% Well-resolved wavenumber
-        function kf = getResolvingWavenumberOLD(this,varargin)
-            % Highest (dimensionless, but not scaled) well-resolved
-            % wavenumber, based on relative error threshold (Lele, 1992).
-            %
-            % Parse inputs:
-            p = inputParser;
-            p.KeepUnmatched = true;
-            addParameter(p,'rtol',1e-2,@isfinite);
-            parse(p,varargin{:});
-            varargin = [fields(p.Unmatched) struct2cell(p.Unmatched)]';
-            % Launch an iterative search:
-            kf = this.findWavenumber(...
-                @(k,kM) abs(kM./k - 1) >= p.Results.rtol & k > 0,...
-                0,varargin{:});
-        end
-        %% Well-resolved wavenumber
         function kf = getResolvingWavenumber(this,varargin)
             % Highest (dimensionless, but not scaled) well-resolved
             % wavenumber, based on relative error threshold (Lele, 1992).
             %
-            % Parse inputs:
             p = inputParser;
             p.KeepUnmatched = true;
             addParameter(p,'rtol',1e-2,@isfinite);
@@ -541,6 +524,59 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             % Finish single mode cases:
             angs = (-real(kM) + k).*t;
             amps = exp((imag(kM) - 0*k).*t);
+        end
+        %% Ang. to amp. ratio norm
+        function R = getAngAmpRatioNorm(this,varargin)
+            % Returns the L1 norm of the ratio between dispersion and
+            % dissipation, in terms of combined mode errors.
+            %
+            % Only over the badly-resolved range!
+            %
+            % Parser:
+            p = inputParser;
+            p.KeepUnmatched = true;
+            addRequired(p,'t',@isnumeric);
+            addParameter(p,'gradient',true,@islogical);
+            addParameter(p,'rtol',1e-2,@isfinite);
+            addParameter(p,'AbsTol',1e-6,@isfinite);
+            addParameter(p,'RelTol',1e-4,@isfinite);
+            parse(p,varargin{:});
+            varargin = [fields(p.Unmatched) struct2cell(p.Unmatched)]';
+            % Phase lag seeds:
+            kf = this.getResolvingWavenumber('rtol',p.Results.rtol);
+            [k0,lag0,~] = this.getAngAmp(p.Results.t,varargin{:});
+            lag0(:,k0 < kf) = [];
+            k0(:,k0 < kf) = [];
+            % Function to integrate:
+            function r = fun(k)
+                % Sample:
+                [~,lag,amp] = this.getAngAmp(p.Results.t,varargin{:},'wavenumbers',k);
+                % Unwrap the phase lag (multiply-valued):
+                [k1,ids] = unique([k0 k]);
+                lag1 = [lag0 lag]; % resample
+                lag1 = lag1(:,ids); % sort
+                lag1 = unwrap(lag1,pi,2); % unwrap
+                % Compute the ratio:
+                if p.Results.gradient
+                    for i = 1:numel(p.Results.t)
+                        lag1(i,:) = gradient(lag1(i,:),k1);
+                    end
+                else
+                    lag1 = lag1./k1;
+                end
+                r = lag1*(k1' == k); % unsort + downsample (linear trans.)
+                r = -this.basisCount*abs(r)./log(amp);
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                 plot(k,lag1*(k1' == k),'+-',k,amp,'x-',k,r,'*-')  %
+                 drawnow limitrate                                 %
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            end
+            % Adaptive quadrature:
+            R = integral(@fun,kf,pi*this.basisCount,...
+                'AbsTol',p.Results.AbsTol,...
+                'RelTol',p.Results.RelTol,...
+                'ArrayValued',numel(p.Results.t) > 1);
+            R = R/(pi*this.basisCount - kf);
         end
         %% Block wave 3D plot
         function displayModifiedWavenumbers(this,varargin)
