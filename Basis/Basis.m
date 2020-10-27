@@ -440,12 +440,8 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
             end
             kf = this.getResolvingWavenumber('rtol',p.Results.rtol);
             [z0,k0,e0] = this.getFourierFootprint(varargin{:});
-            isUsed = k0 >= kf;
-            k0(~isUsed) = [];
-            r0 = meanRatio(k0,-imag(z0(:,isUsed)),real(z0(:,isUsed)),e0(:,isUsed));
-            if nargout < 3
-                return % skip the (very costly!) integration
-            end
+            r0 = meanRatio(k0,-imag(z0),real(z0),e0);
+            r0(k0 < kf) = [];
             % Function norm (via adaptive quadrature):
             function r = fun(k)
                 % Sample:
@@ -454,9 +450,13 @@ classdef Basis < matlab.mixin.SetGet & matlab.mixin.Heterogeneous
                 % Compute the ratio:
                 r = meanRatio(k1,-imag(z1),real(z1),e1)*(k1' == k); % unsort + downsample
             end
-            R = integral(@fun,kf,pi*this.basisCount,...
-                'AbsTol',p.Results.AbsTol,'RelTol',p.Results.RelTol);
-            R = R/(pi*this.basisCount - kf);
+            if nargout > 2
+                k0(1:find(k0 > kf,1,'first')-2) = []; % remove as many extra samples as possible
+                R = integral(@fun,kf,pi*this.basisCount,...
+                    'AbsTol',p.Results.AbsTol,'RelTol',p.Results.RelTol);
+                R = R/(pi*this.basisCount - kf);
+            end
+            k0(k0 < kf) = [];
         end
         %% Angle and amplification
         function [k,angs,amps,mode] = getAngAmp(this,varargin)

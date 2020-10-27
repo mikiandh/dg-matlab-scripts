@@ -14,12 +14,12 @@ addpath('../../Solver')
 addpath('../../Basis')
 
 %% Setup
-J = logspacei(3,20,8);
+J = logspacei(2,19,8) + 1;
 pMin = repelem(0,numel(J)); % minimum degree required
 objFun = @objFun_Asthana2015;
 name = 'dgiga_dispersion';
 time = SSP_RK3;
-export = struct('dat',true,'fig',true,'tikz',false);
+export = struct('dat',true,'fig',false,'tikz',false);
 
 %% Preprocess
 try
@@ -32,30 +32,33 @@ end
 
 %% Minimization
 I = numel(J);
-tbl = array2table(zeros(I,23),'VariableNames',{
+tbl = array2table(zeros(I,26),'VariableNames',{
     'J'
     'pMin'
     'k'
     'p'
     's'
     'Cond'
-    'relCond_Bern'
-    'relCond_Lagr'
-    'Badness'
-    'relBadness_Bern'
-    'relBadness_Lagr'
+    'relCondBern'
+    'relCondLagr'
+    'Goodness'
+    'relGoodnessBern'
+    'relGoodnessLagr'
+    'DispDiss'
+    'relDispDissBern'
+    'relDispDissLagr'
     'Order'
-    'relOrder_Bern'
-    'relOrder_Lagr'
+    'relOrderBern'
+    'relOrderLagr'
     'Resol'
-    'relResol_Bern'
-    'relResol_Lagr'
+    'relResolBern'
+    'relResolLagr'
     'Cutoff'
-    'relCutoff_Bern'
-    'relCutoff_Lagr'
+    'relCutoffBern'
+    'relCutoffLagr'
     'CFL_RK3'
-    'relCFL_RK3_Bern'
-    'relCFL_RK3_Lagr'
+    'relCFLRK3Bern'
+    'relCFLRK3Lagr'
     });
 for i = 1:I
     try
@@ -101,6 +104,9 @@ for i = 1:I
         %%%
         optimum = DGIGA(k(j),p(j),s(j));
         baselines = [DGIGA(1,p(k == 1)) DGSEM(p(k == 1))];
+        [~,~,dispDiss0] = optimum.getDispDissRatio;
+        [~,~,dispDiss1] = baselines(1).getDispDissRatio;
+        [~,~,dispDiss2] = baselines(2).getDispDissRatio;
         tbl{i,:} = [
             J(i)
             pMin(i)
@@ -110,9 +116,12 @@ for i = 1:I
             cond(full(optimum.massMatrix))
             cond(full(baselines(1).massMatrix))
             cond(full(baselines(2).massMatrix))
-            f(j)
-            f(k == 1)
-            objFun_Asthana2015(baselines(2))
+            -f(j)
+            -f(k == 1)
+            -objFun_Asthana2015(baselines(2))
+            dispDiss0
+            dispDiss1
+            dispDiss2
             optimum.getOrder
             baselines(1).getOrder
             baselines(2).getOrder
@@ -144,7 +153,9 @@ for i = 1:I
 end
 
 %% Postprocess
-tbl{:,[7:3:end 8:3:end]} = tbl{:,[6:3:end-2 6:3:end-2]}./tbl{:,[7:3:end 8:3:end]} - 1; % relative changes over baseline
+if ~isempty(tbl)
+    tbl{:,[7:3:end 8:3:end]} = (tbl{:,[6:3:end-2 6:3:end-2]} - tbl{:,[7:3:end 8:3:end]})./abs(tbl{:,[7:3:end 8:3:end]}); % relative changes over baseline
+end
 tblOut = sortrows([tblIn; tbl],'J');
 clc
 disp(tblOut)

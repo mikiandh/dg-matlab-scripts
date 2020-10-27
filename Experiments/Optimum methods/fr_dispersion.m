@@ -19,7 +19,7 @@ objFun = @(eta,p) objFun_Asthana2015(FR({'eta',eta},p));
 time = SSP_RK3;
 export = struct('name','fr_dispersion',...
     'dat',true,...
-    'fig',true,...
+    'fig',false,...
     'gif',false,... incompatible with parfor, sorry
     'tikz',false);
 
@@ -33,7 +33,23 @@ end
 
 %% Minimization
 I = numel(p);
-tbl = array2table(zeros(I,13),'VariableNames',{'p','eta','c','Badness','relBadness','Order','relOrder','Resol','relResol','Cutoff','relCutoff','CFL_RK3','relCFL_RK3'});
+tbl = array2table(zeros(I,15),'VariableNames',{
+    'p'
+    'eta'
+    'c'
+    'Goodness'
+    'relGoodness'
+    'DispDiss'
+    'relDispDiss'
+    'Order'
+    'relOrder'
+    'Resol'
+    'relResol'
+    'Cutoff'
+    'relCutoff'
+    'CFLRK3'
+    'relCFLRK3'
+    });
 parfor i = 1:I
     try
         options = optimset('PlotFcn',{
@@ -42,12 +58,16 @@ parfor i = 1:I
         [eta,badness] = fminbnd(@(x) objFun(x,p(i)),-1,5,options);
         optimum = FR({'eta',eta},p(i));
         baseline = DGSEM(p(i));
+        [~,~,optimumDispDiss] = optimum.getDispDissRatio;
+        [~,~,baselineDispDiss] = baseline.getDispDissRatio;
         tbl{i,:} = [
             p(i)
             optimum.eta
             optimum.c
-            badness
-            objFun_Asthana2015(baseline)
+            -badness
+            -objFun_Asthana2015(baseline)
+            optimumDispDiss
+            baselineDispDiss
             optimum.getOrder
             baseline.getOrder
             optimum.getResolvingWavenumber/optimum.basisCount/pi
@@ -75,7 +95,9 @@ parfor i = 1:I
 end
 
 %% Postprocess
-tbl{:,5:2:end} = tbl{:,4:2:end-1}./tbl{:,5:2:end} - 1; % relative changes over baseline
+if ~isempty(tbl)
+    tbl{:,5:2:end} = (tbl{:,4:2:end-1} - tbl{:,5:2:end})./abs(tbl{:,5:2:end}); % relative changes over baseline
+end
 tblOut = sortrows([tblIn; tbl],'p');
 clc
 disp(tblOut)

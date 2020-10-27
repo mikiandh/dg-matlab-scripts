@@ -7,8 +7,10 @@ stop = false;
 switch state
     case 'init' % set up the plot
         
-        [r,k,kM] = FR('DG',p).getDispDissRatios('combined');
-        kc = k(find(imag(kM) <= -.01,1,'first')); % cheap estimation (good enough)
+        basis = FR('DG',p);
+        [k,kM] = basis.getCombinedWavenumbers;
+        [kU,r] = basis.getDispDissRatio;
+        kc = basis.getCutoffWavenumber;
         
         hold on
         yyaxis left
@@ -26,15 +28,16 @@ switch state
         
         yyaxis right
         ylabel '|d\Re(\kappa_m)/d\kappa - 1|/|\Re(\kappa_m)|'
-        plot(k,r,':')
-        plot(k,r,'-')
+        plot(kU,r,':')
+        plot(kU,r,'-')
         
         hold off
         xlabel '\kappa'
     case 'iter'
         basis = FR({'eta',eta},p);
-        [r,k,kM] = basis.getDispDissRatios('combined');
-        kc = k(find(imag(kM) <= -.01,1,'first'));
+        [k,kM] = basis.getCombinedWavenumbers;
+        [kU,r] = basis.getDispDissRatio;
+        kc = basis.getCutoffWavenumber;
         
         title(sprintf('%s - iter.: %d',basis.getName,optimValues.iteration))
         yyaxis left
@@ -45,7 +48,7 @@ switch state
             k,imag(kM)
             k,real(kM)
             [kc kc],[min(imag(kM)) max(real(kM))]
-            k,r
+            kU,r
             })
         if export.gif
             try

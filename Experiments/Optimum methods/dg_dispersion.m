@@ -14,7 +14,7 @@ p = [0 1 logspacei(2,19,8)];
 time = SSP_RK3;
 export = struct('name','dg_dispersion',...
     'dat',true,...
-    'fig',true);
+    'fig',false);
 
 %% Preprocess
 try
@@ -26,13 +26,30 @@ end
 
 %% Minimization
 I = numel(p);
-tbl = array2table(zeros(I,11),'VariableNames',{'p','Badness','relBadness','Order','relOrder','Resol','relResol','Cutoff','relCutoff','CFL_RK3','relCFL_RK3'});
+tbl = array2table(zeros(I,13),'VariableNames',{
+    'p'
+    'Goodness'
+    'relGoodness'
+    'DispDiss'
+    'relDispDiss'
+    'Order'
+    'relOrder'
+    'Resol'
+    'relResol'
+    'Cutoff'
+    'relCutoff'
+    'CFLRK3'
+    'relCFLRK3'
+    });
 parfor i = 1:I
     try
         optimum = DGSEM(p(i));
+        [~,~,R] = optimum.getDispDissRatio;
         tbl{i,:} = [
             p(i)
-            objFun_Asthana2015(optimum)
+            -objFun_Asthana2015(optimum)
+            nan
+            R
             nan
             optimum.getOrder
             nan
@@ -60,7 +77,9 @@ parfor i = 1:I
 end
 
 %% Postprocess
-tbl{:,3:2:end} = tbl{:,2:2:end-1}./tbl{1,2:2:end-1} - 1; % relative changes over baseline
+if ~isempty(tbl)
+    tbl{:,3:2:end} = (tbl{:,2:2:end-1} - tbl{1,2:2:end-1})./abs(tbl{1,2:2:end-1}); % relative changes over baseline
+end
 tblOut = sortrows([tblIn; tbl],'p');
 clc
 disp(tblOut)
