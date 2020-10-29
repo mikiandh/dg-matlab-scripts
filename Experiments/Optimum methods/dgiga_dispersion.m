@@ -60,6 +60,9 @@ tbl = array2table(zeros(I,26),'VariableNames',{
     'relCFLRK3Bern'
     'relCFLRK3Lagr'
     });
+% In addition, store ALL candidate scores
+%%%tblExtra = array2table(zeros(I,4),'VariableNames',{'f','k','p','s'});
+F = cell(I,1); % array of candidates
 for i = 1:I
     try
         % Generate all possible candidates:
@@ -85,14 +88,18 @@ for i = 1:I
         % Compute (in parallel):
         D = parallel.pool.DataQueue;
         D.afterEach(@plotFun_single);
+        condEstNums = zeros(numel(f),1);
         parfor j = 1:numel(f)
             basis = DGIGA(k(j),p(j),s(j));
             f(j) = objFun(basis);
+            condEstNums(j) = condest(basis.massMatrix);
             %%%
             [w0,w] = basis.getCombinedWavenumbers;
             send(D, {j,w0(w0 >= 0),w(w0 >= 0),basis.getName})
             %%%
         end
+        % Store them all:
+        F{i} = table(repmat(J(i),numel(f),1),k.',p.',s.',condEstNums,f.','VariableNames',{'J','k','p','s','Condest','Badness'});
         % Extract optimum:
         [~,j] = min(f);
         %%%
@@ -113,9 +120,9 @@ for i = 1:I
             k(j)
             p(j)
             s(j)
-            cond(full(optimum.massMatrix))
-            cond(full(baselines(1).massMatrix))
-            cond(full(baselines(2).massMatrix))
+            condEstNums(j)
+            condEstNums(k == 1)
+            condest(baselines(2).massMatrix)
             -f(j)
             -f(k == 1)
             -objFun_Asthana2015(baselines(2))
@@ -161,4 +168,5 @@ clc
 disp(tblOut)
 if export.dat
     writetable(tblOut,[name '.dat'],'Delimiter','tab')
+    writetable(sortrows(vertcat(F{:}),'Badness'),[name '_all' '.dat'],'Delimiter','tab');
 end

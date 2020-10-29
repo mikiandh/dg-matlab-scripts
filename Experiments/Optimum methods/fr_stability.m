@@ -14,11 +14,11 @@ addpath('../../Solver')
 addpath('../../Basis')
 
 %% Setup
-p = [2 3 4 5]; %7 10 14 19];
+p = logspacei(2,19,8);
 time = SSP_RK3;
 objFun = @(eta,p) -time.optimizeCFL(FR({'eta',eta},p));
 name = 'fr_stability';
-export = struct('dat',false,'fig',true,'tikz',false);
+export = struct('dat',true,'fig',false,'tikz',false);
 
 %% Preprocess
 try
