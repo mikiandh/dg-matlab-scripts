@@ -4,7 +4,7 @@
 clear, clc, close all
 
 %% File name root
-fileRoot = 'fr_flops';
+fileRoot = 'flops';
 
 %% Methods
 bases = [
@@ -20,7 +20,7 @@ bases = [
     ]';
 
 %% Test conditions
-waveRange0 = linspace(1e1,1e5,25)'; % range of wavemodes to resolve (seed)
+waveRange0 = logspace(1,5,25)'; % range of wavemodes to resolve (seed)
 timeRange = 1; % simulated time span, in domain lengths crossed
 solver = SSP_RK3;
 
@@ -58,11 +58,11 @@ parfor j = 1:size(bases,2)
         plot(waveRange,flops,'x-','DisplayName',bases(i,j).getName)
         hold off
     end
-    tbl.Properties.VariableNames = {'scaleRatio','K','N_steps','N_flops','rel_delta_N_flops_eta0','rel_delta_N_flops_DGSEM'};
+    tbl.Properties.VariableNames = {'scaleRatio','K','steps','flops','relFlopsEta0','relFlopsDGSEM'};
     % Print to file:
     fileName = sprintf('%s_%s',fileRoot,strjoin(regexp(bases(1,j).getName,'\d+|^[A-Z]+|\((\w+)\)','match'),'_'));
     writetable(tbl,[fileName '.dat'],'Delimiter','\t');
-    % Export figure:
-    legend('Location','Best')
-    saveas(gcf,fileName,'png')
+%     % Export figure:
+%     legend('Location','Best')
+%     saveas(gcf,fileName,'png')
 end
