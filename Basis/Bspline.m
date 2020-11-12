@@ -93,8 +93,8 @@ classdef Bspline < Basis
             this.left = zeros(this.basisCount,1);
             this.left(1) = 1;
             this.right = flip(this.left);
-            this.controlVandermonde = this.sampleAt(this.controlCoords);
             % Precomputed operators:
+            this.controlVandermonde = sparse(this.sampleAt(this.controlCoords));
             this.assembleOperators;
             % Sparsity graph:
             this.computeSparsityGraph;
