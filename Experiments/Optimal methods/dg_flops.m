@@ -33,7 +33,7 @@ parfor j = 1:size(bases,2)
         N = timeRange*K/solver.optimizeCFL(bases(i,j));
         N = ceil(N); % last step is smaller but costs the same
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        flops = 2*K.*J^2 + 23*J*K + 8*J + 6*K + 5;                  %
+        flops = 6*K.*J^2 + 45*J*K + 24*J + 18*K + 15;               %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         flops = flops.*N;
         if i == 1
