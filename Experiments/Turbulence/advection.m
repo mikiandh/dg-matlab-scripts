@@ -1,47 +1,116 @@
 clc
 clear
-%close all
+close all
 
 % This script computes a posteriori modified wavenumbers for the Advection
 % equation, using Stefan et al. (2014)'s approach.
 
-%% Input
-basis = DGSEM(1);
-N = 5; % number of wavemodes
-K = 10; % number of patches
-M = 10; % number of sample points (mesh-wide, preferably a power of 2)
+%% Inputs
+physics = Advection;
+basis = DGSEM(2);
+K = 100; % number of patches
+M = 10000; % number of samples, mesh-wide (a shitton of them)
+L = 1; % signal length
+isExport = false;
+
+%% Safety checks
+for aux = {K,M}
+    validateattributes(aux{1},{'double'},{'even'})
+end
 
 %% Setup
-kMod = zeros(basis.basisCount,N);
-mesh = Mesh(basis,[-1 1],Periodic(2),K);
-solver = SSP_RK3(Advection,[0 0]);
+solver = SSP_RK3(physics,[0 0]);
+mesh = Mesh(basis,[-1 1]*L/2,Periodic(2),K);
+t = linspace(mesh.edges([1 end]).coord,M+1); t(end) = []; % sample points
+dx = mesh.elements(1).dx; % cell width
+J = mesh.bases.basisCount; % DOFs/cell
+N = K*J/2; % Nyquist wavemode
 
 %% Wavemode loop
-for n = 1:N
-    dx = mesh.elements(1).dx;
-    J = mesh.bases.basisCount;
-    k = 2*pi/(K*dx);
-    fun = @(x) 1 + .1*sin(k*n*x);
-    solver.initialize(mesh,'initialCondition',fun)
-    close % automatic monitor figure
-    x = linspace(mesh.edges([1 end]).coord,M);
-    y0 = fun(x);
-    y = mesh.sample(x);
-    z = mesh.sampleResidual(x);
-    fx = [0:M/2-1 -M/2:-1];
-    fy0 = fft(y0);
-    fy = fft(y);
-    fz = fft(z);
-    subplot(1,2,1)
-    plot(x,fun(x),x,y,x,z)
-    xlabel('x')
-    legend('q','q^h','\partial_t q^h','Location','northoutside')
-    subplot(1,2,2)
-    bar(fx,[abs(fy0); abs(fy); abs(fz)].'/M)
-    hold on
-    plot([n n],[0 1],'--k')
-    hold off
-    legend('F(q)','F(q^h)','F(\partial_t q^h)','\kappa_{exact}','Location','northoutside')
-    xlabel('n')
-    pause
+wavenums = zeros(3,N); % preallocation
+D = parallel.pool.DataQueue;
+D.afterEach(@plotFun_single);
+% Status:
+fprintf('%s\n J = %d, K = %d\n',basis.getName,J,K)
+fprintf(' Nyquist wavemode: %d\n',N)
+fprintf(' Number of samples: %d\n\n',M)
+tic
+parfor n = 1:N
+    % Define some useful quantities:
+    wavelen = L/n; % wavelength
+    wavenum = 2*pi/wavelen; % (unmodified) wavenumber
+    fun = @(x) 1+.1*sin(2*pi*x/wavelen); % initial condition
+    
+    % Sample solution and residuals:
+    solver.initialize(mesh,'initialCondition',fun), close %#ok<PFBNS>
+    y0 = fun(t); % exact initial condition samples
+    y = mesh.sample(t); % numerical initial condition samples
+    z = mesh.sampleResidual(t); % numerical residual samples
+    
+    % Transform to Fourier domain:
+    f = [0:M/2-1 -M/2:-1]; % wavenumbers
+    fy0 = fft(y0); % exact Fourier initial condition
+    fy = fft(y); % numerical Fourier initial condition
+    fz0 = -1i*2*pi*f.*fy0; % exact Fourier residuals (spectral diff.)
+    fz = fft(z); % numerical Fourier residuals
+    
+    % Reconstruct exact residuals:
+    z0 = ifft(fz0);
+    
+    % Plot:
+    send(D,{n,N,M,t,y0,y,z0,z,f,fy0,fy,fz0,fz})
+    
+    % Compute wavenumbers:
+    wavenums(:,n) = [
+        wavenum
+        1i*fz0(n+1)./fy0(n+1)
+        1i*fz(n+1)./fy(n+1)
+        ];
 end
+toc
+
+%% Dispersion and dissipation
+aux = wavenums*dx/J; % scaled and dimensionless wavenumbers
+
+% Dispersion:
+subplot(2,1,1)
+plot(aux(1,:),real(aux(2,:)),'DisplayName',sprintf('%s (%s)','Spectral method',solver.physics.getInfo))
+hold on
+plot(aux(1,:),real(aux(3,:)),'DisplayName',sprintf('%s (%s)',basis.getName,solver.physics.getInfo))
+hold off
+ylabel('$\tilde{\kappa}_{\Re} \Delta x / J$','Interpreter','latex')
+
+% Dissipation:
+subplot(2,1,2)
+plot(aux(1,:),imag(aux(2,:)),'DisplayName',sprintf('%s (%s)','Spectral method',solver.physics.getInfo))
+hold on
+plot(aux(1,:),imag(aux(3,:)),'DisplayName',sprintf('%s (%s)',basis.getName,solver.physics.getInfo))
+hold off
+ylabel('$\tilde{\kappa}_{\Im} \Delta x / J$','Interpreter','latex')
+
+% Finishing touches:
+for i = 1:2
+    subplot(2,1,i)
+    xlabel('$\kappa \Delta x / J$','Interpreter','latex')
+    legend('Location','Best')
+end
+
+%% Export
+if ~isExport
+    return
+end
+% Arrange data in a table:
+tbl = array2table(wavenums.');
+tbl.k = tbl{:,1};
+tbl.k_real_spectral = real(tbl{:,2});
+tbl.k_imag_spectral = imag(tbl{:,2});
+tbl.k_real = real(tbl{:,3});
+tbl.k_imag = imag(tbl{:,3});
+tbl(:,1:3) = [];
+
+% Save table to file:
+fileName = sprintf('%s_%d_%s_%s','MWA',K,class(physics),strjoin(regexp(basis.getName,'\d+|^[A-Z]+|\((\w+)\)','match'),'_'));
+writetable(tbl,[fileName '.dat'],'Delimiter','\t')
+
+% Save also the figure:
+savefig(fileName)
