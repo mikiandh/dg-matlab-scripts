@@ -19,7 +19,7 @@ classdef Solver < matlab.mixin.SetGet
         waitForKey
         iterationCount
         wallClockTime
-        exactSolution = @(t,x) nan
+        exactSolution
     end
     properties (Access = protected)
         stageNow
@@ -48,7 +48,7 @@ classdef Solver < matlab.mixin.SetGet
                 addParameter(p,'courantNumber',1,@(x)validateattributes(x,{'numeric'},{'scalar','nonnegative','finite'}))
                 addParameter(p,'timeDelta',[],@(x)validateattributes(x,{'numeric'},{'scalar','nonnegative','finite'}))
                 addParameter(p,'limiter',Limiter,@(x)validateattributes(x,{'Limiter'},{}))
-                addParameter(p,'exactSolution',@(t,x) nan,@(x)validateattributes(x,{'function_handle'},{}))
+                addParameter(p,'exactSolution',@(t,x) nan(physics.equationCount,numel(x)),@(x)validateattributes(x,{'function_handle'},{}))
                 addParameter(p,'iterSkip',0,@(x)validateattributes(x,{'numeric'},{'integer'}))
                 addParameter(p,'waitForKey',false,@(x)validateattributes(x,{'logical'},{'scalar'}))
                 % Parse the inputs:

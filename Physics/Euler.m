@@ -1,7 +1,7 @@
 classdef Euler < Physics
     properties (Constant, Hidden)
         equationCount = 3
-        validRiemannSolvers = ["exact","LLF","Roe","RoeNoFix","RoeHartenHyman","RoeFix","HLL","HLLE","HLLC","KEP"]
+        validRiemannSolvers = ["exact","LLF","RoeNoFix","RoeHartenHyman","HLL","HLLE","HLLC","KEP"]
     end
     properties (SetAccess = immutable)
         riemannSolver = 'HLLC'
