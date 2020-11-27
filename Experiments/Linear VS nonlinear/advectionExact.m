@@ -10,10 +10,6 @@ function y = advectionExact(t,x,fun,a,L)
 %  L: domain boundary positions (2-element array)
 %
 x = x-t*a; % sample coordinates in "extended domain"
-% Corresponding sample coordinates in the original domain:
-mask = x < L(1); % left
-x(mask) = -L(end) + mod(x(mask) - L(1),L(end) - L(1));
-mask = x > L(end); % right
-x(mask) = -L(1) - mod(x(mask) - L(end),L(end) - L(1));
+x = L(1) + mod(x-L(1),L(end)-L(1)); % corresponding coordinates in the original domain
 y = fun(x); % sample values in "extended domain"
 end
