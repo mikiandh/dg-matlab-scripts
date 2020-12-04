@@ -101,8 +101,9 @@ if export.tbl
 end
 
 %% Plot tables:
+figure
 for i = 1:size(bases,1)
-    figure
+    subplot(2,4,i)
     plot(tbl{i}.t,tbl{i}.ErrorL2_DGSEM,'^-','DisplayName',bases(i,1).getName)
     hold on
     plot(tbl{i}.t,tbl{i}.ErrorL2_FR,'s-','DisplayName',bases(i,2).getName)
@@ -110,5 +111,7 @@ for i = 1:size(bases,1)
     plot(tbl{i}.t,tbl{i}.ErrorL2_DGIGA_nodal,'o-','DisplayName',bases(i,4).getName)
     hold off
     legend('Location','Best')
-    title(sprintf('Advection, N_{dofs} ~ %d, J = %d',Ndofs,bases(i,1).basisCount))
+    title(sprintf('%s, N_{dofs} ~ %d, J = %d',strrep(fileNameRoot,'_',' '),Ndofs,bases(i,1).basisCount))
+    xlabel('Time')
+    ylabel('Error L2 norm')
 end

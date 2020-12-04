@@ -2,14 +2,16 @@ clc
 clear
 close all
 
-% This script computes norms of a numerical solution of the Burgers
-% equation as a function of time, using a monochromatic initial condition.
+% This script computes error norms of a numerical solution of the Burgers
+% equation as a function of time, using a triangular initial condition that
+% quickly evolves into an N-wave, which I can evaluate exactly (even beyond
+% its breaking point).
 
 %% Setup
-fileNameRoot = 'burgers_sine';
+fileNameRoot = 'burgers_sawtooth';
 Ndofs = 60; % e.g. 300, 180 or 60
 dt = 1e-3; % e.g. 1e-3
-nT = 30; % number of instants when to sample the norms
+T = 0:.1:7; % instants when to sample the norms
 bases = [
     % Baseline  % Optimal FR                       % Optimal DGIGA 	% Nodal DGIGA
     DGSEM(2)	FR({'eta',0.0227795117943271},2)   DGIGA(1,2,1)     DGIGA_nodal(1,2,1)
@@ -22,46 +24,32 @@ bases = [
     DGSEM(19)	FR({'eta',0.152203674556189},19)   DGIGA(2,14,9)    DGIGA_nodal(2,14,9)
     ];
 export = struct('fig',true,'dat',true,'tbl',true); % yes or no?
-targetWellResolvedFraction = .9; % try to nail the point of maximum effect (see combined-mode plots)
+exactSolution = @sawtoothBurgersExact;
+tB = Burgers.getBreakingPoint(@(x) exactSolution(0,x),[-1 1],'isPeriodic',true);
 
 %% Batch run
-tbl(1:size(bases,1)) = {table};
-tic
+tbl(1:size(bases,1)) = {array2table([T(:) zeros(numel(T),9)])};
 parfor i = 1:size(bases,1)
-    % Some additional setup:
-    bases_cpu = bases(i,:); % assign to worker
     norms = Norm({'TV','L1','L2','ErrorL2'});
     basisNames = arrayfun(@class,bases(i,:),'UniformOutput',false);
     colNames = compose('%s_%s',norms.string',string(basisNames));
-    tbl{i} = array2table(zeros(nT,1+numel(colNames)));
+    tbl{i} = array2table([T(:) zeros(numel(T),numel(colNames))]); %#ok<PFBNS>
     tbl{i}.Properties.VariableNames = ['t'; colNames(:)];
-    for basis = bases_cpu
+    for basis = bases(i,:)
         % Mesh:
         mesh = Mesh(basis,[-1 1],Periodic(2),round(Ndofs/basis.basisCount));
-        % Initial condition:
-        nyquistWavemode = mesh.dofCount/2;
-        resolvingWavemode = bases_cpu(1).getResolvingWavenumber*mesh.elementCount/(2*pi); % resolving eff. of the BASELINE
-        targetWavemode = round(targetWellResolvedFraction*resolvingWavemode);
-        exactSolution = @(t,x) Burgers.MOC(t,x,@(x) 1+.1*sin(pi*targetWavemode*x),[-1 1]);
-        % Time samples:
-        tB = 10/(pi*targetWavemode);
-        %%% tB = Burgers.getBreakingPoint(@(x) exactSolution(0,x),[-1 1],'isPeriodic',true);
-        T = linspace(0,.9*tB,nT); % stop before the solution breaks!
-        % Notify start:
-        fprintf(1,"Starting %d x %s\nTargeted wavemode: %g\n %g of baseline's well-resolved range\n %g of resolved (Nyquist) range\nBreakinging time: %g\n\n",...
-            mesh.elementCount,basis.getName,targetWavemode,targetWavemode/resolvingWavemode,targetWavemode/nyquistWavemode,tB)
+        fprintf(1,"Starting %d x %s\n Breakinging time: %g\n\n",mesh.elementCount,basis.getName,tB)
         % Solver:
         solver = SSP_RK3(Burgers,[0 0],'timeDelta',dt,'norms',norms,'exactSolution',exactSolution);
         % Time-integration:
         solver.initialize(mesh)
         ticID = tic;
-        for j = 1:nT
+        for j = 1:numel(T)
             solver.timeStop = T(j); % set next stop
             solver.timeDelta = dt; % reset
             solver.launch(mesh) % re-launch
             tbl{i}{j,endsWith(tbl{i}.Properties.VariableNames,class(basis))} = [norms.vals]; % store results
         end
-        tbl{i}.t = T';
         % Notify end:
         fprintf(1,'Finished %d x %s\n Elapsed time: %g seconds\n\n',mesh.elementCount,basis.getName,toc(ticID))
         % Export figure:
@@ -77,9 +65,6 @@ parfor i = 1:size(bases,1)
             % Write info and header:
             fprintf(fileID,'# %s\n',solver.getInfo);
             fprintf(fileID,'# %d x %s; N_dofs = %d\n',mesh.elementCount,basis.getName,mesh.dofCount);
-            fprintf(fileID,'# Targeted wavemode: %g\n',targetWavemode);
-            fprintf(fileID,'# Resolving wavemode: %g\n',basis.getResolvingWavenumber*mesh.elementCount/(2*pi));
-            fprintf(fileID,'# Nyquist wavemode: %g\n',mesh.dofCount/2);
             fprintf(fileID,'# Breaking time: %g\n',tB);
             aux = [norms.cellstr; {norms.vals}];
             fprintf(fileID,'# %s: %g\n',aux{:});
@@ -101,7 +86,6 @@ parfor i = 1:size(bases,1)
         writetable(tbl{i},sprintf('%s_J=%d.dat',fileNameRoot,basis.basisCount),'Delimiter','\t')
     end
 end
-toc
 
 %% Export tables:
 if export.tbl

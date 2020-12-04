@@ -62,7 +62,8 @@ classdef Burgers < Physics
             % Parser:
             validateattributes(f,{'function_handle'},{'nonempty'});
             p = inputParser;
-            addParameter(p,'x0',linspace(L(1),L(end),10))
+            %%%addParameter(p,'x0',linspace(L(1),L(end),10))
+            addParameter(p,'x0',L(1) + diff(L)*[0 rand(1,8) 1])
             addParameter(p,'isPeriodic',false)
             parse(p,varargin{:});
             % Periodic extension, if requested:
