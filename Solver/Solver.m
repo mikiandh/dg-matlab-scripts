@@ -155,6 +155,24 @@ classdef Solver < matlab.mixin.SetGet
             info = sprintf('SSP RK%d(%d); t = %.4g \\in [%.4g,%.4g], %s, iter = %d, WCT = %.2f s',...
                 this.order,this.stageCount,this.timeNow,this.timeStart,this.timeStop,info,this.iterationCount,this.wallClockTime);
         end
+        %% Export solution
+        function writeSolutionToFile(this,fileNameRoot)
+            % Exports the solution (numerical and exact; also initial
+            % condition) into a .dat file.
+            %
+            % Setup file:
+            fileName = sprintf('%s_t=%g.dat',fileNameRoot,this.timeNow);
+            fileID = fopen(fileName,'wt');
+            % Pass on request to the monitor:
+            try
+                this.monitor.writeInfo(fileID)
+                this.monitor.writeSolution(fileID)
+            catch me
+                warning(getReport(me))
+            end
+            % Return file to a safe state:
+            fclose(fileID);
+        end
     end
     methods (Access = protected)
         %% Single step forward

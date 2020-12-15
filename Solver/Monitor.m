@@ -238,6 +238,49 @@ classdef Monitor < handle
             %%%this.updateYLims
             drawnow limitrate
         end
+        %% Export info 
+        function writeInfo(this,fileID)
+            % Appends monitor info and most recent norms (if any) to file.
+            fprintf(fileID,'# %s\n',...
+                this.hStaticTitle.String{:},...
+                this.hDynamicTitle.String,...
+                func2str(this.solver.exactSolution));
+            if ~isempty(this.hNorms)
+                fprintf(fileID,'#');
+                fprintf(fileID,'%s \t',this.norms);
+                fprintf(fileID,'\n');
+                aux = [this.norms.vals];
+                for i = this.rows
+                    fprintf(fileID,'#');
+                    fprintf(fileID,'%g \t',aux(i,:));
+                    fprintf(fileID,'\n');
+                end
+            end
+            fprintf(fileID,'\n');
+        end
+        %% Write current solution
+        function writeSolution(this,fileID)
+            % Writes the solution samples currently shown in the monitor
+            % figure into a file of given ID.
+            % Elements/patches are numbered and separated by a blank line.
+            %
+            % Header row:
+            aux = compose('%s_%d',["q^h" "q"]',this.rows);
+            fprintf(fileID,'%s \t','k','x',aux{:});
+            fprintf(fileID,'\n');
+            % Write solution, element-wise:
+            aux = repmat('\t%g ',1,size(aux,2));
+            aux = ['%d \t %g' aux aux '\n'];
+            for k = 1:size(this.hDiscrete,2)
+                fprintf(fileID,aux,[
+                    repmat(k,size(this.hDiscrete(k).XData))
+                    this.hDiscrete(1,k).XData
+                    vertcat(this.hDiscrete(:,k).YData)
+                    vertcat(this.hExact(:,k).YData)
+                    ]);
+                fprintf(fileID,'\n');
+            end
+        end
     end
     methods (Access = protected)
         %% Vertical axis limits
