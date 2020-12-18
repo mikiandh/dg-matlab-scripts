@@ -2,11 +2,11 @@ clc
 clear
 close all
 
-% This script computes a posteriori modified wavenumbers for the Advection
+% This script computes a posteriori modified wavenumbers for the Burgers
 % equation, using Stefan et al. (2014)'s approach.
 
 %% Inputs
-physics = Advection;
+physics = Burgers;
 basis = DGSEM(2);
 K = 100; % number of patches
 M = 10000; % number of samples, mesh-wide (a shitton of them)
@@ -29,7 +29,7 @@ N = K*J/2; % Nyquist wavemode
 %% Wavemode loop
 wavenums = zeros(3,N); % preallocation
 D = parallel.pool.DataQueue;
-D.afterEach(@plotFun_single);
+D.afterEach(@plotMWA);
 % Status:
 fprintf('%s\n J = %d, K = %d\n',basis.getName,J,K)
 fprintf(' Nyquist wavemode: %d\n',N)
@@ -71,6 +71,7 @@ toc
 
 %% Dispersion and dissipation
 aux = wavenums*dx/J; % scaled and dimensionless wavenumbers
+figure(2)
 
 % Dispersion:
 subplot(2,1,1)
@@ -100,7 +101,7 @@ if ~isExport
     return
 end
 % Arrange data in a table:
-tbl = array2table(wavenums.');
+tbl = array2table(aux.');
 tbl.k = tbl{:,1};
 tbl.k_real_spectral = real(tbl{:,2});
 tbl.k_imag_spectral = imag(tbl{:,2});

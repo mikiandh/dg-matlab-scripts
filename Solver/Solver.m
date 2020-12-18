@@ -156,17 +156,25 @@ classdef Solver < matlab.mixin.SetGet
                 this.order,this.stageCount,this.timeNow,this.timeStart,this.timeStop,info,this.iterationCount,this.wallClockTime);
         end
         %% Export solution
-        function writeSolutionToFile(this,fileNameRoot)
+        function writeSolutionToFile(this,fileNameRoot,n)
             % Exports the solution (numerical and exact; also initial
             % condition) into a .dat file.
+            %
+            % Arguments
+            %  fileNameRoot: root of the name the file will have (will
+            %                append current time and extension to it)
+            %  n: write only one of every n samples (4 by default)
             %
             % Setup file:
             fileName = sprintf('%s_t=%g.dat',fileNameRoot,this.timeNow);
             fileID = fopen(fileName,'wt');
             % Pass on request to the monitor:
+            if nargin < 3
+                n = 4;
+            end
             try
                 this.monitor.writeInfo(fileID)
-                this.monitor.writeSolution(fileID)
+                this.monitor.writeSolution(fileID,n)
             catch me
                 warning(getReport(me))
             end

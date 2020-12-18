@@ -259,7 +259,7 @@ classdef Monitor < handle
             fprintf(fileID,'\n');
         end
         %% Write current solution
-        function writeSolution(this,fileID)
+        function writeSolution(this,fileID,n)
             % Writes the solution samples currently shown in the monitor
             % figure into a file of given ID.
             % Elements/patches are numbered and separated by a blank line.
@@ -272,12 +272,13 @@ classdef Monitor < handle
             aux = repmat('\t%g ',1,size(aux,2));
             aux = ['%d \t %g' aux aux '\n'];
             for k = 1:size(this.hDiscrete,2)
-                fprintf(fileID,aux,[
+                data = [
                     repmat(k,size(this.hDiscrete(k).XData))
                     this.hDiscrete(1,k).XData
                     vertcat(this.hDiscrete(:,k).YData)
                     vertcat(this.hExact(:,k).YData)
-                    ]);
+                    ];
+                fprintf(fileID,aux,data(:,[1:n:end-1 end]));
                 fprintf(fileID,'\n');
             end
         end

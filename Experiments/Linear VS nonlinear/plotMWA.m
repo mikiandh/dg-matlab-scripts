@@ -1,4 +1,4 @@
-function plotFun_single(inputCell)
+function plotMWA(inputCell)
 figure(1)
 [n,N,M,t,y0,y,z0,z,f,fy0,fy,fz0,fz] = inputCell{:};
 subplot(1,2,1)
