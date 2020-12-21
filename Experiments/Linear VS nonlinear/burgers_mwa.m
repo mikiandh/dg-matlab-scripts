@@ -7,8 +7,8 @@ close all
 
 %% Inputs
 physics = Burgers;
-basis = DGSEM(2);
-K = 100; % number of patches
+basis = DGSEM(1);
+K = 32; % number of patches
 M = 10000; % number of samples, mesh-wide (a shitton of them)
 L = 1; % signal length
 isExport = false;
@@ -58,7 +58,7 @@ parfor n = 1:N
     z0 = ifft(fz0);
     
     % Plot:
-    send(D,{n,N,M,t,y0,y,z0,z,f,fy0,fy,fz0,fz})
+    send(D,{n,N,M,K,t,y0,y,z0,z,f,fy0,fy,fz0,fz})
     
     % Compute wavenumbers:
     wavenums(:,n) = [

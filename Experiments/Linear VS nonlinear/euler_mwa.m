@@ -98,7 +98,7 @@ for basis = [
             z0 = ifft(fz0,[],2,'symmetric');
             
             % Plot:
-            send(D,{n,N,M,t,y0(1,:),y(1,:),z0(1,:),z(1,:),f,fy0(1,:),fy(1,:),fz0(1,:),fz(1,:)})
+            send(D,{n,N,M,K,t,y0(1,:),y(1,:),z0(1,:),z(1,:),f,fy0(1,:),fy(1,:),fz0(1,:),fz(1,:)})
             
             % Compute wavenumbers:
             wavenums(:,n) = [
