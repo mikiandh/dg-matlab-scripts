@@ -44,7 +44,7 @@ parfor i = 1:numel(testStruct)
         dt = solver.timeDelta;
         solver.launch(mesh)
         solver.timeDelta = dt;
-        filename = sprintf('burgers_gauss_J=%d_%s',mesh.bases(1).basisCount,class(mesh.bases(1)));
+        filename = sprintf('burgers_gauss_J=%d_%s_t=%g',mesh.bases(1).basisCount,class(mesh.bases(1)),solver.timeNow);
         solver.writeSolutionToFile(filename,testStruct(i).n);
     end
 end

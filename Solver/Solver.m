@@ -161,12 +161,11 @@ classdef Solver < matlab.mixin.SetGet
             % condition) into a .dat file.
             %
             % Arguments
-            %  fileNameRoot: root of the name the file will have (will
-            %                append current time and extension to it)
+            %  fileNameRoot: root of the name the file will have
             %  n: write only one of every n samples (4 by default)
             %
             % Setup file:
-            fileName = sprintf('%s_t=%g.dat',fileNameRoot,this.timeNow);
+            fileName = sprintf('%s.dat',fileNameRoot);
             fileID = fopen(fileName,'wt');
             % Pass on request to the monitor:
             if nargin < 3
@@ -175,6 +174,27 @@ classdef Solver < matlab.mixin.SetGet
             try
                 this.monitor.writeInfo(fileID)
                 this.monitor.writeSolution(fileID,n)
+            catch me
+                warning(getReport(me))
+            end
+            % Return file to a safe state:
+            fclose(fileID);
+        end
+        %% Export limiter & sensor
+        function writeLimiterToFile(this,fileNameRoot)
+            % Exports the current limiter and sensor activation status into
+            % a .dat file.
+            %
+            % Arguments
+            %  fileNameRoot: root of the name the file will have
+            %
+            % Setup file:
+            fileName = sprintf('%s.dat',fileNameRoot);
+            fileID = fopen(fileName,'wt');
+            % Pass on request to the monitor:
+            try
+                this.monitor.writeInfo(fileID)
+                this.monitor.writeLimiter(fileID)
             catch me
                 warning(getReport(me))
             end

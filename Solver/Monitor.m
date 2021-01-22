@@ -282,6 +282,27 @@ classdef Monitor < handle
                 fprintf(fileID,'\n');
             end
         end
+        %% Write current limiter & sensor activation
+        function writeLimiter(this,fileID)
+            % Writes the sensor and limiter activation status currently
+            % shown in the monitor figure, into a file of given ID.
+            % Element-wise.
+            %
+            % Header row:
+            aux = compose('%s_%d',["Sensor" "Limiter"]',this.rows)';
+            fprintf(fileID,'%s \t','k','x',aux{:});
+            fprintf(fileID,'\n');
+            % Remaining rows:
+            specs = repmat('\t%g ',1,size(aux,1));
+            specs = ['%d \t%g ' specs specs '\n'];
+            aux = repmat(this.hSensors(1).XData,numel(aux)+2,1);
+            aux(1,:) = 1:size(aux,2);
+            aux(2+this.rows,:) = vertcat(this.hSensors.YData);
+            for i = this.rows
+                aux(2+this.rows(end)+i,:) = sum(vertcat(this.hLimiters(i,:).YData));
+            end
+            fprintf(fileID,specs,aux);
+        end
     end
     methods (Access = protected)
         %% Vertical axis limits

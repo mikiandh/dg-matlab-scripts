@@ -70,5 +70,24 @@ classdef Advection < Physics
         function info = getInfo(this)
             info = sprintf('%s, a = %g',this.getInfo@Physics,this.advSpeed);
         end
+        %% Exact solution
+        function y = MOC(this,t,x,fun,L)
+            % Evolves an initial condition according to the method of
+            % characteristics, applied to the advection equation.
+            % 
+            % If domain bounds are given, will assume periodic boundaries.
+            %
+            % Arguments
+            %  t: instant (from t = 0)
+            %  x: position
+            %  fun: initial condition (at t = 0)
+            %  L: (optional) domain boundary positions (2-element array)
+            %
+            x = x-t*this.advSpeed; % sample coordinates in "extended domain"
+            if nargin > 4
+                x = L(1) + mod(x-L(1),L(end)-L(1)); % corresponding coordinates in the original domain
+            end
+            y = fun(x); % sample values in "extended domain"
+        end
     end
 end

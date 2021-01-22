@@ -1,7 +1,7 @@
 classdef Algorithms < handle
     methods (Static)
         %% Adaptive quadrature (Shampine, 2008)
-        function Q = quadvgk(fv,Subs,NF)
+        function [Q,success] = quadvgk(fv,Subs,NF)
             % QUADVGK: Vectorised adaptive G7,K15 Gaussian quadrature on vector of integrals
             %
             %	This function calculates the integration of a vector of functions via adaptive G7,K15
@@ -73,15 +73,19 @@ classdef Algorithms < handle
                     Q2(n,:) = M.*sum((WG*ones(1,NM)).*F(G,:));
                 end
                 % Stopping criteria:
-                tols = L*M.*max(1e-13,1e-9*abs(Q)); % subinterval and equation-wise tolerances
-                isConverged = all(abs(Q1-Q2) <= tols,1) | Subs(2,:)-Subs(1,:) <= eps;
-                Q = Q + sum(Q1(:,isConverged), 2);
-                Subs(:, isConverged) = [];
-                if NM >= 16384
-                    warning('Failed to converge; %d subintervals.',NM)
+                tols = L*M.*max(1e-13,1e-9*abs(Q)); % equation (row) and subinterval (column)--wise tolerances
+                tols = max(tols,eps);               % override unreasonably tight ones
+                isConverged = all(abs(Q1-Q2) <= tols) | diff(Subs) <= eps;
+                Q = Q + sum(Q1(:,isConverged),2);
+                Subs(:,isConverged) = [];
+                if NM >= 16384 && any(~isConverged)
+                    % warning('Number of subintervals (%d) has exceeded its allowed maximum (16384), but integral still failed to converge.\nCould a singular point be causing an infinite refinement?',NM)
+                    Q = Q + sum(Q1(:,~isConverged),2); % use the latest estimate, and hope for the best
+                    success = false;
                     return % next iteration would generate too many intervals
                 end
             end
+            success = true;
             function GetSubs
                 M = (Subs(2,:)-Subs(1,:))/2;
                 C = (Subs(2,:)+Subs(1,:))/2;
