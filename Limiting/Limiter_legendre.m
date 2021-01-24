@@ -37,7 +37,8 @@ classdef Limiter_legendre < Limiter
             % Default limiting:
             applyStage@Limiter(this,mesh,solver);
             % Retrieve troubled elements:
-            elements = mesh.elements([mesh.elements.isTroubled]);
+            isTroubled = [mesh.elements.isTroubled];
+            elements = mesh.elements(isTroubled(:,:,this.priority));
             % Initialize all the stuff:
             this.initialize(elements,mesh.maxBasisCount)
             % Limit each characteristic component (independently):
@@ -102,9 +103,9 @@ classdef Limiter_legendre < Limiter
                 this.coefs(:,:,k) = this.R(:,:,k)*this.coefs(:,:,k);
                 % Determine which conservative variables have been affected
                 % by the limiting (which was done in characteristic ones):
-                elements(k).isLimited = abs(this.coefs0(:,:,k) - this.coefs(:,:,k)) > 1e-10;
+                elements(k).isLimited(:,:,this.priority) = abs(this.coefs0(:,:,k) - this.coefs(:,:,k)) > 1e-10;
                 % Update all modes of each affected conservative variables:
-                i = any(elements(k).isLimited,2);
+                i = any(elements(k).isLimited(:,:,this.priority),2);
                 elements(k).setLegendre(this.coefs(i,1:elements(k).dofCount,k),i);
             end
         end

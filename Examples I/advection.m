@@ -4,15 +4,6 @@ clear
 
 % This script solves the advection equation in 1D.
 
-%% Dependencies
-addpath('../Limiting')
-addpath('../Physics')
-addpath('../Solver')
-addpath('../Basis')
-addpath('../Mesh')
-addpath('../Math')
-addpath('../Extra')
-
 %% Parameters
 L = [-1 1]; % domain edges
 
@@ -39,16 +30,20 @@ IC_p3d3 = @(x) (x+x.^2+x.^3).*(1 - heaviside(x)) + (x+x.^2+2*x.^3).*(heaviside(x
 IC_p3d4 = @(x) (x+x.^2+x.^3);
 
 %% Discretization
-mesh = Mesh(DGIGA(27,3),L,Periodic(2),1);
+mesh = Mesh(DGSEM(2),L,Periodic(2),10);
 
 %% Solver
-solver = SSP_RK3(Advection,[0 2],...
-    'timeDelta',1e-4,...
-    'norm',Norm({'ErrorL2'}),...
-    'exactSolution',@(t,x) IC_gauss(x),'iterSkip',100);
+solver = SSP_RK4_10(Advection,[0 2],...
+    ...'limiters',[Limiter TVB BDF AFC_2010 Limiter('Sensor',KXRCF) TVB('Sensor',KXRCF) BDF('Sensor',KXRCF) AFC_2010('Sensor',KXRCF) Limiter('Sensor',APTVD) TVB('Sensor',APTVD) BDF('Sensor',APTVD) AFC_2010('Sensor',APTVD)],...
+    'limiters',[Limiter Limiter Limiter TVB('Sensor',KXRCF)],...
+    ...'norm',Norm({'ErrorL2'}),...
+    'exactSolution',@(t,x) IC_gauss(x),...
+    'iterSkip',1,...
+    'priority',4);
+solver.courantNumber = .9*solver.optimizeCFL(mesh.bases);
 
 %% Initial condition
-solver.initialize(mesh,'method','project')
+solver.initialize(mesh,'limiter',Limiter)
 
 %% Time-integration
 solver.launch(mesh)

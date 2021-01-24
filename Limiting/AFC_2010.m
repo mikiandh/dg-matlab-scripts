@@ -54,10 +54,9 @@ classdef AFC_2010 < Limiter
             this.computeAntidiffusiveFluxes(mesh.elements,1)
             this.applyAFC(mesh,solver)
         end
-        %% Information
-        function info = getInfo(this)
-            info = getInfo@Limiter(this);
-            info = strrep(info,'_2010',' (2010)');
+        %% Name (extension)
+        function info = getName(this)
+            info = strrep(this.getName@Limiter,'_2010',' (2010)');
         end
     end
     methods (Static, Access = protected)
@@ -225,7 +224,8 @@ classdef AFC_2010 < Limiter
             % Apply sensor to (linearized) high-order solutions:
             this.applySensor(mesh,solver)
             % Retrieve troubled elements:
-            elements = mesh.elements([mesh.elements.isTroubled]);
+            isTroubled = [mesh.elements.isTroubled];
+            elements = mesh.elements(isTroubled(:,:,this.priority));
             % Prelimiting (in conserved variables):
             this.applyPrelimiting(elements)
             % Determine local extrema (in control variables):
@@ -245,12 +245,13 @@ classdef AFC_2010 < Limiter
             % Apply raw antidiffusive fluxes to each element:
             for element = mesh.elements
                 element.applyAntidiffusiveFluxes;
-                element.isLimited = false(size(element.states));
+                element.isLimited(:,:,this.priority) = false(size(element.states));
             end
             % Detect troubled cells in the linearised high-order solution:
-            this.sensor.apply(mesh,solver)
+            this.sensor.apply(mesh,solver,this.priority)
             % Recover low-order predictors of troubled patches:
-            for element = mesh.elements([mesh.elements.isTroubled])
+            isTroubled = [mesh.elements.isTroubled];
+            for element = mesh.elements(isTroubled(:,:,this.priority))
                 element.removeAntidiffusiveFluxes(1);
             end
         end
@@ -313,7 +314,8 @@ classdef AFC_2010 < Limiter
                 edge.elementR.minima(:,1) = aux;
             end
             % Distribute inter-patch extrema inwards of each troubled cell:
-            mask = [mesh.elements.isTroubled];
+            isTroubled = [mesh.elements.isTroubled];
+            mask = isTroubled(:,:,this.priority);
             for element = mesh.elements(mask)
                 % Aliases:
                 basis = element.basis;
@@ -375,7 +377,7 @@ classdef AFC_2010 < Limiter
                     this.invSyncFluxesFun(element)
                     % Limit conservative antidiffusive fluxes:
                     element.antidiffusiveFluxes = alphas.*element.antidiffusiveFluxes;
-                    %%%element.isLimited(i,:) = sum(reshape(1-alphas,element.dofCount,element.dofCount),2)';
+                    %%%element.isLimited(i,:,this.priority) = sum(reshape(1-alphas,element.dofCount,element.dofCount),2)';
                 end
             end
             % Finalize:

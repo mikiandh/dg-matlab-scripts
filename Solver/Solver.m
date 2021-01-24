@@ -13,7 +13,7 @@ classdef Solver < matlab.mixin.SetGet
         timeStop
         courantNumber
         timeDelta
-        limiter
+        limiters
         isTimeDeltaFixed
         iterSkip
         waitForKey
@@ -47,7 +47,7 @@ classdef Solver < matlab.mixin.SetGet
                 % Name-value arguments:
                 addParameter(p,'courantNumber',1,@(x)validateattributes(x,{'numeric'},{'scalar','nonnegative','finite'}))
                 addParameter(p,'timeDelta',[],@(x)validateattributes(x,{'numeric'},{'scalar','nonnegative','finite'}))
-                addParameter(p,'limiter',Limiter,@(x)validateattributes(x,{'Limiter'},{}))
+                addParameter(p,'limiters',Limiter,@(x)validateattributes(x,{'Limiter'},{}))
                 addParameter(p,'exactSolution',@(t,x) nan(physics.equationCount,numel(x)),@(x)validateattributes(x,{'function_handle'},{}))
                 addParameter(p,'iterSkip',0,@(x)validateattributes(x,{'numeric'},{'integer'}))
                 addParameter(p,'waitForKey',false,@(x)validateattributes(x,{'logical'},{'scalar'}))
@@ -75,10 +75,12 @@ classdef Solver < matlab.mixin.SetGet
             p = inputParser;
             % Optional arguments:
             addParameter(p,'method','project',@(x)validateattributes(x,{'char'},{}))
-            addParameter(p,'limiter',this.limiter,@(x)validateattributes(x,{'Limiter'},{}))
+            addParameter(p,'limiters',this.limiters,@(x)validateattributes(x,{'Limiter'},{}))
             addParameter(p,'initialCondition',@(x) this.exactSolution(this.timeNow,x),@(x)validateattributes(x,{'function_handle'},{}))
             % Parse the inputs:
             parse(p,varargin{:})
+            % Inform custom limiters of their order:
+            p.Results.limiters.resetPriorities;
             % Initialize solution:
             this.iterationCount = 0; tic
             for element = mesh.elements
@@ -87,9 +89,11 @@ classdef Solver < matlab.mixin.SetGet
             mesh.elements.interpolateStateAtEdges
             % Update ghost elements:
             mesh.boundaries.apply(this.physics,this)
-            % Limit solution:
-            p.Results.limiter.applyInitial(mesh,this)
-            this.limiter.takeSnapshot(mesh)
+            % Limit initial solution (possibly using custom limiters):
+            for limiter = p.Results.limiters
+                limiter.applyInitial(mesh,this)
+                limiter.takeSnapshot(mesh)
+            end
             this.wallClockTime = toc;
             % Initialize residuals:
             mesh.computeResiduals(this.physics,this)
@@ -105,6 +109,20 @@ classdef Solver < matlab.mixin.SetGet
                 fprintf('Paused. Press key to continue...');
                 pause
                 fprintf('\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b')
+            end
+            % Adjust limiter stuff, if necessary.
+            if any(strcmpi(p.UsingDefaults,'limiters'))
+                % Default case, no extra adjustments needed.
+            else
+                % Inform each owned limiter of its position in the sequence:
+                this.limiters.resetPriorities
+                % And also of the current physics:
+                this.limiters.resetPhysics(this)
+                % Reset and preallocate activation flags (in case limiters were not default):
+                for element = mesh.elements
+                    element.isTroubled = repmat(element.isTroubled(:,:,1),1,1,numel(this.limiters));
+                    element.isLimited = repmat(element.isLimited(:,:,1),1,1,numel(this.limiters));
+                end
             end
         end
         %% Advance solution in time
@@ -232,15 +250,21 @@ classdef Solver < matlab.mixin.SetGet
                 for element = mesh.elements
                     this.applyStage(element)
                 end
-                % Apply limiter after each stage:
-                this.limiter.applyStage(mesh,this)
+                % Apply limiter(s) after each stage:
+                for limiter = this.limiters
+                    limiter.applyStage(mesh,this)
+                end
             end
-            % Apply limiter after a full time step (one additional time):
-            this.limiter.applyStep(mesh,this)
+            % Apply limiter(s) after a full time step (one additional time):
+            for limiter = this.limiters
+                limiter.applyStep(mesh,this)
+            end
             % Plot solution:
             if STOP || ~mod(this.iterationCount,this.iterSkip)
                 this.monitor.refresh(mesh)
-                this.limiter.takeSnapshot(mesh)
+                for limiter = this.limiters
+                    limiter.takeSnapshot(mesh)
+                end
                 if this.waitForKey
                     fprintf('Paused. Press key to continue...');
                     pause

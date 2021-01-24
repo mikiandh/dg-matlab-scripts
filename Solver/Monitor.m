@@ -12,6 +12,7 @@ classdef Monitor < handle
         norms
         rows
         cols
+        priority % that of the limiter to monitor (only one can be shown)
     end
     properties (Access = protected)
         % Colormaps:
@@ -47,10 +48,12 @@ classdef Monitor < handle
             addRequired(p,'solver',@(x)validateattributes(x,{'Solver'},{}))
             addParameter(p,'norms',[],@(x)validateattributes(x,{'Norm'},{'vector'}))
             addParameter(p,'equations',1:solver.physics.equationCount,@(x)validateattributes(x,{'numeric'},{'vector','integer','>',0,'<=',solver.physics.equationCount}))
+            addParameter(p,'priority',1,@(x)validateattributes(x,{'numeric'},{'scalar','integer','>',0,'<=',numel(solver.limiters)}))
             p.parse(solver,varargin{:});
             % Set properties from parser:
             this.solver = p.Results.solver;
             this.norms = unique(p.Results.norms);
+            this.priority = p.Results.priority;
             % Subplot indices:
             this.rows = p.Results.equations;
             this.cols = 1:1 + ~isempty(this.norms);
@@ -59,7 +62,7 @@ classdef Monitor < handle
             % Set main figure position and size:
             this.figurePosition = [400 100 min(this.figureSizes.*[this.cols(end) this.rows(end);1 1])];
             % Normalize title height:
-            this.titleHeight = this.titleHeight/this.figurePosition(4);
+            this.titleHeight = this.titleHeight/this.figurePosition(4);            
         end
         %% Initialize
         function initialize(this,mesh,fun)
@@ -83,7 +86,7 @@ classdef Monitor < handle
             this.hPanel = uipanel(this.hFigure,'Position',[0 0 1 1-this.titleHeight],'BackgroundColor','w','BorderType','none');
             % Initialize "supertitle" annotations:
             this.hStaticTitle = annotation(this.hFigure,'textbox',[0 1-this.titleHeight 1 this.titleHeight],...
-                'String',{[this.solver.physics.getInfo '; ' mesh.boundaries.getInfo],[mesh.getInfo '; ' this.solver.limiter.getInfo]},...
+                'String',{[this.solver.physics.getInfo '; ' mesh.boundaries.getInfo],[mesh.getInfo '; ' this.solver.limiters.getInfo]},...
                 'FontWeight','bold','EdgeColor','none',...
                 'HorizontalAlignment','center','VerticalAlignment','top');
             this.hDynamicTitle = annotation(this.hFigure,'textbox',[0 1-this.titleHeight 1 this.titleHeight],...
@@ -123,12 +126,13 @@ classdef Monitor < handle
             this.cDiscrete = distinguishable_colors(mesh.elementCount,this.colorSkip);
             this.cNorms = distinguishable_colors(numel(this.norms),this.colorSkip);
             % Initialize sensor bar charts:
+            isTroubled = [mesh.elements.isTroubled];
             for i = this.rows
-                this.hSensors(i) = bar(this.hAxes(i,1),[mesh.elements.x],[mesh.elements.isTroubled],1);
+                this.hSensors(i) = bar(this.hAxes(i,1),[mesh.elements.x],isTroubled(:,:,min(end,this.priority)),1);
             end
             set(this.hSensors,'FaceAlpha',.05,'EdgeAlpha',.1,...
                 'EdgeColor',this.cLimiters(1,:),'FaceColor',this.cLimiters(1,:))
-            if strcmp(this.solver.limiter.sensor,'Sensor')
+            if strcmp(class(this.solver.limiters(this.priority).sensor),'Sensor') %#ok<STISA>
                 [this.hSensors.Visible] = deal('off');
             end
             % Initialize limiter bar charts:
@@ -138,7 +142,7 @@ classdef Monitor < handle
                 set(this.hLimiters(i,:),{'EdgeColor'},num2cell(this.cLimiters,2),{'FaceColor'},num2cell(this.cLimiters,2));
             end
             set(this.hLimiters,'FaceAlpha',.1,'EdgeAlpha',.2)
-            if strcmp(this.solver.limiter,'Limiter')
+            if strcmp(class(this.solver.limiters(this.priority)),'Limiter') %#ok<STISA>
                 [this.hSensors.Visible] = deal('off');
             end
             % Initialize solution vs. space plots:
@@ -198,7 +202,8 @@ classdef Monitor < handle
             % Refresh the (dynamic) title:
             this.hDynamicTitle.String = this.solver.getInfo;
             % Refresh sensor bar charts:
-            set(this.hSensors,{'XData','YData'},{[mesh.elements.x],double([mesh.elements.isTroubled])})
+            isTroubled = [mesh.elements.isTroubled];
+            set(this.hSensors,{'XData','YData'},{[mesh.elements.x],double(isTroubled(:,:,this.priority))})
             % Refresh limiter bar charts:
             set(this.hLimiters,'XData',[mesh.elements.x])
             set(this.hLimiters,{'YData'},reshape(permute(num2cell(this.getLimiterData(mesh,this.rows),1),[3 2 1]),[],1))
@@ -383,10 +388,8 @@ classdef Monitor < handle
             % Callback function that switches limiter visibility.
             [this.hLimiters.Visible] = deal(src.State);
         end
-    end
-    methods (Access = protected, Static)
         %% Process limiter data
-        function kji = getLimiterData(mesh,eqs)
+        function kji = getLimiterData(this,mesh,eqs)
             % Processes th isLimited fields of a given mesh to facilitate
             % plotting limiter activation status as a stacked bar chart.
             % 
@@ -395,7 +398,7 @@ classdef Monitor < handle
             % Retrieve N_k-1 highest mode flags (in descending order):
             for k = 1:mesh.elementCount
                 kji(k,1:mesh.elements(k).dofCount,1:numel(eqs)) =...
-                    permute(mesh.elements(k).isLimited(eqs,end:-1:1),[3 2 1]);
+                    permute(mesh.elements(k).isLimited(eqs,end:-1:1,min(end,this.priority)),[3 2 1]);
             end
             % Normalize by each element's maximum number of limited modes:
             kji = kji./([mesh.elements.dofCount]'-1);

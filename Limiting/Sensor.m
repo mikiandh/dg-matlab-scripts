@@ -11,18 +11,16 @@ classdef Sensor < handle
     end
     methods
         %% Apply (default)
-        function apply(~,mesh,~)
+        function apply(~,mesh,~,priority)
             % Method that sets the "isTroubled" property of certain
             % elements in a given mesh to true. Any limiter will only act
             % on elements that trigger its sensor - i.e. for which this
             % method has set "isTroubled" to true.
             %
-            % Mark all elements as troubled (i.e. to be limited):
-            flags(1:mesh.elementCount) = {true};
-            % Exclude any p == 0 cells:
-            flags([mesh.elements.dofCount] == 1) = {false};
-            % Update:
-            [mesh.elements.isTroubled] = flags{:};
+            % Mark all elements as troubled, except those with p = 0:
+            for element = mesh.elements
+                element.isTroubled(:,:,priority) = element.dofCount > 1;
+            end
         end
         %% Record status
         function takeSnapshot(this,mesh)

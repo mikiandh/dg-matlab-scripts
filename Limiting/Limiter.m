@@ -1,4 +1,4 @@
-classdef Limiter < handle
+classdef Limiter < handle & matlab.mixin.Heterogeneous
     %
     % Base class of all DG limiters, i.e. those which can be applied to a
     % mesh containing one or more DG patches in which p > 0. Any valid
@@ -11,6 +11,9 @@ classdef Limiter < handle
         % Any limiter can be augmented with a sensor, used to exclude
         % certain elements from its action.
         sensor
+        % Position of the current one with respect to a broader sequence of
+        % limiters.
+        priority = 1
     end
     properties (Access = protected)
         % The activation status of the limiter is accumulated in this cell
@@ -44,10 +47,10 @@ classdef Limiter < handle
             % indicated as such in their element's "isLimited" property.
             %
             % Apply its sensor:
-            this.sensor.apply(mesh,solver);
+            this.sensor.apply(mesh,solver,this.priority);
             % Reset isLimited fields:
             for element = mesh.elements
-                element.isLimited = false(size(element.states));
+                element.isLimited(:,:,this.priority) = false(size(element.states));
             end
         end
         %% Apply (full time-step)
@@ -60,11 +63,11 @@ classdef Limiter < handle
             this.physics = solver.physics;
             this.applyStage(mesh,solver)
         end
-        %% Information
-        function info = getInfo(this)
-            info = sprintf('%s + %s',class(this.sensor),class(this));
-            info = strrep(info,'Sensor','no sensor');
-            info = strrep(info,'Limiter','no limiter');
+        %% Name (scalar)
+        function name = getName(this)
+            name = sprintf('%s + %s',class(this.sensor),class(this));
+            name = strrep(name,'Sensor','no sensor');
+            name = strrep(name,'Limiter','no limiter');
         end
         %% Record status
         function takeSnapshot(this,mesh)
@@ -72,9 +75,10 @@ classdef Limiter < handle
             % to the cell array of stored "limiter snapshots". Only stores
             % the 1st system component. Also calls its sensor's analogue.
             %
-            aux = {mesh.elements.isLimited};
-            aux = cellfun(@(x) sum(x(1,:),2),aux,'UniformOutput',false);
-            this.snapshots = [this.snapshots aux'];
+            for k = mesh.elementCount:-1:1
+                aux{k,1} = sum(mesh.elements(k).isLimited(1,:,this.priority));
+            end
+            this.snapshots = [this.snapshots aux];
             this.sensor.takeSnapshot(mesh);
         end
         %% Display history
@@ -124,6 +128,24 @@ classdef Limiter < handle
                 otherwise
                     error('Limiter name unknown.')
             end
+        end
+    end
+    methods (Sealed)
+        %% Information (heterogeneous array)
+        function info = getInfo(these)
+            info = these(1).getName;
+            if numel(these) > 1
+                info = sprintf('%s (+%d)',info,numel(these)-1);
+            end
+        end
+        %% Reset priorities (heterogeneous array)
+        function resetPriorities(these)
+            priorities = num2cell(1:numel(these));
+            [these.priority] = priorities{:};
+        end
+        %% Reset physics (heterogeneous array)
+        function resetPhysics(these,solver)
+            [these.physics] = deal(solver.physics);
         end
     end
 end

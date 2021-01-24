@@ -8,26 +8,30 @@ classdef TVB < Limiter
     end
     methods
         %% Constructor
-        function this = TVB(M,varargin)
-            validateattributes(M,{'numeric'},{'scalar','nonnegative'});
+        function this = TVB(varargin)
             this@Limiter(varargin{:});
-            this.M = M;
+            % Parse the optional ad-hoc tuning parameter:
+            p = inputParser;
+            p.KeepUnmatched = true;
+            addParameter(p,'M',0,@(x) validateattributes(x,{'numeric'},{'scalar','nonnegative'}));
+            parse(p,varargin{:});
+            this.M = p.Results.M;
         end
         %% Apply (extension)
         function applyStage(this,mesh,solver)
             % Default limiting:
             applyStage@Limiter(this,mesh,solver);
             % Retrieve troubled elements:
-            elements = mesh.elements([mesh.elements.isTroubled]);
+            isTroubled = [mesh.elements.isTroubled];
+            elements = mesh.elements(isTroubled(:,:,this.priority));
             % Apply on every remaining element:
             for element = elements
                 this.applyOnElement(element);
             end
         end
-        %% Information (extension)
-        function info = getInfo(this)
-            info = getInfo@Limiter(this);
-            info = sprintf('%s, M = %g',info,this.M);
+        %% Name (extension)
+        function name = getName(this)
+            name = sprintf('%s, M = %g',this.getName@Limiter,this.M);
         end
     end
     methods (Access = protected)
@@ -61,7 +65,7 @@ classdef TVB < Limiter
             w1R = R*this.minmod(L*v1R,u1L,u1R,this.M*element.dx^2); % right-sided
             % Determine troubled rows and columns:
             rows = find(abs(w1L - v1L) > 1e-10 | abs(w1R - v1R) > 1e-10);
-            element.isLimited(rows,2:end) = true; % flag all limited DOFs as such
+            element.isLimited(rows,2:end,this.priority) = true; % flag all limited DOFs as such
             % Enforce safe edge intercepts in this element's solution:
             aux = zeros(size(coefs)); % preallocate to zero
             %%aux(rows,1) = .5*(w1R(rows) + w1L(rows)); % safe 2nd Legendre coefficient
