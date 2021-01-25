@@ -15,7 +15,7 @@ mesh = Mesh(data.basis,[0 1],Transmissive(2),data.K);
 solver = SSP_RK3(Euler,[0 0.035],...
     'norm',norms,...
     'exactSolution',@exactSolution,...
-    'limiter',data.limiter{1});
+    'limiter',data.limiter);
 solver.courantNumber = data.relCFL*solver.optimizeCFL(data.basis);
 
 % Solve:
@@ -37,12 +37,13 @@ data.troubledDofs = 0;
 data.limitedDofs = 0;
 for element = mesh.elements
     data.troubledDofs =...
-        data.troubledDofs + element.isTroubled*numel(element.isLimited(:));
+        data.troubledDofs + element.isTroubled(:,:,1)*numel(element.isLimited(:,:,1));
     data.limitedDofs =...
-        data.limitedDofs + sum(element.isLimited(:));
+        data.limitedDofs + sum(sum(element.isLimited(:,:,1)));
 end
 
 % Export:
 solver.writeSolutionToFile([fileNameRoot '_solution'],8)
 solver.writeLimiterToFile([fileNameRoot '_limiter'])
+savefig(sprintf('%s.fig',fileNameRoot))
 end

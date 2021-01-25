@@ -9,12 +9,13 @@ physics = Advection(1);
     end
 
 % Preprocess:
+data.limiter(:,2:end) = [];
 norms = Norm({'ErrorL1','TV'});
 mesh = Mesh(data.basis,[-1 1],Periodic(2),data.K);
 solver = SSP_RK3(physics,[0 8],...
     'norm',norms,...
     'exactSolution',@exactSolution,...
-    'limiter',data.limiter{1});
+    'limiter',data.limiter);
 solver.courantNumber = data.relCFL*solver.optimizeCFL(data.basis);
 
 % Solve:
@@ -32,12 +33,13 @@ data.troubledDofs = 0;
 data.limitedDofs = 0;
 for element = mesh.elements
     data.troubledDofs =...
-        data.troubledDofs + element.isTroubled*numel(element.isLimited(:));
+        data.troubledDofs + element.isTroubled(:,:,1)*numel(element.isLimited(:,:,1));
     data.limitedDofs =...
-        data.limitedDofs + sum(element.isLimited(:));
+        data.limitedDofs + sum(sum(element.isLimited(:,:,1)));
 end
 
 % Export:
 solver.writeSolutionToFile([fileNameRoot '_solution'],8)
 solver.writeLimiterToFile([fileNameRoot '_limiter'])
+savefig(sprintf('%s.fig',fileNameRoot))
 end

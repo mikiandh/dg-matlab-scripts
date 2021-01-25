@@ -18,19 +18,18 @@ bases = {
     DGSEM(5)
     };
 limiters = {
-    TVB(0)
-    BDF
-    BSB
-    Krivodonova
-    WENO
+    [Limiter EulerP1 EulerP0]
+    [TVB EulerP1 EulerP0]
+    [BDF EulerP1 EulerP0]
+    [BSB EulerP1 EulerP0]
+    [Krivodonova EulerP1 EulerP0]
+    [WENO EulerP1 EulerP0]
 };
 tests = {
-    ...@gaussHump % use it to measure order of accuracy, e.g. in "batch F"
     @jiangShu
     @toro1
     @toro2
-    @toro3
-    @toro4
+    @woodwardColella
 };
 batchName = mfilename;
 
@@ -67,15 +66,17 @@ parfor i = 1:I
     dataRow = dataTable(i,:);
     % Try to solve current run:
     try
-        dataRow = dataRow.test{1}(dataRow,sprintf('%s_%d',batchName,i));
+        test = dataRow.test{1};
+        dataRow = test(dataRow,sprintf('%s_%d',batchName,i));
     catch
         fprintf('Run %d of %d failed; it will be skipped (worker %d).\n',i,I,get(getCurrentTask(),'ID'))
         continue % do not write it
     end
     % Export to temporary file:
+    limiters = dataRow{1,2};
     fprintf(c.Value,...
         '%d\t%s\t%s\t%s\t%.3f\t%d\t%d\t%.12f\t%.12f\t%.12f\t%.12f\t%.12f\t%.12f\t%d\t%d\t%.3f\n',...
-        dataRow{1,1},dataRow{1,2}{1}.getInfo,dataRow{1,3}.getName,func2str(dataRow{1,4}{1}),dataRow{1,5:end});
+        dataRow{1,1},limiters.getInfo,dataRow{1,3}.getName,func2str(dataRow{1,4}{1}),dataRow{1,5:end});
     fprintf('Run %d of %d completed (worker %d).\n',i,I,get(getCurrentTask(),'ID'))
 end
 clear c % free memory and close temporary files
