@@ -5,23 +5,16 @@ clear
 
 % This script solves the Euler equations.
 
-%% Dependencies
-addpath('../Limiting')
-addpath('../Physics')
-addpath('../Solver')
-addpath('../Basis')
-addpath('../Mesh')
-addpath('../Math')
-addpath('../Extra')
-
 %% Discretization
 mesh = Mesh(DGSEM(2),[0 1],Transmissive(2),100);
 
 %% Solver
-solver = SSP_RK3(Euler,[0 .2],'courantNumber',.5,...
-    'limiter',TVB(0,'Sensor',Sensor),...
-    'exactSolution',@toro1,'iterSkip',30,...
-    'equations',[1 2 3]);
+solver = SSP_RK3(Euler('HLLC'),[0 .2],...
+    'limiter',[TVB EulerP1 EulerP0],...
+    'exactSolution',@toro1,...
+    'iterSkip',10,...
+    'equations',1);
+solver.courantNumber = .5*solver.optimizeCFL(mesh.bases);
 
 %% Time-integration
 solver.initialize(mesh)

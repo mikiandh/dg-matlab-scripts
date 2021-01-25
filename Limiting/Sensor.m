@@ -23,11 +23,12 @@ classdef Sensor < handle
             end
         end
         %% Record status
-        function takeSnapshot(this,mesh)
+        function takeSnapshot(this,mesh,priority)
             % Stores the sensor activation status from a mesh and adds it
             % to the cell array of stored "sensor snapshots".
             %
-            this.snapshots = [this.snapshots {[mesh.elements.isTroubled]}];
+            isTroubled = [mesh.elements.isTroubled];
+            this.snapshots = [this.snapshots {isTroubled(:,:,priority)}];
         end
         %% Display history
         function viewTimeline(this)

@@ -51,7 +51,7 @@ classdef Euler < Physics
         end
         %% Compute vector(s) of all primitive variables from state vector(s)
         function vars = allPrimitiveVarsFromState(state)
-            vars = zeros(5,size(state,2));
+            vars = zeros(8,size(state,2));
             vars(1,:) = state(1,:); % density
             vars(2,:) = state(2,:)./vars(1,:); % velocity
             vars(6,:) = state(3,:)./vars(1,:); % total energy per unit mass
@@ -59,7 +59,7 @@ classdef Euler < Physics
             vars(8,:) = vars(6,:) - vars(7,:); % internal energy per unit mass
             vars(3,:) = 0.4*(state(3,:) - vars(1,:).*vars(7,:)); % pressure
             vars(4,:) = 1.4*vars(6,:) - 0.4*vars(7,:); % total enthalpy per unit mass (includes kinetic energy)
-            vars(5,:) = sqrt(0.4*vars(4,:) - vars(7,:)); % speed of sound
+            vars(5,:) = realsqrt(1.4*vars(3,:)./vars(1,:)); % speed of sound
         end
         %% Overwrite state vector(s) with vector(s) of (reduced) primitive variables
         function state = stateToPrimitive(state)
@@ -74,9 +74,9 @@ classdef Euler < Physics
         %% Primitive variables (one by one) from state vector(s)
         function [r,u,p,a,H] = getPrimitivesFromState(state)
             r = state(1,:); % density
-            u = state(2,:)/state(1,:); % velocity
+            u = state(2,:)./state(1,:); % velocity
             p = 0.4*(state(3,:) - 0.5*r.*u.^2); % pressure
-            a = realpow(1.4*p./r,0.5); % speed of sound
+            a = realsqrt(1.4*p./r); % speed of sound
             H = (state(3,:) + p)./r; % total (internal + kinetic) specific (per unit mass) enthalpy
         end
         %% Roe-averaged variables (one by one) from state vectors

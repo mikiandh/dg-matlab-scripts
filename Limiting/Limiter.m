@@ -13,7 +13,7 @@ classdef Limiter < handle & matlab.mixin.Heterogeneous
         sensor
         % Position of the current one with respect to a broader sequence of
         % limiters.
-        priority = 1
+        priority
     end
     properties (Access = protected)
         % The activation status of the limiter is accumulated in this cell
@@ -79,13 +79,14 @@ classdef Limiter < handle & matlab.mixin.Heterogeneous
                 aux{k,1} = sum(mesh.elements(k).isLimited(1,:,this.priority));
             end
             this.snapshots = [this.snapshots aux];
-            this.sensor.takeSnapshot(mesh);
+            this.sensor.takeSnapshot(mesh,this.priority);
         end
         %% Display history
         function viewTimeline(this)
             % Visualizes, in a 3D bar chart, every snapshot of this limiter
             % and its sensor at once. Quick and dirty.
             %
+            figure
             subplot(2,1,1)
             b = bar3(cell2mat(this.snapshots')');
             for k = 1:length(b)

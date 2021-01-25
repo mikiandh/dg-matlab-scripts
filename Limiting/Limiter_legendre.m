@@ -110,4 +110,14 @@ classdef Limiter_legendre < Limiter
             end
         end
     end
+    methods (Static)
+        %% Minmod operator (Osher, 1984)
+        function A = minmod(A,B,C)
+            % Minmod function for 3 matrix inputs. Operates entry-wise.
+            % "Inlined" for speed. All three matrices are assumed to have 
+            % consistent sizes.
+            %
+            A = (sign(A) == sign(B) & sign(A) == sign(C)).*sign(A).*min(abs(A),min(abs(B),abs(C)));
+        end
+    end
 end

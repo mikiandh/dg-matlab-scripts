@@ -36,7 +36,7 @@ classdef APTVD < Sensor
                 else
                     coefsR = 0;
                 end
-                element.isTroubled(:,:,priority) = any(abs(3*coefs(:,2) - BDF.minmod(3*coefs(:,2),coefs(:,1)-coefsL,coefsR-coefs(:,1))) > 1e-10);
+                element.isTroubled(:,:,priority) = any(abs(3*coefs(:,2) - Limiter_legendre.minmod(3*coefs(:,2),coefs(:,1)-coefsL,coefsR-coefs(:,1))) > 1e-10);
             end
         end
     end
