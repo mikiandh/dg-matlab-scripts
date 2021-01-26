@@ -12,7 +12,7 @@ physics = Advection(1);
 data.limiter(:,2:end) = [];
 norms = Norm({'ErrorL1','TV'});
 mesh = Mesh(data.basis,[-1 1],Periodic(2),data.K);
-solver = SSP_RK3(physics,[0 8],...
+solver = SSP_RK4_10(physics,[0 8],...
     'norm',norms,...
     'exactSolution',@exactSolution,...
     'limiter',data.limiter);
@@ -39,7 +39,7 @@ for element = mesh.elements
 end
 
 % Export:
-solver.writeSolutionToFile([fileNameRoot '_solution'],8)
+solver.writeSolutionToFile([fileNameRoot '_solution'],32)
 solver.writeLimiterToFile([fileNameRoot '_limiter'])
-savefig(sprintf('%s.fig',fileNameRoot))
+% savefig(sprintf('%s.fig',fileNameRoot))
 end

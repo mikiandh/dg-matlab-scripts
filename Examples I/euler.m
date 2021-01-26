@@ -6,7 +6,7 @@ clear
 % This script solves the Euler equations.
 
 %% Discretization
-mesh = Mesh(DGSEM(2),[0 1],Reflective(0,0),200);
+mesh = Mesh(DGSEM(2),[0 1],Reflective(0,0),400);
 
 %% Solver
 solver = SSP_RK4_10(Euler('HLLC'),[0 .038],...

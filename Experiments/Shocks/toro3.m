@@ -11,7 +11,7 @@ function data = toro3(data,fileNameRoot)
 % Preprocess:
 norms = Norm({'ErrorL1','TV'});
 mesh = Mesh(data.basis,[0 1],Transmissive(2),data.K);
-solver = SSP_RK3(Euler,[0 0.012],...
+solver = SSP_RK4_10(Euler,[0 0.012],...
     'norm',norms,...
     'exactSolution',@exactSolution,...
     'limiter',data.limiter);
@@ -42,7 +42,7 @@ for element = mesh.elements
 end
 
 % Export:
-solver.writeSolutionToFile([fileNameRoot '_solution'],8)
+solver.writeSolutionToFile([fileNameRoot '_solution'],32)
 solver.writeLimiterToFile([fileNameRoot '_limiter'])
-savefig(sprintf('%s.fig',fileNameRoot))
+% savefig(sprintf('%s.fig',fileNameRoot))
 end

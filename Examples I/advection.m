@@ -30,15 +30,14 @@ IC_p3d3 = @(x) (x+x.^2+x.^3).*(1 - heaviside(x)) + (x+x.^2+2*x.^3).*(heaviside(x
 IC_p3d4 = @(x) (x+x.^2+x.^3);
 
 %% Discretization
-mesh = Mesh(DGSEM(2),L,Periodic(2),10);
+mesh = Mesh(DGSEM(5),L,Periodic(2),100);
 
 %% Solver
 solver = SSP_RK4_10(Advection,[0 2],...
-    ...'limiters',[Limiter TVB BDF AFC_2010 Limiter('Sensor',KXRCF) TVB('Sensor',KXRCF) BDF('Sensor',KXRCF) AFC_2010('Sensor',KXRCF) Limiter('Sensor',APTVD) TVB('Sensor',APTVD) BDF('Sensor',APTVD) AFC_2010('Sensor',APTVD)],...
-    ...'norm',Norm({'ErrorL2'}),...
-    'exactSolution',@(t,x) IC_gauss(x),...
-    'iterSkip',1);
-solver.courantNumber = .9*solver.optimizeCFL(mesh.bases);
+    'limiters',[WENO Limiter Limiter],...
+    'exactSolution',@(t,x) IC_jiangShu(x),...
+    'iterSkip',25);
+solver.courantNumber = .1*solver.optimizeCFL(mesh.bases);
 
 %% Initial condition
 solver.initialize(mesh)

@@ -15,7 +15,7 @@ function data = woodwardColella(data,fileNameRoot)
 data.K = max(data.K,200); % ensure a minimum of resolution
 norms = Norm('TV');
 mesh = Mesh(data.basis,[0 1],Reflective(0,0),data.K);
-solver = SSP_RK3(Euler,[0 0.038],...
+solver = SSP_RK4_10(Euler,[0 0.038],...
     'norm',norms,...
     'limiter',data.limiter);
 solver.courantNumber = data.relCFL*solver.optimizeCFL(data.basis);
@@ -41,7 +41,7 @@ for element = mesh.elements
 end
 
 % Export:
-solver.writeSolutionToFile([fileNameRoot '_solution'],8)
+solver.writeSolutionToFile([fileNameRoot '_solution'],32)
 solver.writeLimiterToFile([fileNameRoot '_limiter'])
-savefig(sprintf('%s.fig',fileNameRoot))
+% savefig(sprintf('%s.fig',fileNameRoot))
 end
