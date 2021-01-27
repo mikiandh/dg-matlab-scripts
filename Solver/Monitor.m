@@ -12,7 +12,6 @@ classdef Monitor < handle
         norms
         rows
         cols
-        priority % that of the limiter to monitor (only one can be shown)
     end
     properties (Access = protected)
         % Colormaps:
@@ -38,6 +37,7 @@ classdef Monitor < handle
         figurePosition
         titleHeight = 80
         ylims = [0 1] % columns: min, max (#rows is set automatically)
+        priority % that of the limiter to monitor (only one can be shown at a time)
     end
     methods
         %% Constructor
@@ -47,7 +47,7 @@ classdef Monitor < handle
             p.KeepUnmatched = true;
             addRequired(p,'solver',@(x)validateattributes(x,{'Solver'},{}))
             addParameter(p,'norms',[],@(x)validateattributes(x,{'Norm'},{'vector'}))
-            addParameter(p,'equations',1:solver.physics.equationCount,@(x)validateattributes(x,{'numeric'},{'vector','integer','>',0,'<=',solver.physics.equationCount}))
+            addParameter(p,'equations',1:solver.physics.equationCount,@(x)validateattributes(x,{'numeric'},{'vector','increasing','integer','>',0,'<=',solver.physics.equationCount}))
             addParameter(p,'priority',1,@(x)validateattributes(x,{'numeric'},{'scalar','integer','>',0,'<=',numel(solver.limiters)}))
             p.parse(solver,varargin{:});
             % Set properties from parser:
@@ -55,7 +55,7 @@ classdef Monitor < handle
             this.norms = unique(p.Results.norms);
             this.priority = p.Results.priority;
             % Subplot indices:
-            this.rows = p.Results.equations;
+            this.rows = 1:p.Results.equations(end);
             this.cols = 1:1 + ~isempty(this.norms);
             % Repmat initial axis limits:
             this.ylims = repmat(this.ylims,numel(this.rows),1);
@@ -331,14 +331,33 @@ classdef Monitor < handle
             hToolbar = findall(this.hFigure,'type','uitoolbar');
             % Load icons:
             icons = load('monitor_icons.mat','-regexp','icon');
-            % Toggle visibility tools:            
-            uitoggletool(hToolbar,'State',this.hDiscrete(1).Visible,'ClickedCallback',@this.toggle_discrete,'Tooltip','Show discrete solution','CData',icons.icon_discrete,'Separator','on')
+            % Transform to/from primary variables (Euler equations only)
+            if isa(this.solver.physics,'Euler')
+                flag1 = 'off';
+                if numel(this.rows) < 3
+                    flag2 = 'off'; % conversion is only supported if all 3 equations are being monitored
+                else
+                    flag2 = 'on';
+                end
+                uitoggletool(hToolbar,'Enable',flag2,'State','off','ClickedCallback',@this.cycle_varsEuler,'Tooltip','Cycle between conserved and primitive variables','CData',icons.icon_vars,'Separator','on')
+            else
+                flag1 = 'on';
+            end
+            % Toggle solution visibility tools:            
+            uitoggletool(hToolbar,'State',this.hDiscrete(1).Visible,'ClickedCallback',@this.toggle_discrete,'Tooltip','Show discrete solution','CData',icons.icon_discrete,'Separator',flag1)
             uitoggletool(hToolbar,'State',this.hExact(1).Visible,'ClickedCallback',@this.toggle_exact,'Tooltip','Show exact solution','CData',icons.icon_exact)
             uitoggletool(hToolbar,'State',this.hControlPoints(1).Visible,'ClickedCallback',@this.toggle_controlPoints,'Tooltip','Show control points','CData',icons.icon_controlPoints)
             uitoggletool(hToolbar,'State',this.hNodes(1).Visible,'ClickedCallback',@this.toggle_nodes,'Tooltip','Show nodes','CData',icons.icon_nodes)
             uitoggletool(hToolbar,'State',this.hBreaks(1).Visible,'ClickedCallback',@this.toggle_breaks,'Tooltip','Show breakpoints','CData',icons.icon_breaks)
             uitoggletool(hToolbar,'State',this.hSensors(1).Visible,'ClickedCallback',@this.toggle_sensor,'Tooltip','Show sensor','CData',icons.icon_sensor)
             uitoggletool(hToolbar,'State',this.hLimiters(1).Visible,'ClickedCallback',@this.toggle_limiter,'Tooltip','Show limiter','CData',icons.icon_limiter)
+            % Cycle to the next limiter in sequence (if any):
+            if numel(this.solver.limiters) > 1
+                flag3 = 'on';
+            else
+                flag3 = 'off';
+            end
+            uitoggletool(hToolbar,'Enable',flag3,'State','off','ClickedCallback',@this.cycle_limiter,'Tooltip','Cycle to next limiter in sequence','CData',icons.icon_next)
         end
         %% Toggle norm visibility
         function toggle_norms(this,~,event)
@@ -387,6 +406,51 @@ classdef Monitor < handle
         function toggle_limiter(this,src,~)
             % Callback function that switches limiter visibility.
             [this.hLimiters.Visible] = deal(src.State);
+        end
+        %% Cycle to/from primitive variables (Euler)
+        function cycle_varsEuler(this,src,~)
+            % Callback function that converts the currently monitored
+            % solution from conserved to primitive variables and back.
+            %
+            % Assumes that current physics are the Euler equations, and
+            % that all 3 variables are being monitored.
+            %
+            % Grab all handles, and extract their sample data:
+            h = [this.hNodes; this.hBreaks; this.hDiscrete; this.hExact];
+            y = reshape({h.YData},3,[]);
+            N = cellfun(@numel,y(1,:));
+            Y = cell2mat(y);
+            if strcmp(src.State,'on')
+                % All their data is in conserved variables; transform it:
+                Y = Euler.stateToPrimitive(Y);
+                yLabels = compose('%s(t,x)',["\rho" "u" "p"]);
+            else
+                % Otherwise, transform it back to conserved ones:
+                Y = Euler.primitiveToState(Y);
+                yLabels = compose('q_{%d}(t,x)',1:3);
+            end
+            % Place samples where they belong, handle-by-handle:
+            y = mat2cell(Y,[1 1 1],N);
+            [h.YData] = y{:};
+            for i = 1:3
+                ylabel(this.hAxes(i),yLabels{i})
+            end
+            drawnow limitrate
+        end
+        %% Cycle over limiters
+        function cycle_limiter(this,src,~)
+            % Callback function that changes which limiter and sensor data
+            % to monitor. Cycles back to the first after the last.
+            %
+            % Sets itself to 'off' after finishing, so that it can be
+            % clicked 'on' again and again.
+            this.priority = this.priority+1;
+            if this.priority > numel(this.solver.limiters)
+                this.priority = 1;
+            end
+            src.TooltipString = sprintf('Cycle to next limiter in sequence (currently %d)',this.priority);
+            src.State = 'off';
+            drawnow limitrate
         end
         %% Process limiter data
         function kji = getLimiterData(this,mesh,eqs)
