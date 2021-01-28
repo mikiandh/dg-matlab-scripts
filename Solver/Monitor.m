@@ -270,11 +270,11 @@ classdef Monitor < handle
             % Elements/patches are numbered and separated by a blank line.
             %
             % Header row:
-            aux = compose('%s_%d',["q^h" "q"]',this.rows);
+            aux = compose('%s_%d',["q^h" "q"]',this.rows)';
             fprintf(fileID,'%s \t','k','x',aux{:});
             fprintf(fileID,'\n');
             % Write solution, element-wise:
-            aux = repmat('\t%g ',1,size(aux,2));
+            aux = repmat('\t%g ',1,size(aux,1));
             aux = ['%d \t %g' aux aux '\n'];
             for k = 1:size(this.hDiscrete,2)
                 data = [

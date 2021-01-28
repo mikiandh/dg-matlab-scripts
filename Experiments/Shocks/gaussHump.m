@@ -10,7 +10,7 @@ physics = Advection(1);
 
 % Preprocess:
 data.limiter(:,2:end) = [];
-norms = Norm({'ErrorL1','TV'});
+norms = Norm({'ErrorL1','TV','BaselineTV'});
 mesh = Mesh(data.basis,[-1 1],Periodic(2),data.K);
 solver = SSP_RK4_10(physics,[0 8],...
     'norm',norms,...
@@ -28,6 +28,8 @@ data.wallClockTime = solver.wallClockTime;
 data.densityErrorL1 = norms(1).vals(1);
 
 data.densityTV = norms(2).vals(1);
+
+data.densityExactTV = norms(3).vals(1);
 
 data.troubledDofs = 0;
 data.limitedDofs = 0;

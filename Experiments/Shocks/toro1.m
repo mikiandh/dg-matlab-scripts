@@ -7,7 +7,7 @@ function data = toro1(data,fileNameRoot)
     end
 
 % Preprocess:
-norms = Norm({'ErrorL1','TV'});
+norms = Norm({'ErrorL1','TV','BaselineTV'});
 mesh = Mesh(data.basis,[0 1],Transmissive(2),data.K);
 solver = SSP_RK4_10(Euler,[0 .2],...
     'norm',norms,...
@@ -29,6 +29,10 @@ data.energyErrorL1 = norms(1).vals(3);
 data.densityTV = norms(2).vals(1);
 data.momentumTV = norms(2).vals(2);
 data.energyTV = norms(2).vals(3);
+
+data.densityExactTV = norms(3).vals(1);
+data.momentumExactTV = norms(3).vals(2);
+data.energyExactTV = norms(3).vals(3);
 
 data.troubledDofs = 0;
 data.limitedDofs = 0;
