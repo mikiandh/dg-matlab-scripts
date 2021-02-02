@@ -8,6 +8,12 @@ classdef Limiter < handle & matlab.mixin.Heterogeneous
     % Default limiter: applies its sensor, but performs no limiting.
     %
     properties (SetAccess = protected)
+        % Number of times this limiter has been applied since solver
+        % initialization.
+        applyCount = 0;
+        % Fraction of queried DOFs that have been limited since solver
+        % initialization (moving average).
+        cumulativeActivationRatio = 0;
         % Any limiter can be augmented with a sensor, used to exclude
         % certain elements from its action.
         sensor
@@ -16,8 +22,8 @@ classdef Limiter < handle & matlab.mixin.Heterogeneous
         priority
     end
     properties (Access = protected)
-        % The activation status of the limiter is accumulated in this cell
-        % array (cell: time instant, oldest to newest; column: element;
+        % Cell array of instantaneous limiter activation status flags 
+        % (cell: time instant, oldest to newest; column: element;
         % row: equation component).
         snapshots
         % In order to project to/from characteristic variables, any limiter
@@ -59,15 +65,39 @@ classdef Limiter < handle & matlab.mixin.Heterogeneous
         end
         %% Apply (initialization)
         function applyInitial(this,mesh,solver)
-            % Get physics and do the same as every step (default).
+            % Get physics and do as every other step (default case).
             this.physics = solver.physics;
             this.applyStage(mesh,solver)
         end
         %% Name (scalar)
         function name = getName(this)
-            name = sprintf('%s + %s',class(this.sensor),class(this));
-            name = strrep(name,'Sensor','no sensor');
-            name = strrep(name,'Limiter','no limiter');
+            name = sprintf('%s (%.1f%%) + %s (%.1f%%)',...
+                class(this.sensor),...
+                this.sensor.cumulativeActivationRatio*100,...
+                class(this),...
+                this.cumulativeActivationRatio*100);
+            name = strrep(name,'Sensor (100.0%)','no sensor');
+            name = strrep(name,'Limiter (0.0%)','no limiter');
+        end
+        %% Update cumulative statistics
+        function updateStats(this,mesh)
+            % Measure instantaneous activation ratios (sensor and limiter):
+            troubledDofs = 0;
+            limitedDofs = 0;
+            for element = mesh.elements
+                troubledDofs = troubledDofs + element.isTroubled(:,:,this.priority)*numel(element.isLimited(:,:,this.priority));
+                limitedDofs = limitedDofs + sum(sum(element.isLimited(:,:,this.priority)));
+            end
+            troubledDofs = troubledDofs/(mesh.dofCount*this.physics.equationCount);
+            limitedDofs = limitedDofs/(mesh.dofCount*this.physics.equationCount);
+            % Update 'is troubled' moving average:
+            this.sensor.cumulativeActivationRatio = this.sensor.cumulativeActivationRatio*this.sensor.applyCount + troubledDofs;
+            this.sensor.applyCount = this.sensor.applyCount + 1;
+            this.sensor.cumulativeActivationRatio = this.sensor.cumulativeActivationRatio/this.sensor.applyCount;
+            % Update 'is limited' moving average:
+            this.cumulativeActivationRatio = this.cumulativeActivationRatio*this.applyCount + limitedDofs;
+            this.applyCount = this.applyCount + 1;
+            this.cumulativeActivationRatio = this.cumulativeActivationRatio/this.applyCount;
         end
         %% Record status
         function takeSnapshot(this,mesh)
@@ -135,8 +165,8 @@ classdef Limiter < handle & matlab.mixin.Heterogeneous
         %% Information (heterogeneous array)
         function info = getInfo(these)
             info = these(1).getName;
-            if numel(these) > 1
-                info = sprintf('%s (+%d)',info,numel(these)-1);
+            for this = these(2:end)
+                info = sprintf('%s + %s',info,this.getName);
             end
         end
         %% Reset priorities (heterogeneous array)
@@ -147,6 +177,15 @@ classdef Limiter < handle & matlab.mixin.Heterogeneous
         %% Reset physics (heterogeneous array)
         function resetPhysics(these,solver)
             [these.physics] = deal(solver.physics);
+        end
+        %% Reset activation statistics (heterogeneous array)
+        function resetStats(these)
+            for this = these
+                this.sensor.applyCount = 0;
+                this.sensor.cumulativeActivationRatio = 0;
+                this.applyCount = 0;
+                this.cumulativeActivationRatio = 0;
+            end
         end
     end
 end

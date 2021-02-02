@@ -92,6 +92,8 @@ classdef Solver < matlab.mixin.SetGet
             % Limit initial solution (possibly using custom limiters):
             for limiter = p.Results.limiters
                 limiter.applyInitial(mesh,this)
+                limiter.resetStats
+                limiter.updateStats(mesh)
                 limiter.takeSnapshot(mesh)
             end
             this.wallClockTime = toc;
@@ -118,6 +120,8 @@ classdef Solver < matlab.mixin.SetGet
                 this.limiters.resetPriorities
                 % And also of the current physics:
                 this.limiters.resetPhysics(this)
+                % And also reset its statistics, just in case:
+                this.limiters.resetStats
                 % Reset and preallocate activation flags (in case limiters were not default):
                 for element = mesh.elements
                     element.isTroubled = repmat(element.isTroubled(:,:,1),1,1,numel(this.limiters));
@@ -253,6 +257,7 @@ classdef Solver < matlab.mixin.SetGet
                 % Apply limiter(s) after each stage:
                 for limiter = this.limiters
                     limiter.applyStage(mesh,this)
+                    limiter.updateStats(mesh)
                 end
             end
             % Apply limiter(s) after a full time step (one additional time):

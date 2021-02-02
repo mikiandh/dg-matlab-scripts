@@ -51,8 +51,8 @@ dataTable.energyTV(:) = nan;
 dataTable.densityExactTV(:) = nan;
 dataTable.momentumExactTV(:) = nan;
 dataTable.energyExactTV(:) = nan;
-dataTable.troubledDofs(:) = nan;
-dataTable.limitedDofs(:) = nan;
+dataTable.sensorRatio(:) = nan;
+dataTable.limiterRatio(:) = nan;
 dataTable.wallClockTime(:) = nan;
 
 %% Parallel write setup

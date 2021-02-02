@@ -32,14 +32,8 @@ data.densityTV = norms(1).vals(1);
 data.momentumTV = norms(1).vals(2);
 data.energyTV = norms(1).vals(3);
 
-data.troubledDofs = 0;
-data.limitedDofs = 0;
-for element = mesh.elements
-    data.troubledDofs =...
-        data.troubledDofs + element.isTroubled(:,:,1)*numel(element.isLimited(:,:,1));
-    data.limitedDofs =...
-        data.limitedDofs + sum(sum(element.isLimited(:,:,1)));
-end
+data.sensorRatio = solver.limiters(1).sensor.cumulativeActivationRatio;
+data.limiterRatio = solver.limiters(1).cumulativeActivationRatio;
 
 % Export:
 solver.writeSolutionToFile([fileNameRoot '_solution'],32)

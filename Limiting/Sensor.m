@@ -4,6 +4,14 @@ classdef Sensor < handle
     % mesh containing one or more DG patches. Any valid sensor must inherit
     % this class.
     %
+    properties (GetAccess = public, SetAccess = {?Sensor,?Limiter})
+        % Number of times this sensor has been applied since solver
+        % initialization.
+        applyCount = 0;
+        % Fraction of queried DOFs that have been considered troubled since
+        % solver initialization (moving average).
+        cumulativeActivationRatio = 0;
+    end
     properties (Access = protected)
         % The activation status of the sensor is accumulated in this cell
         % array (cell: time instant, oldest to newest; column: element)

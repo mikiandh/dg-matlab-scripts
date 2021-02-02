@@ -35,7 +35,7 @@ classdef Monitor < handle
         hLegend % handle to the legend of the norm subplots
         % Other graphics properties:
         figurePosition
-        titleHeight = 80
+        titleHeight = 100
         ylims = [0 1] % columns: min, max (#rows is set automatically)
         priority % that of the limiter to monitor (only one can be shown at a time)
     end
@@ -86,11 +86,11 @@ classdef Monitor < handle
             this.hPanel = uipanel(this.hFigure,'Position',[0 0 1 1-this.titleHeight],'BackgroundColor','w','BorderType','none');
             % Initialize "supertitle" annotations:
             this.hStaticTitle = annotation(this.hFigure,'textbox',[0 1-this.titleHeight 1 this.titleHeight],...
-                'String',{[this.solver.physics.getInfo '; ' mesh.boundaries.getInfo],[mesh.getInfo '; ' this.solver.limiters.getInfo]},...
+                'String',{mesh.getInfo, [this.solver.physics.getInfo '; ' mesh.boundaries.getInfo]},...
                 'FontWeight','bold','EdgeColor','none',...
                 'HorizontalAlignment','center','VerticalAlignment','top');
             this.hDynamicTitle = annotation(this.hFigure,'textbox',[0 1-this.titleHeight 1 this.titleHeight],...
-                'String',this.solver.getInfo,...
+                'String',{this.solver.limiters.getInfo,this.solver.getInfo},...
                 'FontWeight','bold','EdgeColor','none',...
                 'HorizontalAlignment','center','VerticalAlignment','bottom');
             % Preallocate graphics objects:
@@ -200,7 +200,7 @@ classdef Monitor < handle
             % Replots the monitor figure with current solution and norms.
             %
             % Refresh the (dynamic) title:
-            this.hDynamicTitle.String = this.solver.getInfo;
+            this.hDynamicTitle.String = {this.solver.limiters.getInfo,this.solver.getInfo};
             % Refresh sensor bar charts:
             isTroubled = [mesh.elements.isTroubled];
             set(this.hSensors,{'XData','YData'},{[mesh.elements.x],double(isTroubled(:,:,this.priority))})
@@ -248,7 +248,7 @@ classdef Monitor < handle
             % Appends monitor info and most recent norms (if any) to file.
             fprintf(fileID,'# %s\n',...
                 this.hStaticTitle.String{:},...
-                this.hDynamicTitle.String,...
+                this.hDynamicTitle.String{:},...
                 func2str(this.solver.exactSolution));
             if ~isempty(this.hNorms)
                 fprintf(fileID,'#');
@@ -357,7 +357,7 @@ classdef Monitor < handle
             else
                 flag3 = 'off';
             end
-            uitoggletool(hToolbar,'Enable',flag3,'State','off','ClickedCallback',@this.cycle_limiter,'Tooltip','Cycle to next limiter in sequence','CData',icons.icon_next)
+            uitoggletool(hToolbar,'Enable',flag3,'State','off','ClickedCallback',@this.cycle_limiter,'Tooltip','Cycle to next sensor/limiter in sequence','CData',icons.icon_next)
         end
         %% Toggle norm visibility
         function toggle_norms(this,~,event)
@@ -448,7 +448,7 @@ classdef Monitor < handle
             if this.priority > numel(this.solver.limiters)
                 this.priority = 1;
             end
-            src.TooltipString = sprintf('Cycle to next limiter in sequence (currently %d)',this.priority);
+            src.TooltipString = sprintf('Cycle to next sensor/limiter in sequence (currently %d)',this.priority);
             src.State = 'off';
             drawnow limitrate
         end
