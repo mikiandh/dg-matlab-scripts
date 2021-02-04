@@ -6,13 +6,13 @@ clear
 % This script solves the Euler equations.
 
 %% Discretization
-mesh = Mesh(DGSEM(5),[0 1],Farfield([1 .75 2.7812]',[.125 0 .25]'),100);
+mesh = Mesh(DGSEM(5),[0 1],Reflective(0,0),200);
 
 %% Solver
-solver = SSP_RK4_10(Euler('HLLC'),[0 .2],...
-    'limiter',[TVB('Stats',true) EulerP1 EulerP0],...
-    'exactSolution',@toro1,...
-    ...'iterSkip',5,...
+solver = SSP_RK4_10(Euler('HLLC'),[0 .038],...
+    'limiter',[Krivodonova EulerP1 EulerP0],...
+    'exactSolution',@woodwardColella,...
+    'iterSkip',5,...
     'equations',1);
 solver.courantNumber = .5*solver.optimizeCFL(mesh.bases);
 
@@ -79,7 +79,7 @@ y2 = Euler.primitiveToState([1 0 0.01]');
 y3 = Euler.primitiveToState([1 0 100]');
 y(:,x < 0.1) = y1.*y(:,x < 0.1);
 y(:,x >= 0.1 & x < 0.9) = y2.*y(:,x >= 0.1 & x < 0.9);
-y(:,x > 0.9) = y3.*y(:,x > 0.9);
+y(:,x >= 0.9) = y3.*y(:,x >= 0.9);
 end
 % Shu and Osher (mimicks shock-turbulence interaction):
 function y = shuOsher(~,x)

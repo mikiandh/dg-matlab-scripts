@@ -8,7 +8,7 @@ function data = woodwardColella(data,fileNameRoot)
         y3 = Euler.primitiveToState([1 0 100]');
         y(:,x < 0.1) = y1.*y(:,x < 0.1);
         y(:,x >= 0.1 & x < 0.9) = y2.*y(:,x >= 0.1 & x < 0.9);
-        y(:,x > 0.9) = y3.*y(:,x > 0.9);
+        y(:,x >= 0.9) = y3.*y(:,x >= 0.9);
     end
 
 % Preprocess:
