@@ -92,10 +92,10 @@ classdef Solver < matlab.mixin.SetGet
             % Limit initial solution (possibly using custom limiters):
             for limiter = p.Results.limiters
                 limiter.applyInitial(mesh,this)
-                limiter.resetStats
-                limiter.updateStats(mesh)
                 limiter.takeSnapshot(mesh)
             end
+            p.Results.limiters.resetStats
+            p.Results.limiters.updateStats(mesh)
             this.wallClockTime = toc;
             % Initialize residuals:
             mesh.computeResiduals(this.physics,this)
@@ -257,8 +257,8 @@ classdef Solver < matlab.mixin.SetGet
                 % Apply limiter(s) after each stage:
                 for limiter = this.limiters
                     limiter.applyStage(mesh,this)
-                    limiter.updateStats(mesh)
                 end
+                this.limiters.updateStats(mesh)
             end
             % Apply limiter(s) after a full time step (one additional time):
             for limiter = this.limiters

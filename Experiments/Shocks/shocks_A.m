@@ -18,12 +18,12 @@ bases = {
     DGSEM(5)
     };
 limiters = {
-    [Limiter EulerP1 EulerP0]
-    [TVB EulerP1 EulerP0]
-    [BDF EulerP1 EulerP0]
-    [BSB EulerP1 EulerP0]
-    [Krivodonova EulerP1 EulerP0]
-    [WENO EulerP1 EulerP0]
+    [Limiter                    EulerP1('Stats',true)   EulerP0]
+    [TVB('Stats',true)          EulerP1                 EulerP0]
+    [BDF('Stats',true)          EulerP1                 EulerP0]
+    [BSB('Stats',true)          EulerP1                 EulerP0]
+    [Krivodonova('Stats',true)  EulerP1                 EulerP0]
+    [WENO('Stats',true)         EulerP1                 EulerP0]
 };
 tests = {
     @jiangShu

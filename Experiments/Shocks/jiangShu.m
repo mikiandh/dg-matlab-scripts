@@ -2,9 +2,7 @@ function data = jiangShu(data,fileNameRoot)
 % Initial condition for linear advection combining smooth, continuous and
 % discontinuous profiles.
 %
-% Almost identical to that in Jiang and Shu (1996); I avoid having
-% discontinuities around the Gaussian hump (shouldn't make any difference
-% in practice, but I like it better this way).
+% Identical to that in Jiang and Shu (1996).
 %
 % Superposition of Gaussian and half-ellipse portions can be adjusted via
 % weights.
@@ -24,7 +22,7 @@ wF = [1 4 1]/6;
     end
 
     function u = initialCondition(x)
-        u = wG*[G(x,beta,z-delta); G(x,beta,z); G(x,beta,z+delta)];%.*inRange(x,-0.8,-0.6);
+        u = wG*[G(x,beta,z-delta); G(x,beta,z); G(x,beta,z+delta)].*inRange(x,-0.8,-0.6);
         u = u + 1*inRange(x,-0.4,-0.2);
         u = u + (1-abs(10*(x - 0.1))).*inRange(x,0,0.2);
         u = u + wF*[F(x,alpha,a-delta); F(x,alpha,a); F(x,alpha,a+delta)].*inRange(x,0.4,0.6);

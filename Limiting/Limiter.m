@@ -8,12 +8,12 @@ classdef Limiter < handle & matlab.mixin.Heterogeneous
     % Default limiter: applies its sensor, but performs no limiting.
     %
     properties (SetAccess = protected)
-        % Number of times this limiter has been applied since solver
-        % initialization.
-        applyCount = 0;
-        % Fraction of queried DOFs that have been limited since solver
-        % initialization (moving average).
-        cumulativeActivationRatio = 0;
+        % Keep track of statistics? (it is quite innefficient)
+        isCumulativeActivationOn
+        % Number of times this limiter's activation ratio has been updated.
+        cumulativeActivationCount = 0
+        % Fraction of queried DOFs that have been limited (moving average).
+        cumulativeActivationRatio = 0
         % Any limiter can be augmented with a sensor, used to exclude
         % certain elements from its action.
         sensor
@@ -40,9 +40,11 @@ classdef Limiter < handle & matlab.mixin.Heterogeneous
             p = inputParser;
             p.KeepUnmatched = true;
             addParameter(p,'Sensor',Sensor,@(x) validateattributes(x,{'Sensor'},{}));
+            addParameter(p,'Stats',false,@(x) validateattributes(x,{'logical'},{}));
             % Parse the input sensor:
             parse(p,varargin{:});
             this.sensor = p.Results.Sensor;
+            this.isCumulativeActivationOn = p.Results.Stats;
         end
         %% Apply (each stage)
         function applyStage(this,mesh,solver)
@@ -71,33 +73,19 @@ classdef Limiter < handle & matlab.mixin.Heterogeneous
         end
         %% Name (scalar)
         function name = getName(this)
-            name = sprintf('%s (%.1f%%) + %s (%.1f%%)',...
-                class(this.sensor),...
-                this.sensor.cumulativeActivationRatio*100,...
-                class(this),...
-                this.cumulativeActivationRatio*100);
-            name = strrep(name,'Sensor (100.0%)','no sensor');
-            name = strrep(name,'Limiter (0.0%)','no limiter');
-        end
-        %% Update cumulative statistics
-        function updateStats(this,mesh)
-            % Measure instantaneous activation ratios (sensor and limiter):
-            troubledDofs = 0;
-            limitedDofs = 0;
-            for element = mesh.elements
-                troubledDofs = troubledDofs + element.isTroubled(:,:,this.priority)*numel(element.isLimited(:,:,this.priority));
-                limitedDofs = limitedDofs + sum(sum(element.isLimited(:,:,this.priority)));
+            if this.isCumulativeActivationOn
+                name = sprintf('%s (%.1f%%) + %s (%.1f%%)',...
+                    class(this.sensor),...
+                    this.sensor.cumulativeActivationRatio*100,...
+                    class(this),...
+                    this.cumulativeActivationRatio*100);
+                name = strrep(name,'Sensor (100.0%)','no sensor');
+                name = strrep(name,'Limiter (0.0%)','no limiter');
+            else
+                name = sprintf('%s + %s',class(this.sensor),class(this));
+                name = strrep(name,'Sensor','no sensor');
+                name = strrep(name,'Limiter','no limiter');
             end
-            troubledDofs = troubledDofs/(mesh.dofCount*this.physics.equationCount);
-            limitedDofs = limitedDofs/(mesh.dofCount*this.physics.equationCount);
-            % Update 'is troubled' moving average:
-            this.sensor.cumulativeActivationRatio = this.sensor.cumulativeActivationRatio*this.sensor.applyCount + troubledDofs;
-            this.sensor.applyCount = this.sensor.applyCount + 1;
-            this.sensor.cumulativeActivationRatio = this.sensor.cumulativeActivationRatio/this.sensor.applyCount;
-            % Update 'is limited' moving average:
-            this.cumulativeActivationRatio = this.cumulativeActivationRatio*this.applyCount + limitedDofs;
-            this.applyCount = this.applyCount + 1;
-            this.cumulativeActivationRatio = this.cumulativeActivationRatio/this.applyCount;
         end
         %% Record status
         function takeSnapshot(this,mesh)
@@ -166,7 +154,7 @@ classdef Limiter < handle & matlab.mixin.Heterogeneous
         function info = getInfo(these)
             info = these(1).getName;
             for this = these(2:end)
-                info = sprintf('%s + %s',info,this.getName);
+                info = sprintf('%s \\rightarrow %s',info,this.getName);
             end
         end
         %% Reset priorities (heterogeneous array)
@@ -181,10 +169,29 @@ classdef Limiter < handle & matlab.mixin.Heterogeneous
         %% Reset activation statistics (heterogeneous array)
         function resetStats(these)
             for this = these
-                this.sensor.applyCount = 0;
+                this.sensor.cumulativeActivationCount = 0;
                 this.sensor.cumulativeActivationRatio = 0;
-                this.applyCount = 0;
+                this.cumulativeActivationCount = 0;
                 this.cumulativeActivationRatio = 0;
+            end
+        end
+        %% Update cumulative statistics
+        function updateStats(these,mesh)
+            if any([these.isCumulativeActivationOn])
+                % Measure instantaneous activation ratios (sensor and limiter):
+                sensorRatio = sum([mesh.elements.isTroubled],2)/mesh.elementCount;
+                limiterRatio = mean(sum([mesh.elements.isLimited],2),1)/mesh.dofCount;
+                % Write them into sensor and limiter, if requested:
+                for this = these([these.isCumulativeActivationOn])
+                    % Update 'is troubled' moving average:
+                    this.sensor.cumulativeActivationRatio = this.sensor.cumulativeActivationRatio*this.sensor.cumulativeActivationCount + sensorRatio(:,:,this.priority);
+                    this.sensor.cumulativeActivationCount = this.sensor.cumulativeActivationCount + 1;
+                    this.sensor.cumulativeActivationRatio = this.sensor.cumulativeActivationRatio/this.sensor.cumulativeActivationCount;
+                    % Update 'is limited' moving average:
+                    this.cumulativeActivationRatio = this.cumulativeActivationRatio*this.cumulativeActivationCount + limiterRatio(:,:,this.priority);
+                    this.cumulativeActivationCount = this.cumulativeActivationCount + 1;
+                    this.cumulativeActivationRatio = this.cumulativeActivationRatio/this.cumulativeActivationCount;
+                end
             end
         end
     end

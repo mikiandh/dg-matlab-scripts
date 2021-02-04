@@ -5,11 +5,9 @@ classdef Sensor < handle
     % this class.
     %
     properties (GetAccess = public, SetAccess = {?Sensor,?Limiter})
-        % Number of times this sensor has been applied since solver
-        % initialization.
-        applyCount = 0;
-        % Fraction of queried DOFs that have been considered troubled since
-        % solver initialization (moving average).
+        % Number of times this sensor's activation ratio has been updated.
+        cumulativeActivationCount = 0;
+        % Fraction of sensed DOFs that have been troubled (moving average).
         cumulativeActivationRatio = 0;
     end
     properties (Access = protected)
