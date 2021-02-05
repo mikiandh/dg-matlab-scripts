@@ -6,14 +6,14 @@ clear
 % This script solves the Euler equations.
 
 %% Discretization
-mesh = Mesh(DGSEM(2),[-5 5],Transmissive(2),300);
+mesh = Mesh(DGSEM(2),[0 1],Transmissive(2),100);
 
 %% Solver
-solver = SSP_RK4_10(Euler('HLLC'),[0 1.8],...
-    'limiter',[Limiter EulerP1 EulerP0],...
-    'exactSolution',@shuOsher,...
-    'iterSkip',25,...
-    'equations',3);
+solver = SSP_RK4_10(Euler('HLLC'),[0 .15],...
+    'limiter',[TVB EulerP1 EulerP0],...
+    'exactSolution',@toro2,...
+    'iterSkip',20,...
+    'equations',1);
 solver.courantNumber = .5*solver.optimizeCFL(mesh.bases);
 
 %% Time-integration
@@ -102,4 +102,9 @@ end
 function y = sineSpeed(~,x)
 y = ones(3,length(x));
 y(2,:) = y(2,:).*sin(2*pi*x);
+end
+% Riemann "1-2-3" problem
+function y = riemann123(t,x)
+[r,u,p] = riemannEulerExact(t,x,1,2,.4,1,-2,.4,0.5);
+y = [r; r.*u; p/0.4 + 0.5*r.*u.^2];
 end

@@ -408,7 +408,7 @@ classdef Bspline < Basis
             % Returns a 3D array of basis function samples (row: knot span; column:
             % sample; page: poly. order). Somewhat vectorized.
             knots = knots(:);
-            samples = sort(samples);
+            samples = sort(samples(:))';
             N = length(knots);
             B = zeros(N-1,length(samples),degree+1);
             % Piecewise constants:

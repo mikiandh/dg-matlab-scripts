@@ -143,7 +143,7 @@ classdef Monitor < handle
             end
             set(this.hLimiters,'FaceAlpha',.1,'EdgeAlpha',.2)
             if strcmp(class(this.solver.limiters(this.priority)),'Limiter') %#ok<STISA>
-                [this.hSensors.Visible] = deal('off');
+                [this.hLimiters.Visible] = deal('off');
             end
             % Initialize solution vs. space plots:
             for k = 1:mesh.elementCount

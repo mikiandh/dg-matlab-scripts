@@ -207,38 +207,7 @@ classdef Euler < Physics
             %i = lambdas > 0;
             %flux = Euler.flux(stateR) - K(:,i)*(lambdas(i).*alphas(i));
         end
-        %% Riemann solver (HLL)
-        function [flux,lambdas] = HLL(stateL,stateR)
-            % Primitive variables:
-            [rL,uL,pL,aL,~] = Euler.getPrimitivesFromState(stateL);
-            [rR,uR,pR,aR,~] = Euler.getPrimitivesFromState(stateR);
-            % Wave speed estimates (PVRS-based, eqs. 10.59 - 10.62)
-            p = 0.5*(pR + pL) + 0.125*(uL - uR)*(rL + rR)*(aL + aR);
-            p = max(0,p);
-            if p <= pL
-                sL = uL - aL;
-            else
-                sL = realpow((1 + 6*p/pL)/7,0.5);
-                sL = uL - aL*sL;
-            end
-            if p <= pR
-                sR = uR + aR;
-            else
-                sR = realpow((1 + 6*p/pR)/7,0.5);
-                sR = uR + aR*sR;
-            end
-            lambdas = [sL; sR];
-            % Numerical flux (eq. 10.21):
-            if sL >= 0
-                flux = Euler.flux(stateL);
-            elseif sR > 0
-                flux = (sR*Euler.flux(stateL) - sL*Euler.flux(stateR) + ...
-                    sL*sR*(stateR - stateL))/(sR - sL);
-            else
-                flux = Euler.flux(stateR);
-            end
-        end
-         %% Riemann solver (HLLE, according to LeVeque)
+        %% Riemann solver (HLLE, according to LeVeque)
         function [flux,lambdas] = HLLE(stateL,stateR)
             % Primitive variables and jumps:
             [rL,uL,~,aL,~] = Euler.getPrimitivesFromState(stateL);
@@ -261,30 +230,86 @@ classdef Euler < Physics
             if sL >= 0
                 flux = Euler.flux(stateL);
             elseif sR > 0
-                flux = (sR*Euler.flux(stateL) - sL*Euler.flux(stateR) + ...
-                    sL*sR*(stateR - stateL))/(sR - sL);
+                flux = (sR*Euler.flux(stateL) - sL*Euler.flux(stateR) + sL*sR*(stateR - stateL))/(sR - sL);
             else
                 flux = Euler.flux(stateR);
             end
         end
-        %% Riemann solver (HLLC)
-        function [flux,lambdas] = HLLC(stateL,stateR)
-            % Primitive variables:
-            [rL,uL,pL,aL,~] = Euler.getPrimitivesFromState(stateL); %%% FIXME: WoodwardColella bursts at t = 0.027 here
-            [rR,uR,pR,aR,~] = Euler.getPrimitivesFromState(stateR);
-            % Wave speed estimates (eqs. 10.67 - 10.70)
+        %% Star pressure estimate (ANRS)
+        function p = ANRS(rL,uL,pL,aL,rR,uR,pR,aR)
+            % Adaptive non-iterative algorithm that provides extra robust
+            % star-region pressure estimates, which can then be used to
+            % estimate wave speeds (in e.g. HLL and HLLC Riemann solvers).
+            %
+            % From Toro (2009), pages 305-306.
+            %
+            pMax = max(pL,pR);
+            pMin = min(pL,pR);
             p = 0.5*(pR + pL) + 0.125*(uL - uR)*(rL + rR)*(aL + aR);
-            p = max(0,p);
+            if pMax/pMin < 2 && pMin < p && p < pMax
+                % Primitive Variable Riemann Solver estimate (PVRS)
+                % (cheapest, but might fail in some very specific cases)
+            elseif p <= pMin
+                % Two Rarefaction Riemann Solver estimate (TRRS)
+                p = aL/nthroot(pL,7) + aR/nthroot(pR,7);
+                p = (aL + aR - .2*(uR - uL))/p;
+                p = p^7;
+            else
+                % Two Shock Riemann Solver estimate (TSRS)
+                p = max(0,p);
+                gL = realsqrt(5/6/rL/(p + pL/6));
+                gR = realsqrt(5/6/rR/(p + pR/6));
+                p = gL + gR;
+                p = (gL*pL + gR*pR - uR + uL)/p;
+            end
+        end
+        %% Riemann solver (HLL)
+        function [flux,lambdas] = HLL(stateL,stateR)
+            % Primitive variables:
+            [rL,uL,pL,aL] = Euler.getPrimitivesFromState(stateL);
+            [rR,uR,pR,aR] = Euler.getPrimitivesFromState(stateR);
+            % Pressure-based wave speed estimates:
+            p = Euler.ANRS(rL,uL,pL,aL,rR,uR,pR,aR);
             if p <= pL
                 sL = uL - aL;
             else
-                sL = realpow((1 + 6*p/pL)/7,0.5);
+                sL = realsqrt((1 + 6*p/pL)/7);
                 sL = uL - aL*sL;
             end
             if p <= pR
                 sR = uR + aR;
             else
-                sR = realpow((1 + 6*p/pR)/7,0.5);
+                sR = realsqrt((1 + 6*p/pR)/7);
+                sR = uR + aR*sR;
+            end
+            lambdas = [sL; sR];
+            % Numerical flux (eq. 10.21):
+            if sL >= 0
+                flux = Euler.flux(stateL);
+            elseif sR <= 0
+                flux = Euler.flux(stateR);
+            else
+                flux = (sR*Euler.flux(stateL) - sL*Euler.flux(stateR) + ...
+                    sL*sR*(stateR - stateL))/(sR - sL);
+            end
+        end       
+        %% Riemann solver (HLLC)
+        function [flux,lambdas] = HLLC(stateL,stateR)
+            % Primitive variables:
+            [rL,uL,pL,aL] = Euler.getPrimitivesFromState(stateL);
+            [rR,uR,pR,aR] = Euler.getPrimitivesFromState(stateR);
+            % Pressure-based wave speed estimates:
+            p = Euler.ANRS(rL,uL,pL,aL,rR,uR,pR,aR);
+            if p <= pL
+                sL = uL - aL;
+            else
+                sL = realsqrt((1 + 6*p/pL)/7);
+                sL = uL - aL*sL;
+            end
+            if p <= pR
+                sR = uR + aR;
+            else
+                sR = realsqrt((1 + 6*p/pR)/7);
                 sR = uR + aR*sR;
             end
             sC =  pR - pL + rL*uL*(sL - uL) - rR*uR*(sR - uR);
@@ -294,14 +319,12 @@ classdef Euler < Physics
             if sL >= 0
                 flux = Euler.flux(stateL);
             elseif sC > 0
-                flux = pL + rL*(sL - uL)*(sC - uL) + ...
-                    pR + rR*(sR - uR)*(sC - uR);
+                flux = pL + rL*(sL - uL)*(sC - uL) + pR + rR*(sR - uR)*(sC - uR);
                 flux = 0.5*sL*flux*[0; 1; sC];
                 flux = sC*(sL*stateL - Euler.flux(stateL)) + flux;
                 flux = flux/(sL - sC);
             elseif sR > 0
-                flux = pL + rL*(sL - uL)*(sC - uL) + ...
-                    pR + rR*(sR - uR)*(sC - uR);
+                flux = pL + rL*(sL - uL)*(sC - uL) + pR + rR*(sR - uR)*(sC - uR);
                 flux = 0.5*sR*flux*[0; 1; sC];
                 flux = sC*(sR*stateR - Euler.flux(stateR)) + flux;
                 flux = flux/(sR - sC);
