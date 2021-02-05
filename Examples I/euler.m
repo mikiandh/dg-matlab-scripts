@@ -6,14 +6,14 @@ clear
 % This script solves the Euler equations.
 
 %% Discretization
-mesh = Mesh(DGSEM(5),[0 1],Reflective(0,0),200);
+mesh = Mesh(DGSEM(2),[-5 5],Transmissive(2),300);
 
 %% Solver
-solver = SSP_RK4_10(Euler('HLLC'),[0 .038],...
-    'limiter',[Krivodonova EulerP1 EulerP0],...
-    'exactSolution',@woodwardColella,...
-    'iterSkip',5,...
-    'equations',1);
+solver = SSP_RK4_10(Euler('HLLC'),[0 1.8],...
+    'limiter',[Limiter EulerP1 EulerP0],...
+    'exactSolution',@shuOsher,...
+    'iterSkip',25,...
+    'equations',3);
 solver.courantNumber = .5*solver.optimizeCFL(mesh.bases);
 
 %% Time-integration
@@ -86,13 +86,10 @@ function y = shuOsher(~,x)
 % tEnd = 1.8
 % L = [-5 5]
 y = ones(3,length(x));
-for i = 1:length(x)
-    if x(i) < -4
-        y(:,i) = Euler.primitiveToState([3.857143 2.629369 10.33333]');
-    else
-        y(:,i) = Euler.primitiveToState([1+0.2*sin(5*x(i)) 0 1]');
-    end
-end
+y(:,x < -4) = [3.857143; 2.629369; 10.33333].*y(:,x < -4);
+y(1,x >= -4) = 1+0.2*sin(5*x(x >= -4));
+y(2,x >= -4) = 0.*y(2,x >= -4);
+y = Euler.primitiveToState(y);
 end
 % Lax:
 function y = lax(t,x)

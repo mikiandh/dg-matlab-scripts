@@ -3,13 +3,10 @@ function data = shuOsher(data,fileNameRoot)
 
     function y = initialSolution(x)
         y = ones(3,length(x));
-        for i = 1:length(x)
-            if x(i) < -4
-                y(:,i) = Euler.primitiveToState([3.857143 2.629369 10.33333]');
-            else
-                y(:,i) = Euler.primitiveToState([1+0.2*sin(5*x(i)) 0 1]');
-            end
-        end
+        y(:,x < -4) = [3.857143; 2.629369; 10.33333].*y(:,x < -4);
+        y(1,x >= -4) = 1+0.2*sin(5*x(x >= -4));
+        y(2,x >= -4) = 0.*y(2,x >= -4);
+        y = Euler.primitiveToState(y);
     end
 
 % Preprocess:
