@@ -12,7 +12,6 @@ function data = woodwardColella(data,fileNameRoot)
     end
 
 % Preprocess:
-data.K = max(data.K,200); % ensure a minimum of resolution
 norms = Norm('TV');
 mesh = Mesh(data.basis,[0 1],Reflective(0,0),data.K);
 solver = SSP_RK4_10(Euler,[0 0.038],...

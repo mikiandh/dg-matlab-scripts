@@ -10,7 +10,6 @@ function data = shuOsher(data,fileNameRoot)
     end
 
 % Preprocess:
-data.K = max(data.K,300); % ensure a minimum of resolution
 norms = Norm('TV');
 mesh = Mesh(data.basis,[-5 5],Transmissive(2),data.K);
 solver = SSP_RK4_10(Euler,[0 1.8],...

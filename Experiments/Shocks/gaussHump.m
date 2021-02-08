@@ -9,7 +9,6 @@ physics = Advection(1);
     end
 
 % Preprocess:
-data.limiter(:,2:end) = [];
 norms = Norm({'ErrorL1','TV','BaselineTV'});
 mesh = Mesh(data.basis,[-1 1],Periodic(2),data.K);
 solver = SSP_RK4_10(physics,[0 8],...
