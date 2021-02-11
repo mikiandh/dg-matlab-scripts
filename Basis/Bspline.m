@@ -216,14 +216,12 @@ classdef Bspline < Basis
             % Appends number of breakspans and smoothness class to this
             % basis's one line descriptor.
             name = getName@Basis(this);
-            varkappa = this.smoothness;
-            if isnan(varkappa) || isinf(varkappa)
-                varkappa = this.degree - 1;
-            end
-            if isempty(varkappa)
+            if isempty(this.smoothness)
                 name = sprintf('%s, N_\\Sigma = %d',name,this.nonzeroSpanCount);
+            elseif isnan(this.smoothness) || isinf(this.smoothness)
+                name = sprintf('%s, N_\\Sigma = %d, C^{%d}',name,this.nonzeroSpanCount,this.degree-1);
             else
-                name = sprintf('%s, N_\\Sigma = %d, C^{%d}',name,this.nonzeroSpanCount,varkappa);
+                name = sprintf('%s, N_\\Sigma = %d, C^{%d}',name,this.nonzeroSpanCount,this.smoothness);
             end
         end
     end

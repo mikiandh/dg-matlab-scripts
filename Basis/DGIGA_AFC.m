@@ -2,7 +2,7 @@ classdef DGIGA_AFC < Bspline
     properties
         lumpedMassMatrixDiagonal % non-zero entries of the lumped mass matrix (in reference element space)
         mode2fluxes % connectivity matrix between a control point (row: control point index) and all other control points within shared support, excluding itself (column: edge linear index)
-        diffusionFun = @DGIGA_AFC.diffusionRoeHartenHyman1;
+        diffusionFun = @DGIGA_AFC.diffusionRoeHartenHyman1 % public access, override if necessary
     end
     methods
         %% Constructor
@@ -36,6 +36,32 @@ classdef DGIGA_AFC < Bspline
             element.diffusions(rj) = {sparse(I,I)};
             % Preallocate antidiffusive fluxes:
             element.antidiffusiveFluxes = spalloc(I,N^2,I*length(rj));
+        end
+        %% Quasi-interpolatory (lumped or constrained) projection (extension)
+        function interpolate(this,element,fun0)
+            % This function initializes the states of this basis' element
+            % such that this basis' control polygon vertices interpolate
+            % the given inital condition function.
+            this.interpolate@Bspline(element,fun0)
+            % Initialize unconstrained projection (high order candidate).
+            % This will allow a compatible AFC anti-limiter (if any) to
+            % improve accuracy of the initial condition towards the true
+            % interpolation.
+            element.residuals = element.states/this.controlVandermonde;
+            % Initialize diffusion matrix blocks to zero:
+            [I,N] = size(element.states);
+            rj = element.basis.edges(3,:);
+            element.diffusions = cell(N);
+            element.diffusions(rj) = {sparse(I,I)};
+            % Preallocate antidiffusive fluxes:
+            element.antidiffusiveFluxes = spalloc(I,N^2,I*length(rj));
+        end
+        %% Oneliner info (extension)
+        function name = getName(this)
+            % Appends the type of AFC diffusion function in use, to this
+            % basis's one line descriptor.
+            name = extractAfter(func2str(this.diffusionFun),'.diffusion');
+            name = insertAfter(getName@Bspline(this),'AFC',['(' name ')']);
         end
     end
     methods (Access = {?Basis,?Element})
@@ -163,7 +189,7 @@ classdef DGIGA_AFC < Bspline
             D = max(abs(D(:)))*eye(size(D));
         end
         %% AFC diffusion a la Kuzmin et al. 2012, eq. 46
-        function D = diffusionRobust(state1,state2,physics) % true Rusanov (i.e. local Lax-Friedrichs)
+        function D = diffusionRobust(state1,state2,physics) % reportedly, safest (i.e. most diffusive) choice
             d1 = physics.getEigensystemAt(state1);
             d1 = max(abs(d1(:)));
             d2 = physics.getEigensystemAt(state2);

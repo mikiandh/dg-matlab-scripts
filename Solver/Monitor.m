@@ -416,7 +416,7 @@ classdef Monitor < handle
             % that all 3 variables are being monitored.
             %
             % Grab all handles, and extract their sample data:
-            h = [this.hNodes; this.hBreaks; this.hDiscrete; this.hExact];
+            h = [this.hNodes; this.hBreaks; this.hControlPoints; this.hDiscrete; this.hExact];
             y = reshape({h.YData},3,[]);
             N = cellfun(@numel,y(1,:));
             Y = cell2mat(y);
