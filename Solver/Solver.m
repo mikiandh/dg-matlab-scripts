@@ -21,7 +21,7 @@ classdef Solver < matlab.mixin.SetGet
         wallClockTime
         exactSolution
     end
-    properties (Access = protected)
+    properties (SetAccess = protected)
         stageNow
         initialCondition = @(x) nan
         monitor

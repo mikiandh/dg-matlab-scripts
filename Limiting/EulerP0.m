@@ -73,8 +73,12 @@ classdef EulerP0 < Limiter_legendre
                     % edges are so too.
                     continue
                 end
-                coords = mesh.elements(k).getGaussCoords;
-                states = mesh.elements(k).interpolateStateAtCoords(coords');
+                if mesh.elements(k).basis.isNodal || isa(mesh.elements(k).basis,'Bspline')
+                    states = mesh.elements(k).states;
+                else
+                    coords = mesh.elements(k).getGaussCoords;
+                    states = mesh.elements(k).interpolateStateAtCoords(coords');
+                end
                 try
                     vars = Euler.allPrimitiveVarsFromState(states);
                 catch

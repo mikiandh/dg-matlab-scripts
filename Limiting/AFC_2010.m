@@ -7,8 +7,9 @@ classdef AFC_2010 < Limiter
     % For this version of AFC, the isLimited property is ill-defined, so it
     % is left set to false.
     %
-    properties (Constant)
-        controlVars = struct('Wave',[1 2],'Euler',[1 2 3]) % control variables override
+    properties
+        failsafeStages
+        controlVars
     end
     properties (Access = protected)
         % Synchronizing functions:
@@ -22,6 +23,14 @@ classdef AFC_2010 < Limiter
         function this = AFC_2010(varargin)
             % Superclass constructor:
             this = this@Limiter(varargin{:});
+            p = inputParser;
+            p.KeepUnmatched = true;
+            addParameter(p,'FailsafeStages',0,@(x) validateattributes(x,{'double'},{'integer','scalar'}));
+            addParameter(p,'ControlVars',[],@(x) validateattributes(x,{'double'},{'integer'}));
+            % Parse the input sensor:
+            parse(p,varargin{:});
+            this.failsafeStages = p.Results.FailsafeStages;
+            this.controlVars = p.Results.ControlVars;
         end
         %% Apply (each stage, override)
         function applyStage(~,varargin)
@@ -43,6 +52,10 @@ classdef AFC_2010 < Limiter
             %
             % Physics:
             this.physics = solver.physics;
+            % Control variables:
+            if isempty(this.controlVars)
+                this.controlVars = 1:this.physics.equationCount;
+            end
             % Sync functions:
             if isa(this.physics,'Euler')
                 this.syncStatesFun = @AFC_2010.syncStates_euler;
@@ -55,11 +68,15 @@ classdef AFC_2010 < Limiter
             this.applyAFC(mesh,solver)
         end
         %% Name (extension)
-        function info = getName(this)
-            info = strrep(this.getName@Limiter,'_2010',' (2010)');
+        function name = getName(this)
+            name = strrep(this.getName@Limiter,'_2010','');
+            name = sprintf('%s, vars.: [%s]',name,num2str(this.controlVars));
+            if this.failsafeStages > 0
+                name = sprintf('%s + %d-stage failsafe',name,this.failsafeStages);
+            end
         end
     end
-    methods (Static, Access = protected)
+    methods (Static, Access = {?AFC_2010,?EulerFCT})
         %% Compute antidiffusive fluxes
         function computeAntidiffusiveFluxes(elements,timeDelta)
             % Function that evaluates the antidiffusive fluxes of an array
@@ -86,6 +103,8 @@ classdef AFC_2010 < Limiter
                 end
             end
         end
+    end
+    methods (Static, Access = protected)
         %% Zalesak's algorithm (vectorized)
         function alphas = zalesak(masses,fluxes,states,maxima,minima)
             % Generalized Zalesak's algorithm for the computation of a 
@@ -233,7 +252,7 @@ classdef AFC_2010 < Limiter
             % FCT limiting (in control variables):
             this.applySynchronizedFCT(elements)
             % Failsafe limiting (in control variables):
-            %%% this.applyFailsafe(elements,1)
+            this.applyFailsafe(elements)
         end
         %% Apply sensor
         function applySensor(this,mesh,solver)
@@ -356,12 +375,7 @@ classdef AFC_2010 < Limiter
             % vectors (in conservative variables).
             %
             % Control variable loop:
-            try
-                eqs = this.controlVars.(class(this.physics));
-            catch
-                eqs = 1;
-            end
-            for i = eqs
+            for i = this.controlVars
                 % Patch loop:
                 for element = elements
                     % Convert antidiffusive fluxes to control variables:
@@ -389,53 +403,45 @@ classdef AFC_2010 < Limiter
             end
         end
         %% Failsafe flux limiting
-        function applyFailsafe(this,elements,M)
+        function applyFailsafe(this,elements)
             % Failsafe flux correction based on local imposition of FCT
             % constraints to control variables, a la Kuzmin et al. 2010.
             %
-            % Assumes that each element in the mesh contains state vectors 
-            % (in conservative variables; 2D array) associated with a 
+            % Assumes that each element in the mesh contains state vectors
+            % (in conservative variables; 2D array) associated with a
             % low-order predictor at the next time-level. After execution,
-            % the mesh contains the corrected solution states 
+            % the mesh contains the corrected solution states
             % (conservative variables).
             %
-            % Loop over elements:
-            for element = elements
-                % Precompute some stuff:
-                N = element.basis.basisCount;
-                betas = sparse(N,N);
-                % Apply the failsafe limiting in M stages:
-                for m = 1:M
-                    % Convert state to control variables:
-                    this.syncStatesFun(element);
+            % Limiting factors 'beta' are computed sequentially, e.g.:
+            % first, the density one is obtained and used to remove
+            % part of the raw (conservative) antidiffusive fluxes; the
+            % resulting "partially corrected solution" is then used to
+            % calculate a pressure limiting factor, and so on.
+            %
+            % Loop over stages:
+            for m = 1:this.failsafeStages
+                % Loop over elements:
+                for element = elements
+                    % Preallocate the beta factors into a 2D array, such that
+                    % each row represents control point 'r', and each column
+                    % control point 'j'.
+                    N = element.basis.basisCount;
+                    betas = zeros(N,N);
                     % Loop over control variables:
-                    for i = 1:this.physics.equationCount
-                        updateBetas(...
-                            element.states(i,:),...
-                            element.maxima(i,:),...
-                            element.minima(i,:));
+                    for i = this.controlVars
+                        % Convert state to control variables:
+                        this.syncStatesFun(element);
+                        % Compute failsafe limiting coefficents associated
+                        % with the current control variable:
+                        isInvalid = element.states(i,:) < element.minima(i,:) - 1e-6 | element.states(i,:) > element.maxima(i,:) + 1e-6;
+                        betas(isInvalid | isInvalid') = m/this.failsafeStages;
+                        % Revert states back to conservative variables:
+                        this.invSyncStatesFun(element);
+                        % Substract a fraction of antidiffusive fluxes:
+                        element.removeAntidiffusiveFluxes(betas);
                     end
-                    % Revert states back to conservative variables:
-                    this.invSyncStatesFun(element);
-                    % Substract a fraction of antidiffusive fluxes:
-                    element.removeAntidiffusiveFluxes(betas);
                 end
-            end
-            function updateBetas(states,maxima,minima)
-                % Computes the fraction of antidiffusive fluxes to remove
-                % in the current failsafe stage. Nested. Vectorized.
-                %
-                % Arguments:
-                %  states: row array of predictor control variable states (column: control point)
-                %  maxima: row array of control variable local maxima (column: control point)
-                %  minima: idem, for minima
-                %
-                % Find indices of troubled control points:
-                troubled = states < minima - 1e-6 | states > maxima + 1e-6;
-                % Find indices of troubled antidiffusive fluxes:
-                [r,j] = find(troubled.*troubled');
-                % Update corrections of troubled antidiffusive fluxes:
-                betas(r,j) = m/M;
             end
         end
     end

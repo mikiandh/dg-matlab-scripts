@@ -6,18 +6,26 @@ clear
 % This script solves the Euler equations.
 
 %% Discretization
-mesh = Mesh(DGSEM(2),[0 1],Transmissive(2),100);
+sod_BCs = Farfield([1; 0; 2.5],[0.125; 0; 0.25]);
+toro1_BCs = Farfield([1; 0.75; 2.7813],[1; 0; 0.25]);
+toro3_BCs = Farfield([1; 0; 4e2],[1; 0; 4e-3]);
+shuOsher_BCs = Farfield([3.8571; 10.1419; 39.1667],[0.9735; 0; 2.5]);
+
+mesh = Mesh(DGIGA_AFC(2,3,1),[0 1],Reflective(0,0),50);
 
 %% Solver
-solver = SSP_RK4_10(Euler('HLLC'),[0 .15],...
-    'limiter',[TVB('M',10,'Stats',true) EulerP1 EulerP0],...
-    'exactSolution',@toro2,...
-    'iterSkip',10,...
-    'equations',1);
+solver = SSP_RK4_10(Euler('HLLC'),[0 0.038],...
+    ...'courantNumber',0.0134,...
+    ...'limiter',AFC_2010('FailsafeStages',5,'ControlVars',[1 3 2]),...
+    'limiter',[EulerP1 EulerP0 AFC_2010('FailsafeStages',3,'ControlVars',[1 3 2])],...
+    ...'Limiter',[Krivodonova EulerP1 EulerP0],...
+    'exactSolution',@woodwardColella,...
+    'iterSkip',25,...
+    'equations',3);
 solver.courantNumber = .5*solver.optimizeCFL(mesh.bases);
 
 %% Time-integration
-solver.initialize(mesh)
+solver.initialize(mesh,'Method','interpolate')
 solver.launch(mesh)
 
 %% Exact solutions and/or initial conditions
@@ -55,7 +63,7 @@ y = [r; r.*u; p/0.4 + 0.5*r.*u.^2];
 end
 function y = toro3(t,x)
 % tEnd = 0.012
-[r,u,p] = riemannEulerExact(t,x,1,0,100,1,0,0.01,0.5);
+[r,u,p] = riemannEulerExact(t,x,1,0,1000,1,0,0.01,0.5);
 y = [r; r.*u; p/0.4 + 0.5*r.*u.^2];
 end
 function y = toro4(t,x)
@@ -106,5 +114,15 @@ end
 % Riemann "1-2-3" problem
 function y = riemann123(t,x)
 [r,u,p] = riemannEulerExact(t,x,1,2,.4,1,-2,.4,0.5);
+y = [r; r.*u; p/0.4 + 0.5*r.*u.^2];
+end
+% Riemann "blast waves" (left) problem
+function y = riemannBlastL(t,x)
+[r,u,p] = riemannEulerExact(t,x,1,-0,1000,1,0,1000,0.5);
+y = [r; r.*u; p/0.4 + 0.5*r.*u.^2];
+end
+% Riemann "blast waves" (right) problem
+function y = riemannBlastR(t,x)
+[r,u,p] = riemannEulerExact(t,x,1,0,100,1,-0,100,0.5);
 y = [r; r.*u; p/0.4 + 0.5*r.*u.^2];
 end
