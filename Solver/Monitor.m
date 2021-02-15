@@ -28,11 +28,12 @@ classdef Monitor < handle
         hExact % idem, exact solutions
         hControlPoints % idem, control point coordinates and values (if any)
         hNodes % idem, nodal coordinates and values
-        hBreaks % idem, breakpoints
+        hBreakPoints % idem, breakpoints
         hSensors % column array of sensor activation bar charts
         hLimiters % idem, limiter activation bar chars (stacked)
         hNorms % 2D array of instantaneous norm samples (row: equation; column: norm type)
         hLegend % handle to the legend of the norm subplots
+        hToolbar % handle to this monitor's toolbar
         % Other graphics properties:
         figurePosition
         titleHeight = 100
@@ -98,7 +99,7 @@ classdef Monitor < handle
             this.hExact = this.hDiscrete;
             this.hControlPoints = this.hDiscrete;
             this.hNodes = this.hDiscrete;
-            this.hBreaks = this.hDiscrete;
+            this.hBreakPoints = this.hDiscrete;
             this.hSensors = gobjects(this.rows(end),1);
             this.hLimiters = gobjects(this.rows(end),mesh.maxBasisCount);
             this.hNorms = gobjects(this.rows(end),numel(this.norms));
@@ -162,7 +163,7 @@ classdef Monitor < handle
                 for i = this.rows
                     this.hExact(i,k) = plot(this.hAxes(i,1),x,z(i,:),'LineStyle','--','Color','k');
                     this.hDiscrete(i,k) = plot(this.hAxes(i,1),x,y(i,:),'LineStyle','-','Color',this.cDiscrete(k,:));
-                    this.hBreaks(i,k) = plot(this.hAxes(i,1),x2,y(i,j{2}),'LineStyle','none','Marker','+','Color',this.cDiscrete(k,:));
+                    this.hBreakPoints(i,k) = plot(this.hAxes(i,1),x2,y(i,j{2}),'LineStyle','none','Marker','+','Color',this.cDiscrete(k,:));
                     this.hNodes(i,k) = plot(this.hAxes(i,1),[nan x1],[nan y(i,j{1})],'LineStyle','none','Marker','.','Color',this.cDiscrete(k,:));
                     this.hControlPoints(i,k) = plot(this.hAxes(i,1),[nan x0],[nan t(i,:)],'LineStyle','none','Marker','x','Color',this.cDiscrete(k,:));
                 end
@@ -215,7 +216,7 @@ classdef Monitor < handle
                 x1 = mesh.elements(k).getNodeCoords';
                 set(this.hNodes(:,k),'XData',x1)
                 x2 = mesh.elements(k).getBreakCoords;
-                set(this.hBreaks(:,k),'XData',x2)
+                set(this.hBreakPoints(:,k),'XData',x2)
                 x3 = linspace(mesh.elements(k).xL,mesh.elements(k).xR,ceil(mean(1000,mesh.elements(k).dofCount*this.nPerDof)));
                 x = unique([x3 x2 x1],'sorted');
                 set(this.hDiscrete(:,k),'XData',x)
@@ -225,7 +226,7 @@ classdef Monitor < handle
                 j = cellfun(@(b) arrayfun(@(a) find(x == a,1),b),{x1 x2 x3},'UniformOutput',false);
                 y = mesh.elements(k).interpolateStateAtCoords(x);
                 set(this.hNodes(:,k),{'YData'},num2cell(y(this.rows,j{1}),2))
-                set(this.hBreaks(:,k),{'YData'},num2cell(y(this.rows,j{2}),2))
+                set(this.hBreakPoints(:,k),{'YData'},num2cell(y(this.rows,j{2}),2))
                 set(this.hDiscrete(:,k),{'YData'},num2cell(y(this.rows,:),2))
                 y = this.solver.exactSolution(this.solver.timeNow,x);
                 set(this.hExact(:,k),{'YData'},num2cell(y(this.rows,:),2))
@@ -270,7 +271,12 @@ classdef Monitor < handle
             % Elements/patches are numbered and separated by a blank line.
             %
             % Header row:
-            aux = compose('%s_%d',["q^h" "q"]',this.rows)';
+            if strcmp(this.hToolbar.Children(end).State,'off') % conservative variables?
+                aux = ["q^h"; "q"];
+            else
+                aux = ["v^h"; "v"];
+            end
+            aux = compose('%s_%d',aux,this.rows)';
             fprintf(fileID,'%s \t','k','x',aux{:});
             fprintf(fileID,'\n');
             % Write solution, element-wise:
@@ -308,6 +314,36 @@ classdef Monitor < handle
             end
             fprintf(fileID,specs,aux);
         end
+        %% Write solution points
+        function writePoints(this,fileID,ptName)
+            % Writes into a file ONE of the following, depending on given
+            % name: control points, nodal points or break points.
+            % Elements/patches are numbered and separated by a blank line.
+            %
+            % Validate point type, and convert it to a handle name:
+            hName = ['h' validatestring(ptName,{'ControlPoints','Nodes','BreakPoints'})];
+            % Header row:
+            if strcmp(this.hToolbar.Children(end).State,'off') % conservative variables?
+                aux = "q^h";
+            else
+                aux = "v^h";
+            end
+            aux = compose('%s_%d',aux,this.rows)';
+            fprintf(fileID,'%s \t','k','x',aux{:});
+            fprintf(fileID,'\n');
+            % Write element-wise:
+            aux = repmat('\t%g ',1,size(aux,1));
+            aux = ['%d \t %g' aux '\n'];
+            for k = 1:size(this.(hName),2)
+                data = [
+                    repmat(k,size(this.(hName)(k).XData))
+                    this.(hName)(1,k).XData
+                    vertcat(this.(hName)(:,k).YData)
+                    ];
+                fprintf(fileID,aux,data);
+                fprintf(fileID,'\n');
+            end
+        end
     end
     methods (Access = protected)
         %% Vertical axis limits
@@ -328,7 +364,7 @@ classdef Monitor < handle
         function setToolbar(this,varargin)
             % Add this Monitor's custom tools into its figure's toolbar.
             % Retrive existing toolbar:
-            hToolbar = findall(this.hFigure,'type','uitoolbar');
+            this.hToolbar = findall(this.hFigure,'type','uitoolbar');
             % Load icons:
             icons = load('monitor_icons.mat','-regexp','icon');
             % Transform to/from primary variables (Euler equations only)
@@ -339,25 +375,25 @@ classdef Monitor < handle
                 else
                     flag2 = 'on';
                 end
-                uitoggletool(hToolbar,'Enable',flag2,'State','off','ClickedCallback',@this.cycle_varsEuler,'Tooltip','Cycle between conserved and primitive variables','CData',icons.icon_vars,'Separator','on')
+                uitoggletool(this.hToolbar,'Enable',flag2,'State','off','ClickedCallback',@this.cycle_varsEuler,'Tooltip','Cycle between conserved and primitive variables','CData',icons.icon_vars,'Separator','on')
             else
                 flag1 = 'on';
             end
             % Toggle solution visibility tools:            
-            uitoggletool(hToolbar,'State',this.hDiscrete(1).Visible,'ClickedCallback',@this.toggle_discrete,'Tooltip','Show discrete solution','CData',icons.icon_discrete,'Separator',flag1)
-            uitoggletool(hToolbar,'State',this.hExact(1).Visible,'ClickedCallback',@this.toggle_exact,'Tooltip','Show exact solution','CData',icons.icon_exact)
-            uitoggletool(hToolbar,'State',this.hControlPoints(1).Visible,'ClickedCallback',@this.toggle_controlPoints,'Tooltip','Show control points','CData',icons.icon_controlPoints)
-            uitoggletool(hToolbar,'State',this.hNodes(1).Visible,'ClickedCallback',@this.toggle_nodes,'Tooltip','Show nodes','CData',icons.icon_nodes)
-            uitoggletool(hToolbar,'State',this.hBreaks(1).Visible,'ClickedCallback',@this.toggle_breaks,'Tooltip','Show breakpoints','CData',icons.icon_breaks)
-            uitoggletool(hToolbar,'State',this.hSensors(1).Visible,'ClickedCallback',@this.toggle_sensor,'Tooltip','Show sensor','CData',icons.icon_sensor)
-            uitoggletool(hToolbar,'State',this.hLimiters(1).Visible,'ClickedCallback',@this.toggle_limiter,'Tooltip','Show limiter','CData',icons.icon_limiter)
+            uitoggletool(this.hToolbar,'State',this.hDiscrete(1).Visible,'ClickedCallback',@this.toggle_discrete,'Tooltip','Show discrete solution','CData',icons.icon_discrete,'Separator',flag1)
+            uitoggletool(this.hToolbar,'State',this.hExact(1).Visible,'ClickedCallback',@this.toggle_exact,'Tooltip','Show exact solution','CData',icons.icon_exact)
+            uitoggletool(this.hToolbar,'State',this.hControlPoints(1).Visible,'ClickedCallback',@this.toggle_controlPoints,'Tooltip','Show control points','CData',icons.icon_controlPoints)
+            uitoggletool(this.hToolbar,'State',this.hNodes(1).Visible,'ClickedCallback',@this.toggle_nodes,'Tooltip','Show nodes','CData',icons.icon_nodes)
+            uitoggletool(this.hToolbar,'State',this.hBreakPoints(1).Visible,'ClickedCallback',@this.toggle_breaks,'Tooltip','Show breakpoints','CData',icons.icon_breaks)
+            uitoggletool(this.hToolbar,'State',this.hSensors(1).Visible,'ClickedCallback',@this.toggle_sensor,'Tooltip','Show sensor','CData',icons.icon_sensor)
+            uitoggletool(this.hToolbar,'State',this.hLimiters(1).Visible,'ClickedCallback',@this.toggle_limiter,'Tooltip','Show limiter','CData',icons.icon_limiter)
             % Cycle to the next limiter in sequence (if any):
             if numel(this.solver.limiters) > 1
                 flag3 = 'on';
             else
                 flag3 = 'off';
             end
-            uitoggletool(hToolbar,'Enable',flag3,'State','off','ClickedCallback',@this.cycle_limiter,'Tooltip','Cycle to next sensor/limiter in sequence','CData',icons.icon_next)
+            uitoggletool(this.hToolbar,'Enable',flag3,'State','off','ClickedCallback',@this.cycle_limiter,'Tooltip','Cycle to next sensor/limiter in sequence','CData',icons.icon_next)
         end
         %% Toggle norm visibility
         function toggle_norms(this,~,event)
@@ -374,7 +410,7 @@ classdef Monitor < handle
         %% Toggle breakpoint visibility
         function toggle_breaks(this,src,~)
             % Callback function that switches breakpoint visibility.
-            [this.hBreaks.Visible] = deal(src.State);
+            [this.hBreakPoints.Visible] = deal(src.State);
         end
         %% Toggle node visibility
         function toggle_nodes(this,src,~)
@@ -416,7 +452,7 @@ classdef Monitor < handle
             % that all 3 variables are being monitored.
             %
             % Grab all handles, and extract their sample data:
-            h = [this.hNodes; this.hBreaks; this.hControlPoints; this.hDiscrete; this.hExact];
+            h = [this.hNodes; this.hBreakPoints; this.hControlPoints; this.hDiscrete; this.hExact];
             y = reshape({h.YData},3,[]);
             N = cellfun(@numel,y(1,:));
             Y = cell2mat(y);

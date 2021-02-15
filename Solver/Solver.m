@@ -223,6 +223,28 @@ classdef Solver < matlab.mixin.SetGet
             % Return file to a safe state:
             fclose(fileID);
         end
+        %% Export solution points
+        function writePointsToFile(this,fileNameRoot,ptName)
+            % Exports samples of the discrete solution at selected points.
+            %
+            % Arguments
+            %  fileNameRoot: root of the name the file will have
+            %  ptName: which type of points to export (will be appended to
+            %          the file name)
+            %
+            % Setup file:
+            fileName = sprintf('%s_%s.dat',fileNameRoot,ptName);
+            fileID = fopen(fileName,'wt');
+            % Pass on request to the monitor:
+            try
+                this.monitor.writeInfo(fileID)
+                this.monitor.writePoints(fileID,ptName)
+            catch me
+                warning(getReport(me))
+            end
+            % Return file to a safe state:
+            fclose(fileID);
+        end
     end
     methods (Access = protected)
         %% Single step forward
