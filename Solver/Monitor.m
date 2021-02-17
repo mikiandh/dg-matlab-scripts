@@ -501,7 +501,7 @@ classdef Monitor < handle
                     permute(mesh.elements(k).isLimited(eqs,end:-1:1,min(end,this.priority)),[3 2 1]);
             end
             % Normalize by each element's maximum number of limited modes:
-            kji = kji./([mesh.elements.dofCount]'-1);
+            kji = kji./([mesh.elements.dofCount]' - ~isa(this.solver.limiters(this.priority),'AFC_2010'));
         end
     end
 end

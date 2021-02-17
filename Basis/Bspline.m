@@ -204,13 +204,14 @@ classdef Bspline < Basis
         end
         %% Quasi-interpolatory projection
         function interpolate(~,element,fun0)
-            % Assign control point values from exact function samples. 
+            % Assign control point values to exact function samples. 
             % B-spline function at control locations will, in general, not
-            % coincide with the exact one; also, the projection will not be
-            % norm-preserving (in general). It will, nevertheless, be TVD.
+            % coincide with the exact one; neither will this initialization
+            % be norm-preserving (in general).
+            % It will be TVD, nevertheless.
             %
             element.states = fun0(element.getControlCoords);
-        end
+        end        
         %% Oneliner info (extension)
         function name = getName(this)
             % Appends number of breakspans and smoothness class to this

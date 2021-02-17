@@ -8,7 +8,8 @@ function data = toro2(data,fileNameRoot)
 
 % Preprocess:
 norms = Norm({'ErrorL1','TV','BaselineTV'});
-mesh = Mesh(data.basis,[0 1],Transmissive(2),data.K);
+bcs = Farfield(exactSolution(0,0),exactSolution(0,1));
+mesh = Mesh(data.basis,[0 1],bcs,data.K);
 solver = SSP_RK4_10(Euler,[0 .15],...
     'norm',norms,...
     'exactSolution',@exactSolution,...

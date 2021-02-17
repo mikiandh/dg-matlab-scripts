@@ -30,17 +30,17 @@ IC_p3d3 = @(x) (x+x.^2+x.^3).*(1 - heaviside(x)) + (x+x.^2+2*x.^3).*(heaviside(x
 IC_p3d4 = @(x) (x+x.^2+x.^3);
 
 %% Discretization
-mesh = Mesh(DGIGA_AFC(1,2),L,Periodic(2),99);
+mesh = Mesh(DGIGA_AFC(2,3,1),L,Periodic(2),20);
 
 %% Solver
-solver = SSP_RK4_10(Advection,[0 0],...
-    'limiter',AFC_2010,...
-    'exactSolution',@(t,x) IC_jiangShu(x),...
+solver = SSP_RK4_10(Advection,[0 8],...
+    'limiter',AFC_2010('Stats',true),...
+    'exactSolution',@(t,x) IC_combined(x),...
     'iterSkip',50);
 solver.courantNumber = .5*solver.optimizeCFL(mesh.bases);
 
 %% Initial condition
-solver.initialize(mesh,'method','interpolate')
+solver.initialize(mesh)
 
 %% Time-integration
 solver.launch(mesh)

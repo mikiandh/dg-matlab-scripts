@@ -253,6 +253,10 @@ classdef AFC_2010 < Limiter
             this.applySynchronizedFCT(elements)
             % Failsafe limiting (in control variables):
             this.applyFailsafe(elements)
+            % Check for limited control values:
+            for element = elements
+                element.isLimited(:,:,this.priority) = abs(element.states - element.isLimited(:,:,this.priority)) > max(1e-10,1e-3*abs(element.states));
+            end
         end
         %% Apply sensor
         function applySensor(this,mesh,solver)
@@ -264,7 +268,8 @@ classdef AFC_2010 < Limiter
             % Apply raw antidiffusive fluxes to each element:
             for element = mesh.elements
                 element.applyAntidiffusiveFluxes;
-                element.isLimited(:,:,this.priority) = false(size(element.states));
+                % Save these "overcorrected" states, to compare with later:
+                element.isLimited(:,:,this.priority) = element.states;
             end
             % Detect troubled cells in the linearised high-order solution:
             this.sensor.apply(mesh,solver,this.priority)
@@ -391,7 +396,6 @@ classdef AFC_2010 < Limiter
                     this.invSyncFluxesFun(element)
                     % Limit conservative antidiffusive fluxes:
                     element.antidiffusiveFluxes = alphas.*element.antidiffusiveFluxes;
-                    %%%element.isLimited(i,:,this.priority) = sum(reshape(1-alphas,element.dofCount,element.dofCount),2)';
                 end
             end
             % Finalize:

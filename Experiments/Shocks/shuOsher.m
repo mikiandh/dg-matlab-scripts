@@ -11,7 +11,8 @@ function data = shuOsher(data,fileNameRoot)
 
 % Preprocess:
 norms = Norm('TV');
-mesh = Mesh(data.basis,[-5 5],Transmissive(2),data.K);
+bcs = Farfield(exactSolution(0,0),exactSolution(0,1));
+mesh = Mesh(data.basis,[-5 5],bcs,data.K);
 solver = SSP_RK4_10(Euler,[0 1.8],...
     'norm',norms,...
     'limiter',data.limiter);
