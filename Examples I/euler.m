@@ -11,21 +11,20 @@ toro1_BCs = Farfield([1; 0.75; 2.7813],[1; 0; 0.25]);
 toro3_BCs = Farfield([1; 0; 2500],[1; 0; 0.25]);
 shuOsher_BCs = Farfield([3.8571; 10.1419; 39.1667],[0.9735; 0; 2.5]);
 
-mesh = Mesh(DGIGA_AFC(240,5,0),[0 1],Reflective(0,0),1);
-mesh.bases.diffusionFun = @DGIGA_AFC.diffusionRobust;
+mesh = Mesh(DGIGA_AFC(1,1,0),[0 1],Reflective(0,0),1);
+% mesh.bases.diffusionFun = @DGIGA_AFC.diffusionRobust;
 % mesh.bases.diffusionFun = @DGIGA_AFC.diffusionArithmetic;
 
 %% Solver
-solver = SSP_RK4_10(Euler('HLLC'),[0 0.038],...
-    'Limiter',AFC_2010('Failsafe',3,'Control',[1 3 2]),...
+solver = SSP_RK4_10(Euler('HLLC'),[0 0.038/100],...
+    'Limiter',[AFC_2010('Stats',true,'Failsafe',3,'Control',[1 3 2]) EulerP1('Stats',true) EulerP0('Stats',true)],...
     'exactSolution',@woodwardColella,...
-    'iterSkip',25,...
-    'timeDelta',1e-4,...
+    'iterSkip',1,...
     'equations',3);
-%solver.courantNumber = .5*solver.optimizeCFL(mesh.bases);
+solver.courantNumber = .5*solver.optimizeCFL(mesh.bases);
 
 %% Time-integration
-solver.initialize(mesh,'Method','interpolate')
+solver.initialize(mesh)
 solver.launch(mesh)
 
 %% Exact solutions and/or initial conditions

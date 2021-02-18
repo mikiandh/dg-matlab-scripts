@@ -81,8 +81,7 @@ I = size(dataStructArray,1);
 c = parallel.pool.Constant(@() fopen(tempname(pwd),'wt'),@fclose);
 spmd
     cpuFile = (fopen(c.Value));
-    fprintf(c.Value,'%s\n',...
-        strjoin(dataTable.Properties.VariableNames,' \t'));
+    fprintf(c.Value,'%s\n',strjoin(fields(dataStructArray),'\t'));
 end
     
 %% Parallel batch run

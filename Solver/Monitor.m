@@ -34,6 +34,7 @@ classdef Monitor < handle
         hNorms % 2D array of instantaneous norm samples (row: equation; column: norm type)
         hLegend % handle to the legend of the norm subplots
         hToolbar % handle to this monitor's toolbar
+        hTools % structure of toolbar button handles
         % Other graphics properties:
         figurePosition
         titleHeight = 100
@@ -271,10 +272,10 @@ classdef Monitor < handle
             % Elements/patches are numbered and separated by a blank line.
             %
             % Header row:
-            if strcmp(this.hToolbar.Children(end).State,'off') % conservative variables?
-                aux = ["q^h"; "q"];
-            else
+            if strcmp(this.hTools.vars.State,'on') % primitive variables?
                 aux = ["v^h"; "v"];
+            else
+                aux = ["q^h"; "q"];
             end
             aux = compose('%s_%d',aux,this.rows)';
             fprintf(fileID,'%s \t','k','x',aux{:});
@@ -323,10 +324,10 @@ classdef Monitor < handle
             % Validate point type, and convert it to a handle name:
             hName = ['h' validatestring(ptName,{'ControlPoints','Nodes','BreakPoints'})];
             % Header row:
-            if strcmp(this.hToolbar.Children(end).State,'off') % conservative variables?
-                aux = "q^h";
-            else
+            if strcmp(this.hTools.vars.State,'on') % primitive variables?
                 aux = "v^h";
+            else
+                aux = "q^h";
             end
             aux = compose('%s_%d',aux,this.rows)';
             fprintf(fileID,'%s \t','k','x',aux{:});
@@ -368,32 +369,27 @@ classdef Monitor < handle
             % Load icons:
             icons = load('monitor_icons.mat','-regexp','icon');
             % Transform to/from primary variables (Euler equations only)
-            if isa(this.solver.physics,'Euler')
-                flag1 = 'off';
-                if numel(this.rows) < 3
-                    flag2 = 'off'; % conversion is only supported if all 3 equations are being monitored
-                else
-                    flag2 = 'on';
-                end
-                uitoggletool(this.hToolbar,'Enable',flag2,'State','off','ClickedCallback',@this.cycle_varsEuler,'Tooltip','Cycle between conserved and primitive variables','CData',icons.icon_vars,'Separator','on')
+            if isa(this.solver.physics,'Euler') && numel(this.rows) == 3
+                flag = 'on'; % conversion is only supported for Euler if all 3 equations are being monitored
             else
-                flag1 = 'on';
+                flag = 'off';
             end
+            this.hTools.vars = uitoggletool(this.hToolbar,'Enable',flag,'State','off','ClickedCallback',@this.cycle_varsEuler,'Tooltip','Cycle between conserved and primitive variables','CData',icons.icon_vars,'Separator','on');
             % Toggle solution visibility tools:            
-            uitoggletool(this.hToolbar,'State',this.hDiscrete(1).Visible,'ClickedCallback',@this.toggle_discrete,'Tooltip','Show discrete solution','CData',icons.icon_discrete,'Separator',flag1)
-            uitoggletool(this.hToolbar,'State',this.hExact(1).Visible,'ClickedCallback',@this.toggle_exact,'Tooltip','Show exact solution','CData',icons.icon_exact)
-            uitoggletool(this.hToolbar,'State',this.hControlPoints(1).Visible,'ClickedCallback',@this.toggle_controlPoints,'Tooltip','Show control points','CData',icons.icon_controlPoints)
-            uitoggletool(this.hToolbar,'State',this.hNodes(1).Visible,'ClickedCallback',@this.toggle_nodes,'Tooltip','Show nodes','CData',icons.icon_nodes)
-            uitoggletool(this.hToolbar,'State',this.hBreakPoints(1).Visible,'ClickedCallback',@this.toggle_breaks,'Tooltip','Show breakpoints','CData',icons.icon_breaks)
-            uitoggletool(this.hToolbar,'State',this.hSensors(1).Visible,'ClickedCallback',@this.toggle_sensor,'Tooltip','Show sensor','CData',icons.icon_sensor)
-            uitoggletool(this.hToolbar,'State',this.hLimiters(1).Visible,'ClickedCallback',@this.toggle_limiter,'Tooltip','Show limiter','CData',icons.icon_limiter)
+            this.hTools.discrete = uitoggletool(this.hToolbar,'State',this.hDiscrete(1).Visible,'ClickedCallback',@this.toggle_discrete,'Tooltip','Show discrete solution','CData',icons.icon_discrete);
+            this.hTools.exact = uitoggletool(this.hToolbar,'State',this.hExact(1).Visible,'ClickedCallback',@this.toggle_exact,'Tooltip','Show exact solution','CData',icons.icon_exact);
+            this.hTools.controlPoints = uitoggletool(this.hToolbar,'State',this.hControlPoints(1).Visible,'ClickedCallback',@this.toggle_controlPoints,'Tooltip','Show control points','CData',icons.icon_controlPoints);
+            this.hTools.nodes = uitoggletool(this.hToolbar,'State',this.hNodes(1).Visible,'ClickedCallback',@this.toggle_nodes,'Tooltip','Show nodes','CData',icons.icon_nodes);
+            this.hTools.breaks = uitoggletool(this.hToolbar,'State',this.hBreakPoints(1).Visible,'ClickedCallback',@this.toggle_breaks,'Tooltip','Show breakpoints','CData',icons.icon_breaks);
+            this.hTools.sensor = uitoggletool(this.hToolbar,'State',this.hSensors(1).Visible,'ClickedCallback',@this.toggle_sensor,'Tooltip','Show sensor','CData',icons.icon_sensor);
+            this.hTools.limiter = uitoggletool(this.hToolbar,'State',this.hLimiters(1).Visible,'ClickedCallback',@this.toggle_limiter,'Tooltip','Show limiter','CData',icons.icon_limiter);
             % Cycle to the next limiter in sequence (if any):
             if numel(this.solver.limiters) > 1
                 flag3 = 'on';
             else
                 flag3 = 'off';
             end
-            uitoggletool(this.hToolbar,'Enable',flag3,'State','off','ClickedCallback',@this.cycle_limiter,'Tooltip','Cycle to next sensor/limiter in sequence','CData',icons.icon_next)
+            this.hTools.next = uitoggletool(this.hToolbar,'Enable',flag3,'State','off','ClickedCallback',@this.cycle_limiter,'Tooltip','Cycle to next sensor/limiter in sequence','CData',icons.icon_next);
         end
         %% Toggle norm visibility
         function toggle_norms(this,~,event)

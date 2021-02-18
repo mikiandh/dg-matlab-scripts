@@ -10,35 +10,35 @@ clear
 %% Test matrix
 dataCell = {
 %   run     K       relCFL  basis       limiter                                                                                     test 
-    1       100     .5      DGSEM(2)    TVB('M',500,'Stats',true)                                                                   @jiangShu
+    1       100     .5      DGSEM(2)    Krivodonova('Stats',true)                                                                   @jiangShu
     2       100     .5      DGSEM(2)    Krivodonova('Sensor',KXRCF,'Stats',true)                                                    @jiangShu
     3       100     .5      DGSEM(2)    Krivodonova('Sensor',APTVD,'Stats',true)                                                    @jiangShu
     
-    4       100     .5      DGSEM(5)    TVB('M',500,'Stats',true)                                                                   @jiangShu
+    4       100     .5      DGSEM(5)    Krivodonova('Stats',true)                                                                   @jiangShu
     5       100     .5      DGSEM(5)    Krivodonova('Sensor',KXRCF,'Stats',true)                                                    @jiangShu
     6       100     .5      DGSEM(5)    Krivodonova('Sensor',APTVD,'Stats',true)                                                    @jiangShu
     
-    7       100     .5      DGSEM(2)    [TVB('M',30,'Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]                   @toro1
+    7       100     .5      DGSEM(2)    [Krivodonova('Stats',true) EulerP1('Stats',true)   EulerP0('Stats',true)]                   @toro1
     8       100     .5      DGSEM(2)    [Krivodonova('Sensor',KXRCF,'Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]   @toro1
     9       100     .5      DGSEM(2)    [Krivodonova('Sensor',APTVD,'Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]   @toro1
     
-    10      100     .5      DGSEM(5)    [TVB('M',30,'Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]                   @toro1
+    10      100     .5      DGSEM(5)    [Krivodonova('Stats',true) EulerP1('Stats',true)   EulerP0('Stats',true)]                   @toro1
     11      100     .5      DGSEM(5)    [Krivodonova('Sensor',KXRCF,'Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]   @toro1
     12      100     .5      DGSEM(5)    [Krivodonova('Sensor',APTVD,'Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]   @toro1
     
-    13      100     .5      DGSEM(2)    [TVB('M',10,'Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]                   @toro2
+    13      100     .5      DGSEM(2)    [Krivodonova('Stats',true) EulerP1('Stats',true)   EulerP0('Stats',true)]                   @toro2
     14      100     .5      DGSEM(2)    [Krivodonova('Sensor',KXRCF,'Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]   @toro2
     15      100     .5      DGSEM(2)    [Krivodonova('Sensor',APTVD,'Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]   @toro2
     
-    16      100     .5      DGSEM(5)    [TVB('M',10,'Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]                   @toro2
+    16      100     .5      DGSEM(5)    [Krivodonova('Stats',true) EulerP1('Stats',true)   EulerP0('Stats',true)]                   @toro2
     17      100     .5      DGSEM(5)    [Krivodonova('Sensor',KXRCF,'Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]   @toro2
     18      100     .5      DGSEM(5)    [Krivodonova('Sensor',APTVD,'Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]   @toro2
     
-    19      200     .5      DGSEM(2)    [TVB('M',200,'Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]                  @woodwardColella
+    19      200     .5      DGSEM(2)    [Krivodonova('Stats',true) EulerP1('Stats',true)   EulerP0('Stats',true)]                   @woodwardColella
     20      200     .5      DGSEM(2)    [Krivodonova('Sensor',KXRCF,'Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]   @woodwardColella
     21      200     .5      DGSEM(2)    [Krivodonova('Sensor',APTVD,'Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]   @woodwardColella
     
-    22      200     .5      DGSEM(5)    [TVB('M',200,'Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]                  @woodwardColella
+    22      200     .5      DGSEM(5)    [Krivodonova('Stats',true) EulerP1('Stats',true)   EulerP0('Stats',true)]                   @woodwardColella
     23      200     .5      DGSEM(5)    [Krivodonova('Sensor',KXRCF,'Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]   @woodwardColella
     24      200     .5      DGSEM(5)    [Krivodonova('Sensor',APTVD,'Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]   @woodwardColella
 };
@@ -58,8 +58,7 @@ I = size(dataStructArray,1);
 c = parallel.pool.Constant(@() fopen(tempname(pwd),'wt'),@fclose);
 spmd
     cpuFile = (fopen(c.Value));
-    fprintf(c.Value,'%s\n',...
-        strjoin(fields(dataStructArray),'\t'));
+    fprintf(c.Value,'%s\n',strjoin(fields(dataStructArray),'\t'));
 end
     
 %% Parallel batch run
