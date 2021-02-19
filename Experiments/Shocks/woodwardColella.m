@@ -1,5 +1,9 @@
-function data = woodwardColella(data,fileNameRoot)
+function data = woodwardColella(data,fileNameRoot,ptSkip)
 % Woodward and Colella's (1984) interaction between two blast waves.
+
+if nargin < 3
+    ptSkip = 32;
+end
 
     function y = initialSolution(x)
         y = ones(3,length(x));
@@ -17,10 +21,17 @@ mesh = Mesh(data.basis,[0 1],Reflective(0,0),data.K);
 solver = SSP_RK4_10(Euler,[0 0.038],...
     'norm',norms,...
     'limiter',data.limiter);
-solver.courantNumber = data.relCFL*solver.optimizeCFL(data.basis);
+mtd = 'project';
+if isnan(data.relCFL)
+    solver.timeDelta = 1e-4;
+    solver.isTimeDeltaFixed = true;
+%     mtd = 'interpolate';
+else
+    solver.courantNumber = data.relCFL*solver.optimizeCFL(data.basis);
+end
 
 % Solve:
-solver.initialize(mesh,'initialCondition',@initialSolution)
+solver.initialize(mesh,'initialCondition',@initialSolution,'method',mtd)
 solver.launch(mesh)
 
 % Postprocess:
@@ -34,7 +45,7 @@ data.sensorRatio = solver.limiters(1).sensor.cumulativeActivationRatio;
 data.limiterRatio = solver.limiters(1).cumulativeActivationRatio;
 
 % Export:
-solver.writeSolutionToFile([fileNameRoot '_solution'],32)
+solver.writeSolutionToFile([fileNameRoot '_solution'],ptSkip)
 solver.writeLimiterToFile([fileNameRoot '_limiter'])
 % savefig(sprintf('%s.fig',fileNameRoot))
 end

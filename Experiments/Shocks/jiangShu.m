@@ -1,4 +1,4 @@
-function data = jiangShu(data,fileNameRoot)
+function data = jiangShu(data,fileNameRoot,ptSkip)
 % Initial condition for linear advection combining smooth, continuous and
 % discontinuous profiles.
 %
@@ -6,6 +6,10 @@ function data = jiangShu(data,fileNameRoot)
 %
 % Superposition of Gaussian and half-ellipse portions can be adjusted via
 % weights.
+
+if nargin < 3
+    ptSkip = 32;
+end
 
 physics = Advection(1);
 
@@ -47,7 +51,12 @@ solver = SSP_RK4_10(physics,[0 8],...
     'norm',norms,...
     'exactSolution',@exactSolution,...
     'limiter',data.limiter);
-solver.courantNumber = data.relCFL*solver.optimizeCFL(data.basis);
+if isnan(data.relCFL)
+    solver.timeDelta = 1e-2;
+    solver.isTimeDeltaFixed = true;
+else
+    solver.courantNumber = data.relCFL*solver.optimizeCFL(data.basis);
+end
 
 % Solve:
 solver.initialize(mesh)
@@ -66,7 +75,7 @@ data.sensorRatio = solver.limiters(1).sensor.cumulativeActivationRatio;
 data.limiterRatio = solver.limiters(1).cumulativeActivationRatio;
 
 % Export:
-solver.writeSolutionToFile([fileNameRoot '_solution'],32)
+solver.writeSolutionToFile([fileNameRoot '_solution'],ptSkip)
 solver.writeLimiterToFile([fileNameRoot '_limiter'])
 % savefig(sprintf('%s.fig',fileNameRoot))
 end

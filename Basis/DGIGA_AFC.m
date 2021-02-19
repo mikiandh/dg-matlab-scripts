@@ -15,6 +15,7 @@ classdef DGIGA_AFC < Bspline
         %% Instantiate from prototype
         function this = clone(prototype,degree)
             this = DGIGA_AFC(prototype.knots,degree,prototype.smoothness);
+            this.diffusionFun = prototype.diffusionFun;
         end
         %% L2 projection (lumped or constrained)
         function project(this,element,fun0)

@@ -1,5 +1,9 @@
-function data = shuOsher(data,fileNameRoot)
+function data = shuOsher(data,fileNameRoot,ptSkip)
 % Shu-Osher's (1989) problem, mimicking a shockwave-turbulence interaction.
+
+if nargin < 3
+    ptSkip = 32;
+end
 
     function y = initialSolution(x)
         y = ones(3,length(x));
@@ -16,7 +20,12 @@ mesh = Mesh(data.basis,[-5 5],bcs,data.K);
 solver = SSP_RK4_10(Euler,[0 1.8],...
     'norm',norms,...
     'limiter',data.limiter);
-solver.courantNumber = data.relCFL*solver.optimizeCFL(data.basis);
+if isnan(data.relCFL)
+    solver.timeDelta = 1e-4;
+    solver.isTimeDeltaFixed = true;
+else
+    solver.courantNumber = data.relCFL*solver.optimizeCFL(data.basis);
+end
 
 % Solve:
 solver.initialize(mesh,'initialCondition',@initialSolution)
@@ -33,7 +42,7 @@ data.sensorRatio = solver.limiters(1).sensor.cumulativeActivationRatio;
 data.limiterRatio = solver.limiters(1).cumulativeActivationRatio;
 
 % Export:
-solver.writeSolutionToFile([fileNameRoot '_solution'],32)
+solver.writeSolutionToFile([fileNameRoot '_solution'],ptSkip)
 solver.writeLimiterToFile([fileNameRoot '_limiter'])
 % savefig(sprintf('%s.fig',fileNameRoot))
 end

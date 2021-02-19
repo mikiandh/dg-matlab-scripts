@@ -1,8 +1,12 @@
-function data = toro4(data,fileNameRoot)
+function data = toro4(data,fileNameRoot,ptSkip)
 % Toro's test problem 4 in p. 372 (also problem 5 in p. 129), a frontal
 % collision between two blast waves.
 % It reproduces the shock-shock interaction in Woodward and Colella's 
 % (1984) test problem.
+
+if nargin < 3
+    ptSkip = 32;
+end
 
     function y = exactSolution(t,x)
         [r,u,p] = riemannEulerExact(t,x,5.99924,19.5975,460.894,5.99242,-6.19633,46.095,0.4);
@@ -17,7 +21,12 @@ solver = SSP_RK4_10(Euler,[0 0.035],...
     'norm',norms,...
     'exactSolution',@exactSolution,...
     'limiter',data.limiter);
-solver.courantNumber = data.relCFL*solver.optimizeCFL(data.basis);
+if isnan(data.relCFL)
+    solver.timeDelta = 1e-3;
+    solver.isTimeDeltaFixed = true;
+else
+    solver.courantNumber = data.relCFL*solver.optimizeCFL(data.basis);
+end
 
 % Solve:
 solver.initialize(mesh)
@@ -42,7 +51,7 @@ data.sensorRatio = solver.limiters(1).sensor.cumulativeActivationRatio;
 data.limiterRatio = solver.limiters(1).cumulativeActivationRatio;
 
 % Export:
-solver.writeSolutionToFile([fileNameRoot '_solution'],32)
+solver.writeSolutionToFile([fileNameRoot '_solution'],ptSkip)
 solver.writeLimiterToFile([fileNameRoot '_limiter'])
 % savefig(sprintf('%s.fig',fileNameRoot))
 end

@@ -84,7 +84,7 @@ classdef Bspline < Basis
             if this.basisCount == 1
                 this.controlCoords = 0;
             else
-                this.controlCoords = linspace(-1,1,this.basisCount); % any better idea?
+                this.controlCoords = linspace(-1,1,this.basisCount); % suprisingly, better conditioned than e.g. Chebyshev and Gauss-Legendre
             end
             this.dofCoords = this.controlCoords';
             this.knotSpans = [this.knots(1:end-1); this.knots(2:end)];

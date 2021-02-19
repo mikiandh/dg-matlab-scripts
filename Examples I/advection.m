@@ -30,14 +30,32 @@ IC_p3d3 = @(x) (x+x.^2+x.^3).*(1 - heaviside(x)) + (x+x.^2+2*x.^3).*(heaviside(x
 IC_p3d4 = @(x) (x+x.^2+x.^3);
 
 %% Discretization
-mesh = Mesh(DGSEM(5),L,Periodic(2),99);
+% bases = [
+%     DGIGA_AFC(199,1,0)
+%     DGIGA_AFC(99,2,0)
+%     DGIGA_AFC(198,2,1)
+%     DGIGA_AFC(66,3,0)
+%     DGIGA_AFC(197,3,2)
+%     ];
+bases = [
+    DGIGA_AFC(299,1,0)
+    DGIGA_AFC(149,2,0)
+    DGIGA_AFC(298,2,1)
+    DGIGA_AFC(100,3,0)
+    DGIGA_AFC(149,3,1)
+    DGIGA_AFC(298,3,2)
+    ];
+mesh = Mesh(bases(5),L,Periodic(2),1);
+% mesh.bases.diffusionFun = @DGIGA_AFC.diffusionRobust;
 
 %% Solver
 solver = SSP_RK4_10(Advection,[0 2],...
-    'limiter',TVB('M',250,'Stats',true),...
+    'limiter',AFC_2010('Control',1,'Failsafe',3,'Stats',true),...
     'exactSolution',@(t,x) IC_jiangShu(x),...
-    'iterSkip',50);
-solver.courantNumber = .5*solver.optimizeCFL(mesh.bases);
+    'iterSkip',10);
+% solver.courantNumber = .5*solver.optimizeCFL(mesh.bases);
+solver.timeDelta = 1e-2;
+solver.isTimeDeltaFixed = true;
 
 %% Initial condition
 solver.initialize(mesh)

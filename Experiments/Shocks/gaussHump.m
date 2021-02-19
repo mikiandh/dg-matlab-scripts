@@ -1,6 +1,10 @@
-function data = gaussHump(data,fileNameRoot)
+function data = gaussHump(data,fileNameRoot,ptSkip)
 % Analytic (i.e. as smooth as it gets) yet multichromatic initial condition
 % for linear advection.
+
+if nargin < 3
+    ptSkip = 32;
+end
 
 physics = Advection(1);
 
@@ -15,7 +19,12 @@ solver = SSP_RK4_10(physics,[0 8],...
     'norm',norms,...
     'exactSolution',@exactSolution,...
     'limiter',data.limiter);
-solver.courantNumber = data.relCFL*solver.optimizeCFL(data.basis);
+if isnan(data.relCFL)
+    solver.timeDelta = 1e-2;
+    solver.isTimeDeltaFixed = true;
+else
+    solver.courantNumber = data.relCFL*solver.optimizeCFL(data.basis);
+end
 
 % Solve:
 solver.initialize(mesh)
@@ -34,7 +43,7 @@ data.sensorRatio = solver.limiters(1).sensor.cumulativeActivationRatio;
 data.limiterRatio = solver.limiters(1).cumulativeActivationRatio;
 
 % Export:
-solver.writeSolutionToFile([fileNameRoot '_solution'],32)
+solver.writeSolutionToFile([fileNameRoot '_solution'],ptSkip)
 solver.writeLimiterToFile([fileNameRoot '_limiter'])
 % savefig(sprintf('%s.fig',fileNameRoot))
 end

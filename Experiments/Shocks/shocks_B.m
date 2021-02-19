@@ -68,7 +68,7 @@ parfor i = 1:I
     % Try to solve current run:
     try
         dataStruct.J = dataStruct.basis.basisCount;
-        dataStruct = dataStruct.test(dataStruct,sprintf('%s_%d',batchName,i));
+        dataStruct = dataStruct.test(dataStruct,sprintf('%s_%d',batchName,dataStruct.run));
     catch
         fprintf('Run %d of %d failed; it will be skipped (worker %d).\n',i,I,get(getCurrentTask(),'ID'))
         continue % do not write it

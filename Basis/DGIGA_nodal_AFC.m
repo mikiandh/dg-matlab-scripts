@@ -7,6 +7,7 @@ classdef DGIGA_nodal_AFC < DGIGA_AFC
         %% Instantiate from prototype
         function this = clone(prototype,degree)
             this = DGIGA_nodal_AFC(prototype.knots,degree,prototype.smoothness);
+            this.diffusionFun = prototype.diffusionFun;
         end
     end
     methods (Access = {?Basis,?Element})
