@@ -268,14 +268,18 @@ classdef AFC_2010 < Limiter
             % Apply raw antidiffusive fluxes to each element:
             for element = mesh.elements
                 element.applyAntidiffusiveFluxes;
-                % Save these "overcorrected" states, to compare with later:
-                element.isLimited(:,:,this.priority) = element.states;
             end
             % Detect troubled cells in the linearised high-order solution:
             this.sensor.apply(mesh,solver,this.priority)
-            % Recover low-order predictors of troubled patches:
+            % Store the unlimited control values for later and/or
+            % preallocate 'isLimited' arrays:
+            for element = mesh.elements
+                element.isLimited(:,:,this.priority) = element.states.*element.isTroubled(:,:,this.priority);
+            end
             isTroubled = [mesh.elements.isTroubled];
+            % Recover low-order predictors of troubled patches:
             for element = mesh.elements(isTroubled(:,:,this.priority))
+                element.isLimited(:,:,this.priority) = element.states;
                 element.removeAntidiffusiveFluxes(1);
             end
         end

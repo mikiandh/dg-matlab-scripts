@@ -10,55 +10,58 @@ clear
 
 %% Test matrix
 dataCell = {
-%   run     K       relCFL  basis               	limiter                                                                             									test 
-    1       100     .5      DGIGA(1,2)          	Limiter                                                                             									@jiangShu
-    2       100     .5      DGIGA(1,2)          	Krivodonova('Stats',true)                                                           									@jiangShu
-    3       100     .5      DGIGA_AFC(1,2)      	AFC_2010('Control',1,'Failsafe',3,'Stats',true)                                                             			@jiangShu
-	4       100     .5      DGIGA_AFC(1,2)          AFC_2010('Sensor',KXRCF,'Control',1,'Failsafe',3,'Stats',true)                                              			@jiangShu
-	5       100     .5      DGIGA_AFC(1,2)          AFC_2010('Sensor',APTVD,'Control',1,'Failsafe',3,'Stats',true)                                              			@jiangShu
-										
-    6      	100     .5      DGIGA(2,3,1)    		Limiter                                                                             									@jiangShu
-    7      	100     .5      DGIGA(2,3,1)    		Krivodonova('Stats',true)                                                           									@jiangShu
-    8      	100     .5      DGIGA_AFC(2,3,1)		AFC_2010('Control',1,'Failsafe',3,'Stats',true)                                                             			@jiangShu
-    9      	100     .5      DGIGA_AFC(2,3,1)		AFC_2010('Sensor',KXRCF,'Control',1,'Failsafe',3,'Stats',true)                                                      	@jiangShu
-    10     	100     .5      DGIGA_AFC(2,3,1)		AFC_2010('Sensor',APTVD,'Control',1,'Failsafe',3,'Stats',true)                                                      	@jiangShu
+%   run     K       relCFL  basis               	limiter                                                                             												test 
+    1       100     .5      DGIGA(1,2)          	Limiter                                                                             												@jiangShu
+    2       100     .5      DGIGA(1,2)          	Krivodonova('Stats',true)                                                           												@jiangShu
+    3       100     .5      DGIGA_AFC(1,2)      	AFC_2010('Control',1,'Failsafe',3,'Stats',true)                                                             						@jiangShu
+	4       100     .5      DGIGA_AFC(1,2)          AFC_2010('Sensor',KXRCF,'Control',1,'Failsafe',3,'Stats',true)                                              						@jiangShu
+	5       100     .5      DGIGA_AFC(1,2)          AFC_2010('Sensor',APTVD,'Control',1,'Failsafe',3,'Stats',true)                                              						@jiangShu
+													
+    6      	100     .5      DGIGA(2,3,1)    		Limiter                                                                             												@jiangShu
+    7      	100     .5      DGIGA(2,3,1)    		Krivodonova('Stats',true)                                                           												@jiangShu
+    8      	100     .5      DGIGA_AFC(2,3,1)		AFC_2010('Control',1,'Failsafe',3,'Stats',true)                                                             						@jiangShu
+    9      	100     .5      DGIGA_AFC(2,3,1)		AFC_2010('Sensor',KXRCF,'Control',1,'Failsafe',3,'Stats',true)                                                      				@jiangShu
+    10     	100     .5      DGIGA_AFC(2,3,1)		AFC_2010('Sensor',APTVD,'Control',1,'Failsafe',3,'Stats',true)                                                      				@jiangShu
 			
-    11	    100     .5      DGIGA(1,2)    			[Limiter  EulerP1('Stats',true)   EulerP0('Stats',true)]                   												@toro1
-    12      100     .5      DGIGA(1,2)    			[Krivodonova('Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]   											@toro1
-    13      100     .5      DGIGA_AFC(1,2)			[AFC_2010('Control',[1 3 2],'Failsafe',3,'Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]   				@toro1
-    14     	100     .5      DGIGA_AFC(1,2)  		[AFC_2010('Sensor',KXRCF,'Control',[1 3 2],'Failsafe',3,'Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]   @toro1
-    15     	100     .5      DGIGA_AFC(1,2)  		[AFC_2010('Sensor',APTVD,'Control',[1 3 2],'Failsafe',3,'Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]   @toro1
+    11	    100     .5      DGIGA(1,2)    			[Limiter  EulerP1_step('Stats',true)   EulerP0_step('Stats',true)]                   												@toro1
+    12      100     .5      DGIGA(1,2)    			[Krivodonova('Stats',true)  EulerP1_step('Stats',true)   EulerP0_step('Stats',true)]   												@toro1
+    13      100     .5      DGIGA_AFC(1,2)			[AFC_2010('Control',[1 3 2],'Failsafe',3,'Stats',true)  EulerP1_step('Stats',true)   EulerP0_step('Stats',true)]   					@toro1
+    14     	100     .5      DGIGA_AFC(1,2)  		[AFC_2010('Sensor',KXRCF,'Control',[1 3 2],'Failsafe',3,'Stats',true)  EulerP1_step('Stats',true)   EulerP0_step('Stats',true)]   	@toro1
+    15     	100     .5      DGIGA_AFC(1,2)  		[AFC_2010('Sensor',APTVD,'Control',[1 3 2],'Failsafe',3,'Stats',true)  EulerP1_step('Stats',true)   EulerP0_step('Stats',true)]   	@toro1
 		
-    16      100     .5      DGIGA(2,3,1)    		[Limiter  EulerP1('Stats',true)   EulerP0('Stats',true)]                   												@toro1
-    17      100     .5      DGIGA(2,3,1)    		[Krivodonova('Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]   											@toro1
-    18      100     .5      DGIGA_AFC(2,3,1)		[AFC_2010('Control',[1 3 2],'Failsafe',3,'Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]   				@toro1
-    19      100     .5      DGIGA_AFC(2,3,1)		[AFC_2010('Sensor',KXRCF,'Control',[1 3 2],'Failsafe',3,'Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]	@toro1
-    20     	100     .5      DGIGA_AFC(2,3,1)   		[AFC_2010('Sensor',APTVD,'Control',[1 3 2],'Failsafe',3,'Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]	@toro1
+    16      100     .5      DGIGA(2,3,1)    		[Limiter  EulerP1_step('Stats',true)   EulerP0_step('Stats',true)]                   												@toro1
+    17      100     .5      DGIGA(2,3,1)    		[Krivodonova('Stats',true)  EulerP1_step('Stats',true)   EulerP0_step('Stats',true)]   												@toro1
+    18      100     .5      DGIGA_AFC(2,3,1)		[AFC_2010('Control',[1 3 2],'Failsafe',3,'Stats',true)  EulerP1_step('Stats',true)   EulerP0_step('Stats',true)]   					@toro1
+    19      100     .5      DGIGA_AFC(2,3,1)		[AFC_2010('Sensor',KXRCF,'Control',[1 3 2],'Failsafe',3,'Stats',true)  EulerP1_step('Stats',true)   EulerP0_step('Stats',true)]		@toro1
+    20     	100     .5      DGIGA_AFC(2,3,1)   		[AFC_2010('Sensor',APTVD,'Control',[1 3 2],'Failsafe',3,'Stats',true)  EulerP1_step('Stats',true)   EulerP0_step('Stats',true)]		@toro1
 				
-    21      100     .5      DGIGA(1,2)    			[Limiter  EulerP1('Stats',true)   EulerP0('Stats',true)]                   												@toro2
-    22      100     .5      DGIGA(1,2)    			[Krivodonova('Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]   											@toro2
-    23      100     .5      DGIGA_AFC(1,2)			[AFC_2010('Control',[1 3 2],'Failsafe',3,'Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]   				@toro2
-    24     	100     .5      DGIGA_AFC(1,2)		    [AFC_2010('Sensor',KXRCF,'Control',[1 3 2],'Failsafe',3,'Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]   @toro2
-    25      100     .5      DGIGA_AFC(1,2)			[AFC_2010('Sensor',APTVD,'Control',[1 3 2],'Failsafe',3,'Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]   @toro2
+    21      100     .5      DGIGA(1,2)    			[Limiter  EulerP1_step('Stats',true)   EulerP0_step('Stats',true)]                   												@toro2
+    22      100     .5      DGIGA(1,2)    			[Krivodonova('Stats',true)  EulerP1_step('Stats',true)   EulerP0_step('Stats',true)]   												@toro2
+    23      100     .5      DGIGA_AFC(1,2)			[AFC_2010('Control',[1 3 2],'Failsafe',3,'Stats',true)  EulerP1_step('Stats',true)   EulerP0_step('Stats',true)]   					@toro2
+    24     	100     .5      DGIGA_AFC(1,2)		    [AFC_2010('Sensor',KXRCF,'Control',[1 3 2],'Failsafe',3,'Stats',true)  EulerP1_step('Stats',true)   EulerP0_step('Stats',true)]   	@toro2
+    25      100     .5      DGIGA_AFC(1,2)			[AFC_2010('Sensor',APTVD,'Control',[1 3 2],'Failsafe',3,'Stats',true)  EulerP1_step('Stats',true)   EulerP0_step('Stats',true)]   	@toro2
 				
-    26      100     .5      DGIGA(2,3,1)    		[Limiter  EulerP1('Stats',true)   EulerP0('Stats',true)]                   												@toro2
-    27      100     .5      DGIGA(2,3,1)    		[Krivodonova('Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]   											@toro2
-    28      100     .5      DGIGA_AFC(2,3,1)		[AFC_2010('Control',[1 3 2],'Failsafe',3,'Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]   				@toro2
-    29      100     .5      DGIGA_AFC(2,3,1)    	[AFC_2010('Sensor',KXRCF,'Control',[1 3 2],'Failsafe',3,'Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]   @toro2
-    30      100     .5      DGIGA_AFC(2,3,1)		[AFC_2010('Sensor',APTVD,'Control',[1 3 2],'Failsafe',3,'Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]   @toro2
+    26      100     .5      DGIGA(2,3,1)    		[Limiter  EulerP1_step('Stats',true)   EulerP0_step('Stats',true)]                   												@toro2
+    27      100     .5      DGIGA(2,3,1)    		[Krivodonova('Stats',true)  EulerP1_step('Stats',true)   EulerP0_step('Stats',true)]   												@toro2
+    28      100     .5      DGIGA_AFC(2,3,1)		[AFC_2010('Control',[1 3 2],'Failsafe',3,'Stats',true)  EulerP1_step('Stats',true)   EulerP0_step('Stats',true)]   					@toro2
+    29      100     .5      DGIGA_AFC(2,3,1)    	[AFC_2010('Sensor',KXRCF,'Control',[1 3 2],'Failsafe',3,'Stats',true)  EulerP1_step('Stats',true)   EulerP0_step('Stats',true)]   	@toro2
+    30      100     .5      DGIGA_AFC(2,3,1)		[AFC_2010('Sensor',APTVD,'Control',[1 3 2],'Failsafe',3,'Stats',true)  EulerP1_step('Stats',true)   EulerP0_step('Stats',true)]   	@toro2
 				
-    31      200     .5      DGIGA(1,2)    			[Limiter  EulerP1('Stats',true)   EulerP0('Stats',true)]                   												@woodwardColella
-    32      200     .5      DGIGA(1,2)    			[Krivodonova('Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]   											@woodwardColella
-    33      200     .5      DGIGA_AFC(1,2)			[AFC_2010('Control',[1 3 2],'Failsafe',3,'Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]   				@woodwardColella
-    34     	200     .5      DGIGA_AFC(1,2)   		[AFC_2010('Sensor',KXRCF,'Control',[1 3 2],'Failsafe',3,'Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]   @woodwardColella
-    35      200     .5      DGIGA_AFC(1,2)			[AFC_2010('Sensor',APTVD,'Control',[1 3 2],'Failsafe',3,'Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]   @woodwardColella
+    31      200     .5      DGIGA(1,2)    			[Limiter  EulerP1_step('Stats',true)   EulerP0_step('Stats',true)]                   												@woodwardColella
+    32      200     .5      DGIGA(1,2)    			[Krivodonova('Stats',true)  EulerP1_step('Stats',true)   EulerP0_step('Stats',true)]   												@woodwardColella
+    33      200     .5      DGIGA_AFC(1,2)			[AFC_2010('Control',[1 3 2],'Failsafe',3,'Stats',true)  EulerP1_step('Stats',true)   EulerP0_step('Stats',true)]   					@woodwardColella
+    34     	200     .5      DGIGA_AFC(1,2)   		[AFC_2010('Sensor',KXRCF,'Control',[1 3 2],'Failsafe',3,'Stats',true)  EulerP1_step('Stats',true)   EulerP0_step('Stats',true)]   	@woodwardColella
+    35      200     .5      DGIGA_AFC(1,2)			[AFC_2010('Sensor',APTVD,'Control',[1 3 2],'Failsafe',3,'Stats',true)  EulerP1_step('Stats',true)   EulerP0_step('Stats',true)]   	@woodwardColella
 
-    36      200     .5      DGIGA(2,3,1)    		[Limiter  EulerP1('Stats',true)   EulerP0('Stats',true)]                   												@woodwardColella
-    37      200     .5      DGIGA(2,3,1)    		[Krivodonova('Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]   											@woodwardColella
-    38      200     .5      DGIGA_AFC(2,3,1)		[AFC_2010('Control',[1 3 2],'Failsafe',3,'Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]   				@woodwardColella
-    39	    200     .5      DGIGA_AFC(2,3,1)    	[AFC_2010('Sensor',KXRCF,'Control',[1 3 2],'Failsafe',3,'Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]   @woodwardColella
-    40      200     .5      DGIGA_AFC(2,3,1)		[AFC_2010('Sensor',APTVD,'Control',[1 3 2],'Failsafe',3,'Stats',true)  EulerP1('Stats',true)   EulerP0('Stats',true)]   @woodwardColella
+    36      200     .5      DGIGA(2,3,1)    		[Limiter  EulerP1_step('Stats',true)   EulerP0_step('Stats',true)]                   												@woodwardColella
+    37      200     .5      DGIGA(2,3,1)    		[Krivodonova('Stats',true)  EulerP1_step('Stats',true)   EulerP0_step('Stats',true)]   												@woodwardColella
+    38      200     .5      DGIGA_AFC(2,3,1)		[AFC_2010('Control',[1 3 2],'Failsafe',3,'Stats',true)  EulerP1_step('Stats',true)   EulerP0_step('Stats',true)]   					@woodwardColella
+    39	    200     .5      DGIGA_AFC(2,3,1)    	[AFC_2010('Sensor',KXRCF,'Control',[1 3 2],'Failsafe',3,'Stats',true)  EulerP1_step('Stats',true)   EulerP0_step('Stats',true)]   	@woodwardColella
+    40      200     .5      DGIGA_AFC(2,3,1)		[AFC_2010('Sensor',APTVD,'Control',[1 3 2],'Failsafe',3,'Stats',true)  EulerP1_step('Stats',true)   EulerP0_step('Stats',true)]   	@woodwardColella
 };
+for basis = [dataCell{any([dataCell{:,1}] == [23:25 28:30]'),4}]
+    basis.diffusionFun = @DGIGA_AFC.diffusionRobust;
+end
 batchName = mfilename;
 
 %% Batch setup

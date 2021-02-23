@@ -12,40 +12,29 @@ toro2_BCs = Farfield([1; -2; 3],[1; 2; 3]);
 toro3_BCs = Farfield([1; 0; 2500],[1; 0; 0.25]);
 shuOsher_BCs = Farfield([3.8571; 10.1419; 39.1667],[0.9735; 0; 2.5]);
 
-bases = [
-    DGIGA_AFC(299,1,0) DGIGA_AFC(299,1,0) DGIGA_nodal_AFC(599,1,0)
-    DGIGA_AFC(149,2,0) DGIGA_AFC(149,2,0) DGIGA_nodal_AFC(299,2,0)
-    DGIGA_AFC(298,2,1) DGIGA_AFC(298,2,1) DGIGA_nodal_AFC(598,2,1)
-    DGIGA_AFC(100,3,0) DGIGA_AFC(100,3,0) DGIGA_nodal_AFC(200,3,0)
-    DGIGA_AFC(149,3,1) DGIGA_AFC(149,3,1) DGIGA_nodal_AFC(299,3,1)
-    DGIGA_AFC(297,3,2) DGIGA_AFC(297,3,2) DGIGA_nodal_AFC(597,3,2)
-];
-
-set(bases(:,2),'diffusionFun',@DGIGA_AFC.diffusionRobust)
-
 %% Discretization
-mesh = Mesh(DGIGA_AFC(297,3,2),[0 1],toro2_BCs,1);
+mesh = Mesh(DGIGA_AFC(2,3,1),[0 1],toro2_BCs,100);
 mesh.bases.diffusionFun = @DGIGA_AFC.diffusionRobust;
 
 %% Solver
 solver = SSP_RK4_10(Euler('HLLC'),[0 0.15],...
-    'Limiter',AFC_2010('Stats',true,'Failsafe',3,'Control',[1 3 2]),...
+    'Limiter',[AFC_2010('Sensor',KXRCF,'Control',[1 3 2],'Failsafe',3,'Stats',true)  EulerP1_step('Stats',true)   EulerP0_step('Stats',true)],...
     'exactSolution',@toro2,...
     'iterSkip',10,...
     'equations',3);
-% solver.courantNumber = .5*solver.optimizeCFL(mesh.bases);
-solver.timeDelta = 1e-3;
-solver.isTimeDeltaFixed = true;
+solver.courantNumber = .5*solver.optimizeCFL(mesh.bases);
+% solver.timeDelta = 1e-3;
+% solver.isTimeDeltaFixed = true;
 
 %% Time-integration
 % solver.initialize(mesh,'method','interpolate')
 solver.initialize(mesh,'method','project')
-try
+% try
     solver.launch(mesh)
-catch ME
-    solver.monitor.refresh(mesh)
-    rethrow(ME)
-end
+% catch ME
+%     solver.monitor.refresh(mesh)
+%     rethrow(ME)
+% end
 
 %% Exact solutions and/or initial conditions
 % Simple density jump:

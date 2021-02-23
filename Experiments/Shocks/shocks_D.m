@@ -6,35 +6,35 @@ clear
 % work.
 % Time-step size is fixed.
 % Single patch of p = 1,2,3.
-% Smoothnesses: C^{0} and/or C^{p-1}.
+% Smoothnesses: C^{0} to C^{p-1}.
 % Knot spans: as many as necessary to get ~300 DOFs.
 
 %% Test matrix
 dataCell = {
 %   run     K       relCFL  basis       				limiter                                                    	test 
     1       1       nan     DGIGA_AFC(299,1,0)  		AFC_2010('Control',1,'Failsafe',3,'Stats',true)            	@jiangShu
-    2       1       nan     DGIGA_AFC(149,2,0)  		AFC_2010('Control',1,'Failsafe',3,'Stats',true)            	@jiangShu
+    2       1       nan     DGIGA_AFC(150,2,0)  		AFC_2010('Control',1,'Failsafe',3,'Stats',true)            	@jiangShu
     3       1       nan     DGIGA_AFC(298,2,1)  		AFC_2010('Control',1,'Failsafe',3,'Stats',true)            	@jiangShu
     4       1       nan     DGIGA_AFC(100,3,0)  		AFC_2010('Control',1,'Failsafe',3,'Stats',true)            	@jiangShu
     5       1       nan     DGIGA_AFC(149,3,1)  		AFC_2010('Control',1,'Failsafe',3,'Stats',true)            	@jiangShu
 	6       1       nan     DGIGA_nodal_AFC(297,3,2)  	AFC_2010('Control',1,'Failsafe',3,'Stats',true)            	@jiangShu
 		
     7       1       nan     DGIGA_AFC(299,1,0)  		AFC_2010('Control',[1 3 2],'Failsafe',3,'Stats',true)      	@toro1
-    8       1       nan     DGIGA_AFC(149,2,0)  		AFC_2010('Control',[1 3 2],'Failsafe',3,'Stats',true)      	@toro1
+    8       1       nan     DGIGA_AFC(150,2,0)  		AFC_2010('Control',[1 3 2],'Failsafe',3,'Stats',true)      	@toro1
     9       1       nan     DGIGA_AFC(298,2,1)  		AFC_2010('Control',[1 3 2],'Failsafe',3,'Stats',true)      	@toro1
     10      1       nan     DGIGA_AFC(100,3,0)  		AFC_2010('Control',[1 3 2],'Failsafe',3,'Stats',true)      	@toro1
     11      1       nan     DGIGA_AFC(149,3,1)  		AFC_2010('Control',[1 3 2],'Failsafe',3,'Stats',true)      	@toro1
     12      1       nan     DGIGA_nodal_AFC(297,3,2)  	AFC_2010('Control',[1 3 2],'Failsafe',3,'Stats',true)      	@toro1
 			
 	13      1       nan     DGIGA_AFC(299,1,0) 			AFC_2010('Control',[1 3 2],'Failsafe',3,'Stats',true)      	@toro2
-    14      1       nan     DGIGA_AFC(149,2,0) 			AFC_2010('Control',[1 3 2],'Failsafe',3,'Stats',true)      	@toro2
+    14      1       nan     DGIGA_AFC(150,2,0) 			AFC_2010('Control',[1 3 2],'Failsafe',3,'Stats',true)      	@toro2
     15      1       nan     DGIGA_AFC(298,2,1) 			AFC_2010('Control',[1 3 2],'Failsafe',3,'Stats',true)      	@toro2
     16      1       nan     DGIGA_AFC(100,3,0) 			AFC_2010('Control',[1 3 2],'Failsafe',3,'Stats',true)      	@toro2
     17      1       nan     DGIGA_AFC(149,3,1) 			AFC_2010('Control',[1 3 2],'Failsafe',3,'Stats',true)      	@toro2
 	18      1       nan     DGIGA_nodal_AFC(297,3,2) 	AFC_2010('Control',[1 3 2],'Failsafe',3,'Stats',true)      	@toro2
 		
 	19      1       nan     DGIGA_nodal_AFC(599,1,0)	AFC_2010('Control',[1 3 2],'Failsafe',3,'Stats',true)      	@woodwardColella
-    20      1       nan     DGIGA_nodal_AFC(299,2,0)	AFC_2010('Control',[1 3 2],'Failsafe',3,'Stats',true)      	@woodwardColella
+    20      1       nan     DGIGA_nodal_AFC(300,2,0)	AFC_2010('Control',[1 3 2],'Failsafe',3,'Stats',true)      	@woodwardColella
     21      1       nan     DGIGA_nodal_AFC(598,2,1)	AFC_2010('Control',[1 3 2],'Failsafe',3,'Stats',true)      	@woodwardColella
     22      1       nan     DGIGA_nodal_AFC(200,3,0)	AFC_2010('Control',[1 3 2],'Failsafe',3,'Stats',true)      	@woodwardColella
     23      1       nan     DGIGA_nodal_AFC(299,3,1)	AFC_2010('Control',[1 3 2],'Failsafe',3,'Stats',true)      	@woodwardColella
