@@ -54,4 +54,5 @@ data.limiterRatio = solver.limiters(1).cumulativeActivationRatio;
 solver.writeSolutionToFile([fileNameRoot '_solution'],ptSkip)
 solver.writeLimiterToFile([fileNameRoot '_limiter'])
 % savefig(sprintf('%s.fig',fileNameRoot))
+close
 end

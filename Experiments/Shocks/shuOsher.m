@@ -15,13 +15,13 @@ end
 
 % Preprocess:
 norms = Norm('TV');
-bcs = Farfield(exactSolution(0,0),exactSolution(0,1));
+bcs = Farfield(initialSolution(-5),initialSolution(5));
 mesh = Mesh(data.basis,[-5 5],bcs,data.K);
 solver = SSP_RK4_10(Euler,[0 1.8],...
     'norm',norms,...
     'limiter',data.limiter);
 if isnan(data.relCFL)
-    solver.timeDelta = 1e-4;
+    solver.timeDelta = 1e-3;
     solver.isTimeDeltaFixed = true;
 else
     solver.courantNumber = data.relCFL*solver.optimizeCFL(data.basis);
@@ -45,4 +45,5 @@ data.limiterRatio = solver.limiters(1).cumulativeActivationRatio;
 solver.writeSolutionToFile([fileNameRoot '_solution'],ptSkip)
 solver.writeLimiterToFile([fileNameRoot '_limiter'])
 % savefig(sprintf('%s.fig',fileNameRoot))
+close
 end
