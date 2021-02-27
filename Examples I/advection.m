@@ -30,19 +30,15 @@ IC_p3d3 = @(x) (x+x.^2+x.^3).*(1 - heaviside(x)) + (x+x.^2+2*x.^3).*(heaviside(x
 IC_p3d4 = @(x) (x+x.^2+x.^3);
 
 %% Discretization
-% mesh = Mesh(DGSEM(19),L,Periodic(2),60);
-% mesh = Mesh(DGIGA(2,14,9),L,Periodic(2),60);
-mesh = Mesh(DGIGA_nodal(2,14,9),L,Periodic(2),60);
-% mesh.bases.diffusionFun = @DGIGA_AFC.diffusionRobust;
+mesh = Mesh(DGSEM(2),L,Periodic(2),32);
 
 %% Solver
-solver = SSP_RK4_10(Advection,[0 2],...
+solver = SSP_RK4_10(Advection,[0 8],...
+    'limiter',Krivodonova('Sensor',Sensor,'Stats',true),...
     ...'limiter',AFC_2010('Control',1,'Failsafe',3,'Stats',true),...
-    ...'iterSkip',25,...
-    'exactSolution',@(t,x) IC_jiangShu(x));
-% solver.courantNumber = .5*solver.optimizeCFL(mesh.bases);
-solver.timeDelta = 1e-3;
-solver.isTimeDeltaFixed = true;
+    'iterSkip',25,...
+    'exactSolution',@(t,x) IC_gauss(x));
+solver.courantNumber = .5*solver.optimizeCFL(mesh.bases);
 
 %% Initial condition
 solver.initialize(mesh)
