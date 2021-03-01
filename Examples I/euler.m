@@ -14,7 +14,7 @@ shuOsher_BCs = Farfield([3.8571; 10.1419; 39.1667],[0.9735; 0; 2.5]);
 
 %% Discretization
 % mesh = Mesh(DGSEM(2),[-5 5],shuOsher_BCs,200);
-mesh = Mesh(DGIGA_AFC(1,3),[-5 5],shuOsher_BCs,300);
+mesh = Mesh(DGIGA_AFC(1198,2,1),[-5 5],shuOsher_BCs,1);
 % mesh.bases.diffusionFun = @DGIGA_AFC.diffusionRobust;
 
 %% Solver
@@ -23,16 +23,17 @@ solver = SSP_RK4_10(Euler('HLLC'),[0 1.8],...
     ...'Limiter',Krivodonova('Sensor',KXRCF,'Stats',true),...
     ...'Limiters', [Krivodonova('Sensor',KXRCF,'Stats',true) EulerP1 EulerP0],...
     ...'Limiter',[AFC_2010('Sensor',KXRCF,'Control',[1 3 2],'Failsafe',3,'Stats',true)  EulerP1_step('Stats',true)   EulerP0_step('Stats',true)],...
-    'Limiter', AFC_2010('Sensor',KXRCF,'Control',[1 3 2],'Failsafe',3,'Stats',true),...
-    'iterSkip',25,...
-    'equations',1);
-solver.courantNumber = .5*solver.optimizeCFL(mesh.bases);
-% solver.timeDelta = 1e-3;
-% solver.isTimeDeltaFixed = true;
+    'Limiter', AFC_2010('Sensor',Sensor,'Control',[1 3 2],'Failsafe',3,'Stats',true),...
+    'Norms',Norm('TV'),...
+    'iterSkip',200,...
+    'equations',3);
+% solver.courantNumber = .5*solver.optimizeCFL(mesh.bases);
+solver.timeDelta = 1e-3;
+solver.isTimeDeltaFixed = true;
 
 %% Time-integration
-% solver.initialize(mesh,'Method','interpolate')
-solver.initialize(mesh)
+solver.initialize(mesh,'Method','interpolate')
+% solver.initialize(mesh)
 solver.launch(mesh)
 
 %% Exact solutions and/or initial conditions
