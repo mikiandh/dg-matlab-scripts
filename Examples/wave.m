@@ -1,29 +1,18 @@
 clc
 clear
-%close all
-%path(pathdef)
 
-% This script solves the wave equation in 1D.
-
-%% Dependencies
-addpath('../Limiting')
-addpath('../Physics')
-addpath('../Solver')
-addpath('../Basis')
-addpath('../Mesh')
-addpath('../Math')
-addpath('../Extra')
+% This script solves the 2nd order wave equation in 1D.
 
 %% Discretization (equation + solution + domain)
 mesh = Mesh(DG(2),[-1 1],[Reflective(@(t) .5*sin(2*pi*t)) Reflective],50);
 
 %% Solver
 norms = Norm(["Mass","L2"]);
-solver = SSP_RK3(Wave,[0 0],...
+solver = SSP_RK3(Wave,[0 4],...
     'courantNumber',.1,...
     'limiter',BSB('Sensor',KXRCF),...
     'norms',norms,...
-    'exactSolution',@combinedIC,'iterSkip',50);
+    'exactSolution',@constantIC,'iterSkip',10);
 
 %% Time-integration
 solver.initialize(mesh)

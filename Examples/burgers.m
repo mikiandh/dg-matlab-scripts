@@ -1,6 +1,5 @@
 clc
 clear
-%close all
 
 % This script solves the (inviscid) Burgers' equation.
 
@@ -14,13 +13,14 @@ addpath('../Math')
 addpath('../Extra')
 
 %% Discretization
-mesh = Mesh(DGIGA(10,3),[-1 1],Periodic(2),1);
+mesh = Mesh(DGIGA_AFC(50,2),[-1 1],Periodic(2),3);
 
 %% Solver
-solver = SSP_RK3(Burgers,[0 .25],...
-    'timeDelta',1e-4,...
+solver = SSP_RK3(Burgers,[0 .4],...
+    'timeDelta',5e-3,...
+    'limiter',AFC_2010,...
     'norm',Norm({'ErrorL2'}),...
-    'exactSolution',@gaussIC,'iterSkip',500);
+    'exactSolution',@gaussIC,'iterSkip',30);
 
 %% Initial condition
 solver.initialize(mesh)

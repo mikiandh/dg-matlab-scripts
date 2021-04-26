@@ -1,11 +1,9 @@
 clc
 clear
-%close all
-%path(pathdef)
 
 % This script solves the Euler equations.
 
-%% Conveniency stuff
+%% Some boundary conditions
 sod_BCs = Farfield([1; 0; 2.5],[0.125; 0; 0.25]);
 toro1_BCs = Farfield([1; 0.75; 2.7813],[1; 0; 0.25]);
 toro2_BCs = Farfield([1; -2; 3],[1; 2; 3]);
@@ -13,22 +11,22 @@ toro3_BCs = Farfield([1; 0; 2500],[1; 0; 0.25]);
 shuOsher_BCs = Farfield([3.8571; 10.1419; 39.1667],[0.9735; 0; 2.5]);
 
 %% Discretization
-% mesh = Mesh(DGSEM(2),[-5 5],shuOsher_BCs,200);
-mesh = Mesh(DGIGA_AFC(1198,2,1),[-5 5],shuOsher_BCs,1);
+mesh = Mesh(DGSEM(2),[-5 5],shuOsher_BCs,200);
+% mesh = Mesh(DGIGA_AFC(100,2,1),[-5 5],shuOsher_BCs,5);
 % mesh.bases.diffusionFun = @DGIGA_AFC.diffusionRobust;
 
 %% Solver
 solver = SSP_RK4_10(Euler('HLLC'),[0 1.8],...
     'exactSolution',@shuOsher,...
     ...'Limiter',Krivodonova('Sensor',KXRCF,'Stats',true),...
-    ...'Limiters', [Krivodonova('Sensor',KXRCF,'Stats',true) EulerP1 EulerP0],...
+    'Limiters', [TVB('Sensor',KXRCF) EulerP1 EulerP0],...
     ...'Limiter',[AFC_2010('Sensor',KXRCF,'Control',[1 3 2],'Failsafe',3,'Stats',true)  EulerP1_step('Stats',true)   EulerP0_step('Stats',true)],...
-    'Limiter', AFC_2010('Sensor',Sensor,'Control',[1 3 2],'Failsafe',3,'Stats',true),...
-    'Norms',Norm('TV'),...
-    'iterSkip',200,...
-    'equations',3);
+    ...'Limiter', AFC_2010('Sensor',Sensor,'Control',[1 3 2],'Failsafe',3,'Stats',true),...
+    ...'Norms',Norm('TV'),...
+    'iterSkip',50,...
+    'equations',1);
 % solver.courantNumber = .5*solver.optimizeCFL(mesh.bases);
-solver.timeDelta = 1e-3;
+solver.timeDelta = 5e-3;
 solver.isTimeDeltaFixed = true;
 
 %% Time-integration
