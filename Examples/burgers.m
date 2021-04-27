@@ -1,16 +1,11 @@
 clc
 clear
 
-% This script solves the (inviscid) Burgers' equation.
-
-%% Dependencies
-addpath('../Limiting')
-addpath('../Physics')
-addpath('../Solver')
-addpath('../Basis')
-addpath('../Mesh')
-addpath('../Math')
-addpath('../Extra')
+% This script solves the (inviscid) Burgers' equation
+%
+%  Try increasing the degree to p = 3 and observe: ill-conditioning (of the 
+%  control Vandermonde matrix) causes trouble!
+%
 
 %% Discretization
 mesh = Mesh(DGIGA_AFC(50,2),[-1 1],Periodic(2),3);
@@ -20,7 +15,8 @@ solver = SSP_RK3(Burgers,[0 .4],...
     'timeDelta',5e-3,...
     'limiter',AFC_2010,...
     'norm',Norm({'ErrorL2'}),...
-    'exactSolution',@gaussIC,'iterSkip',30);
+    ...'norm',Norm({'ErrorL2','TV'}),...
+    'exactSolution',@gaussIC,'iterSkip',15);
 
 %% Initial condition
 solver.initialize(mesh)
@@ -66,7 +62,7 @@ y = -0.8 + heaviside(x);
 end
 
 function y = gaussIC(t,x) % L = [-1 1], tEnd < .4
-y = evolve(t,x,@(x) Functions.gauss(x,-1,1));
+y = Burgers.MOC(t,x,@(x) Functions.gauss(x,-1,1),[-1 1]);
 end
 
 function y = jumpIC(~,x)
@@ -78,7 +74,7 @@ y = x.*(heaviside(x) - heaviside(x-2));
 end
 
 function y = sineIC(t,x) % L = [-1 1], tEnd < 2.5
-y = evolve(t,x,@(x) 1 - 2/(5*pi)*sin(pi*x));
+y = Burgers.MOC(t,x,@(x) 1 - 2/(5*pi)*sin(pi*x),[-1 1]);
 end
 
 function y = combinedIC(~,x) % perfect initial condition; L = [-1,2], tEnd = 2
@@ -109,24 +105,4 @@ end
 
 function y = hesthaven(t,x) % Hesthaven & Warburton, 2008 (p. 141); L = [-1 1], tEnd = 0.8.
 y = 2 - heaviside(x+.5-1.5*t);
-end
-
-function y = evolve(t,x,fun) % evolves an initial condition
-y0 = fun(x); % initial condition
-y = fun(x - y0*t); % initial guess
-% Iterative approximation to the analytical solution:
-for i = 1:1000
-    if norm(y-y0,inf) < 1e-12
-        return
-    else
-        y0 = y;
-        y = fun(x - y.*t);
-    end
-end
-% Assume that the solution "broke":
-persistent w
-if isempty(w)
-    w = warning('Exact solution reached its breaking time (estimated at t = %g).',t);
-end
-y = nan.*x;
 end

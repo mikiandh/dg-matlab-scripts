@@ -1,15 +1,5 @@
 clc
 clear
-%close all
-
-%% Dependencies
-addpath('../../Limiting')
-addpath('../../Physics')
-addpath('../../Solver')
-addpath('../../Basis')
-addpath('../../Mesh')
-addpath('../../Math')
-addpath('../../Extra')
 
 %% Input
 inputData = {
@@ -23,9 +13,7 @@ inputData = {
     'order_fr_p_2.dat'   1e-4                10                     0:11                    {'min','Ga','LumpLo','max'}
     'order_fr_p_3.dat'   1e-4                1                      logspacei(0,119,25)     {'min','Ga','LumpLo','max'}
 };
-%exactSolution = @(t,x) smoothBurgersExact(t,x,@(x) 1-sin(pi*x)*2/(5*pi));
-exactSolution = @(t,x) smoothBurgersExact(t,x,@(x) exp(-9*pi/4*x.^2));
-%exactSolution = @(t,x) exp(-9*pi/4*x.^2);
+exactSolution = @(t,x) Burgers.MOC(t,x,@(x) exp(-9*pi/4*x.^2),[-1 1]);
 
 %% Setup
 inputTable = cell2table(inputData(2:end,2:end),...

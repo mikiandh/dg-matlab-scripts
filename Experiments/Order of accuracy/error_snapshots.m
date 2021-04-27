@@ -1,21 +1,11 @@
 clc
 clear
-%close all
 
 % This script solves individual runs one by one (in parallel) and stores 
 % the q^h(x) - q(x) function into a data file.
 % This function is sampled in an adaptive way (more points are placed in
 % regions where gradients are larger).
 % Designed to work with Burgers (scalar equation).
-
-%% Dependencies
-addpath('../../Limiting')
-addpath('../../Physics')
-addpath('../../Solver')
-addpath('../../Basis')
-addpath('../../Mesh')
-addpath('../../Math')
-addpath('../../Extra')
 
 %% Input
 inputData = {
@@ -69,7 +59,7 @@ inputData = {
     'error_burgers_hump_dgiga_16.dat'       1e-4                    DGIGA(8,5,4)   20 % stable
     'error_burgers_hump_dgiga_17.dat'       1e-4                    DGIGA(8,6,5)   20 % unstable
 };
-exactSolution = @(t,x) smoothBurgersExact(t,x,@(x) exp(-9*pi/4*x.^2));
+exactSolution = @(t,x) Burgers.MOC(t,x,@(x) exp(-9*pi/4*x.^2),[-1 1]);
 N = 1801; % total number of (distinct) sample locations
 
 %% Setup

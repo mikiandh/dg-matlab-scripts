@@ -1,15 +1,5 @@
 clc
 clear
-%close all
-
-%% Dependencies
-addpath('../../Limiting')
-addpath('../../Physics')
-addpath('../../Solver')
-addpath('../../Basis')
-addpath('../../Mesh')
-addpath('../../Math')
-addpath('../../Extra')
 
 %% Setup
 inputData = {
@@ -57,15 +47,14 @@ inputData = {
     };
 fileNames = {
 %   Name                        Is active?
-    'order_time_RK1.dat'        false
-    'order_time_RK2.dat'        false
-    'order_time_RK3.dat'        false
+    'order_time_RK1.dat'        true
+    'order_time_RK2.dat'        true
+    'order_time_RK3.dat'        true
     'order_time_RK45.dat'       true
     'order_time_RK410.dat'      true
     };
-%exactSolution = @(t,x) smoothBurgersExact(t,x,@(x) 1-sin(pi*x)/(5*pi));
-%exactSolution = @(t,x) smoothBurgersExact(t,x,@(x) exp(-9*pi/4*x.^2));
-exactSolution = @(t,x) exp(-9*pi/4*x.^2);
+physics = Advection;
+exactSolution = @(t,x) physics.MOC(t,x,@(x) exp(-9*pi/4*x.^2),[-1 1]);
 mesh = Mesh(DGIGA(27,3),[-1 1],Periodic(2),1);
 
 %% Loop over files
@@ -98,7 +87,7 @@ for i = find([fileNames{:,2}])
             norms = Norm({'ErrorL2','L2','TV'}); % norms to compute
             scheme = str2func(cpuData{4});
             solver = scheme(...
-                Advection,[0 2],...
+                physics,[0 2],...
                 'timeDelta',cpuData{2},...
                 'norm',norms,...
                 'exactSolution',exactSolution);

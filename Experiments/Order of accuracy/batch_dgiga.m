@@ -1,15 +1,5 @@
 clc
 clear
-%close all
-
-%% Dependencies
-addpath('../../Limiting')
-addpath('../../Physics')
-addpath('../../Solver')
-addpath('../../Basis')
-addpath('../../Mesh')
-addpath('../../Math')
-addpath('../../Extra')
 
 %% Input
 maxDOFs = 950; % will skip any runs beyond this number
@@ -48,18 +38,18 @@ inputData = {
     'order_dgiga_k_14.dat'      1e-4                'DGIGA'                     1:13               	  4   	  16                        0
     'order_dgiga_k_15.dat'      1e-4                'DGIGA'                     logspacei(1,45,25) 	  4   	  16                        3
 % p-refinement ----------------------------------------------------------------------------------------------------------------------------------------
-	  'order_dgiga_dt_16.dat'     logspace(-5,-2,30)  'DGIGA'                     20            		  16      1   					 	0
-	  'order_dgiga_dt_17.dat'     logspace(-5,-2,30)  'DGIGA'                     20            		  15      2   					 	0
-	  'order_dgiga_dt_18.dat'     logspace(-5,-2,30)  'DGIGA'                     20            		  11      4   					 	0
-	  'order_dgiga_dt_19.dat'     logspace(-5,-2,30)  'DGIGA'                     20            		  5       8   					 	0
-	  'order_dgiga_dt_20.dat'     logspace(-5,-2,30)  'DGIGA'                     20            		  12      2   					 	inf
-	  'order_dgiga_dt_21.dat'     logspace(-5,-2,30)  'DGIGA'                     20            		  11      4   					 	inf
-	  'order_dgiga_dt_22.dat'     logspace(-5,-2,30)  'DGIGA'                     20            		  6       8   					 	inf
+	'order_dgiga_dt_16.dat'     logspace(-5,-2,30)  'DGIGA'                     20            		  16      1   					 	0
+	'order_dgiga_dt_17.dat'     logspace(-5,-2,30)  'DGIGA'                     20            		  15      2   					 	0
+	'order_dgiga_dt_18.dat'     logspace(-5,-2,30)  'DGIGA'                     20            		  11      4   					 	0
+	'order_dgiga_dt_19.dat'     logspace(-5,-2,30)  'DGIGA'                     20            		  5       8   					 	0
+	'order_dgiga_dt_20.dat'     logspace(-5,-2,30)  'DGIGA'                     20            		  12      2   					 	inf
+	'order_dgiga_dt_21.dat'     logspace(-5,-2,30)  'DGIGA'                     20            		  11      4   					 	inf
+	'order_dgiga_dt_22.dat'     logspace(-5,-2,30)  'DGIGA'                     20            		  6       8   					 	inf
 %	
     'order_dgiga_p_1.dat'       1e-4                'DGIGA'                     [1 20]             	  1:49	  2.^(0:3)                  0
     'order_dgiga_p_2.dat'       1e-4                'DGIGA'                     [10 20]            	  1:12	  2.^(0:3)                  inf
 % DGIGA knot insertion --------------------------------------------------------------------------------------------------------------------------------
-	  'order_dgiga_dt_23.dat'     logspace(-5,-2,30)  'DGIGA'                     1                  	  2   	  449       				0
+	'order_dgiga_dt_23.dat'     logspace(-5,-2,30)  'DGIGA'                     1                  	  2   	  449       				0
     'order_dgiga_dt_24.dat'     logspace(-5,-2,30)  'DGIGA'                     1                  	  2   	  898				        inf
     'order_dgiga_dt_25.dat'     logspace(-5,-2,30)  'DGIGA'                     10                 	  2   	  44				        0
     'order_dgiga_dt_26.dat'     logspace(-5,-2,30)  'DGIGA'                     10                 	  2   	  87				        inf
@@ -116,10 +106,7 @@ inputData = {
     'order_iga_knot_6.dat'      1e-4                {'DGIGA','DGIGA_nodal'}     1                       4       logspacei(1,224,25)       0
     'order_iga_knot_7.dat'      1e-4                {'DGIGA','DGIGA_nodal'}     1                       4       logspacei(1,896,25)       3
 };
-%exactSolution = @(t,x) smoothBurgersExact(t,x,@(x) 1-sin(pi*x)*2/(5*pi));
-exactSolution = @(t,x) smoothBurgersExact(t,x,@(x) exp(-9*pi/4*x.^2));
-%exactSolution = @(t,x) smoothBurgersExact(t,x,@(x) cos(.5*pi*x).^5);
-%exactSolution = @(t,x) exp(-9*pi/4*x.^2);
+exactSolution = @(t,x) Burgers.MOC(t,x,@(x) exp(-9*pi/4*x.^2),[-1 1]);
 
 %% Setup
 inputTable = cell2table(inputData(2:end,2:end),...
