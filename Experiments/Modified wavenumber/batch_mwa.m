@@ -1,15 +1,10 @@
 clc
 clear
-%close all
 
 % This script computes the modified wavenumber and spatial operator
 % eigenvalues (dimensionless and scaled, respectively, by J and dt) of an 
 % arbitrary number of discretizations.
 % Output is written to a file.
-
-%% Dependencies
-addpath('../../Solver')
-addpath('../../Basis')
 
 %% Input
 inputData = {
@@ -154,41 +149,44 @@ disp(tblIn) % pretty print
 I = numel(runData);
 
 %% Batch run
-for i = 1:I
+parfor i = 1:I
+    cpuData = runData(i);
     fileID = fopen(tblIn(i,:).Row{1},'w');
     try
         % Exact wavenumbers:
-        J = runData(i).Space.basisCount; % number of eigenmodes (i.e. basis functions per patch)
-        n = -round(runData(i).K*J/2):round(runData(i).K*J/2); % wavemodes (all of them)
-        k = 2*pi/runData(i).K*(n); % (nondimensional) wavenumbers
+        J = cpuData.Space.basisCount; % number of eigenmodes (i.e. basis functions per patch)
+        n = -round(cpuData.K*J/2):round(cpuData.K*J/2); % wavemodes (all of them)
+        k = 2*pi/cpuData.K*(n); % (nondimensional) wavenumbers
         % Modified wavenumbers:
-        kMod = runData(i).Space.getFourierFootprint(runData(i).beta,k);
+        kMod = cpuData.Space.getFourierFootprint('upwind',cpuData.beta,'wavenumbers',k);
         kMod = 1i*kMod;
         % Postprocess & export:
-        tic, CFL = runData(i).Time.optimizeCFL(runData(i).Space,runData(i).beta);
-        fprintf(fileID,'# %s, CFL_max = %.12g (%.6g s)\n',class(runData(i).Time),CFL,toc);
-        fprintf(fileID,'# %s; J = %d, %d patches, beta = %f\n',runData(i).Space.getName,runData(i).Space.basisCount,runData(i).K,runData(i).beta);
+        tic, CFL = cpuData.Time.optimizeCFL(cpuData.Space,'upwind',cpuData.beta);
+        fprintf(fileID,'# %s, CFL_max = %.12g (%.6g s)\n',class(cpuData.Time),CFL,toc);
+        fprintf(fileID,'# %s; J = %d, %d patches, beta = %f\n',cpuData.Space.getName,cpuData.Space.basisCount,cpuData.K,cpuData.beta);
         fprintf(fileID,'%s\t%s\t%s\t%s\t%s\t%s\t%s\n','j','n','k_exact','k_real','k_imag','z_real','z_imag');
-        if all(isinf(runData(i).eigenmodes))
-            runData(i).eigenmodes = 1:J; % store all eigenmodes
+        if all(isinf(cpuData.eigenmodes))
+            cpuData.eigenmodes = 1:J; % store all eigenmodes
         end
-        runData(i).eigenmodes(runData(i).eigenmodes > J) = []; % throw away inexistent modes
-        for j = runData(i).eigenmodes % loop over requested eigenmodes
+        cpuData.eigenmodes(cpuData.eigenmodes > J) = []; % throw away inexistent modes
+        for j = cpuData.eigenmodes % loop over requested eigenmodes
             fprintf(fileID,'%d\t%d\t%.12g\t%.12g\t%.12g\t%.12g\t%.12g\n',[j*ones(size(n)); n; k/J; real(kMod(j,:))/J; imag(kMod(j,:))/J; CFL*imag(kMod(j,:)); CFL*real(kMod(j,:))]);
             fprintf(fileID,'\n');
         end
         fprintf('Run %d of %d completed by worker %d in %.3g s.\n',i,I,get(getCurrentTask(),'ID'),toc)
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        if isempty(getCurrentTask()) && ~isnan(runData(i).fig)
-            figure(runData(i).fig)
+        % Visualize the calculated relations and Fourier footprints
+        % (only if run in series; replace above: 'parfor' -> 'for')
+        if isempty(getCurrentTask()) && ~isnan(cpuData.fig)
+            figure(cpuData.fig)
             subplot(2,2,1)
-            plot(k/J,real(kMod(runData(i).eigenmodes,:))/J,'.-')
+            plot(k/J,real(kMod(cpuData.eigenmodes,:))/J,'.-')
             hold on
             subplot(2,2,3)
-            plot(k/J,imag(kMod(runData(i).eigenmodes,:))/J,'.-')
+            plot(k/J,imag(kMod(cpuData.eigenmodes,:))/J,'.-')
             hold on
             subplot(2,2,[2 4])
-            plot(-1i*kMod(runData(i).eigenmodes,:).'*CFL,'.-')
+            plot(-1i*kMod(cpuData.eigenmodes,:).'*CFL,'.-')
             hold on
         end
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
