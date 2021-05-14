@@ -1,6 +1,6 @@
 function [x,w] = jacobiGQ(alpha,beta,N)
 % function [x,w] = JacobiGQ(alpha,beta,N)
-% Purpose: Compute the N?th order Gauss quadrature points, x,
+% Purpose: Compute the Nth order Gauss quadrature points, x,
 % and weights, w, associated with the Jacobi
 % polynomial, of type (alpha,beta) > -1 ( <> -0.5).
 %
