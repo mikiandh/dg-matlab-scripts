@@ -1,6 +1,5 @@
 clc
 clear
-%close all
 
 % This script launches all runs of "batch B", which compares sensors in
 % DGSEM, and with Krivodonova's limiter (which seems to be the best of the

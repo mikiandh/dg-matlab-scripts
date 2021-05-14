@@ -1,6 +1,5 @@
 clc
 clear
-%close all
 
 % This script launches all runs of "batch D", which tries to make IGA-AFC
 % work.

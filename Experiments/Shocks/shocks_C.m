@@ -1,6 +1,5 @@
 clc
 clear
-%close all
 
 % This script launches all runs of "batch C", which compares DGIGA without
 % limiter, with Krivodonova's limiter, and with AFC's limiter.

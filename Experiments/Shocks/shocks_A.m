@@ -1,6 +1,5 @@
 clc
 clear
-%close all
 
 % This script launches all runs of "batch A", which compares all inter-cell
 % limiters (all vs. all) in DGSEM. No sensor is used. Courant number is

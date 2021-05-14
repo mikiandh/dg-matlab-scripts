@@ -1,6 +1,5 @@
 clc
 clear
-%close all
 
 % This script launches all runs of "batch F", which tries to find an
 % optimum balance between IGA and DGIGA in the shock-turbulence problem.

@@ -1,6 +1,5 @@
 clc
 clear
-%close all
 
 % This script launches all runs of 'batch G'.
 % It tries to answer the question: which limiters (if any) preserve order

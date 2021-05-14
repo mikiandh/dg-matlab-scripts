@@ -1,6 +1,5 @@
 clc
 clear
-%close all
 
 % This script launches all runs of "batch E", which compares the best
 % limiting solutions for the three DG variants, in the shock-turbulence
