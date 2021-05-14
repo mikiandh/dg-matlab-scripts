@@ -1,6 +1,5 @@
 clc
 clear
-close all
 
 % This script computes norms of a numerical solution of the Burgers
 % equation as a function of time, using a monochromatic initial condition.

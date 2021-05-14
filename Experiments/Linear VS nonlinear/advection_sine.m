@@ -1,6 +1,5 @@
 clc
 clear
-close all
 
 % This script computes norms of a numerical solution of the Advection
 % equation as a function of time, using a monochromatic initial condition.
@@ -44,9 +43,10 @@ parfor i = 1:size(bases,1)
         targetWavemode = round(targetWellResolvedFraction*resolvingWavemode);
         fprintf(1,'Starting %d x %s\nTargeted wavemode: %g\n %g of well-resolved\n %g of resolved (Nyquist)\n\n',...
             mesh.elementCount,basis.getName,targetWavemode,targetWavemode/resolvingWavemode,targetWavemode/nyquistWavemode)
-        exactSolution = @(t,x) advectionExact(t,x,@(x) 1+.1*sin(pi*targetWavemode*x),1,[-1,1]);
+        physics = Advection;
+        exactSolution = @(t,x) physics.MOC(t,x,@(x) 1+.1*sin(pi*targetWavemode*x),[-1,1]);
         % Solver:
-        solver = SSP_RK3(Advection,[0 0],'timeDelta',dt,'norms',norms,'exactSolution',exactSolution);
+        solver = SSP_RK3(physics,[0 0],'timeDelta',dt,'norms',norms,'exactSolution',exactSolution);
         % Time-integration:
         solver.initialize(mesh)
         ticID = tic;

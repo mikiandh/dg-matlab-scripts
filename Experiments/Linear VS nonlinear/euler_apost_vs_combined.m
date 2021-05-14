@@ -1,6 +1,5 @@
 clc
 clear
-%close all
 
 % This script compares the results of a posteriori MWA with combined-mode
 % analysis.

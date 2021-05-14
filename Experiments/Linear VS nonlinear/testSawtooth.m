@@ -1,8 +1,7 @@
 clc
 clear
-close all
 
-% This script test the exact solution to Burgers equation with "sawtooth"
+% This script test the exact solution to Burgers' equation with "sawtooth"
 % initial condition.
 
 %% Setup

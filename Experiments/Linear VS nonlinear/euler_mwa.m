@@ -1,6 +1,5 @@
 clc
 clear
-%close all
 
 % This script computes a posteriori modified wavenumbers for the Euler
 % equations, using Stefan et al. (2014)'s approach.

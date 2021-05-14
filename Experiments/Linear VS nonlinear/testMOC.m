@@ -1,8 +1,7 @@
-%clc
+clc
 clear
-close all
 
-% This script test the M.O.C. solver for Burgers equation.
+% This script test the M.O.C. solver for Burgers' equation.
 
 %% Setup
 dt = .1; % sample frequency (in time)

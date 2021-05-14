@@ -1,4 +1,7 @@
-% This script test the Cole-Hopf transform solver for Burgers equation.
+clc
+clear
+
+% This script test the Cole-Hopf transform solver for Burgers' equation.
 
 %% Setup
 nu = 1e-3; % viscosity

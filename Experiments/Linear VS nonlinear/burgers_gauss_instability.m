@@ -1,8 +1,7 @@
 clc
 clear
-%close all
 
-% This script is generates data I use for the 3D time-slice plots comparing
+% This script generates data I use for the 3D time-slice plots comparing
 % DGSEM, DGIGA and DGIGA-AFC in regards to their tendency to undergo that
 % "pesky instability" I don't quite understand.
 

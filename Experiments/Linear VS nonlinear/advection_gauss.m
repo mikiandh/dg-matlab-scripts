@@ -1,6 +1,5 @@
 clc
 clear
-close all
 
 % This script computes error norms of a numerical solution of the advection
 % equation as a function of time, using a Gaussian initial condition.
@@ -22,7 +21,8 @@ bases = [
     DGSEM(19)	FR({'eta',0.152203674556189},19)   DGIGA(2,14,9)    DGIGA_nodal(2,14,9)
     ];
 export = struct('fig',true,'dat',true,'tbl',true); % yes or no?
-exactSolution = @(t,x) advectionExact(t,x,@(x) exp(-9*pi/4*x.^2),1,[-1,1]);
+physics = Advection;
+exactSolution = @(t,x) physics.MOC(t,x,@(x) exp(-9*pi/4*x.^2),[-1,1]);
 
 %% Batch run
 tbl(1:size(bases,1)) = {array2table([T(:) zeros(numel(T),9)])};
@@ -37,7 +37,7 @@ parfor i = 1:size(bases,1)
         mesh = Mesh(basis,[-1 1],Periodic(2),round(Ndofs/basis.basisCount));
         fprintf(1,"Starting %d x %s\n\n",mesh.elementCount,basis.getName)
         % Solver:
-        solver = SSP_RK3(Advection,[0 0],'timeDelta',dt,'norms',norms,...
+        solver = SSP_RK3(physics,[0 0],'timeDelta',dt,'norms',norms,...
             'exactSolution',exactSolution);
         % Time-integration:
         solver.initialize(mesh)

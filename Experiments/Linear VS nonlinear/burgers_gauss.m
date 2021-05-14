@@ -1,6 +1,5 @@
 clc
 clear
-close all
 
 % This script computes some norms of the error in a numerical solution of
 % the Burgers equation as a function of time, for a Gaussian hump initial
