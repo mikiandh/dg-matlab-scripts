@@ -1,7 +1,5 @@
 clc
 clear
-%close all
-%path(pathdef)
 
 % This script is meant to allow a visual comparison between the Fourier 
 % footprint of various spatial discretizations in relation to the stability 
@@ -9,9 +7,9 @@ clear
 
 %% Spatial discretizations
 discs = {
-    DGSEM(2)
-    FR('min',2)
-    DGIGA(2,2,0)
+    DGSEM(5)
+    FR({'eta',0.058},5)
+    DGIGA(2,3,1)
     };
 
 %% Temporal discretization

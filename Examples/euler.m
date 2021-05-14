@@ -30,8 +30,8 @@ solver.timeDelta = 5e-3;
 solver.isTimeDeltaFixed = true;
 
 %% Time-integration
-solver.initialize(mesh,'Method','interpolate')
-% solver.initialize(mesh)
+% solver.initialize(mesh,'Method','interpolate')
+solver.initialize(mesh)
 solver.launch(mesh)
 
 %% Exact solutions and/or initial conditions

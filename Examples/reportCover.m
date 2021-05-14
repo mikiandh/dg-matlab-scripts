@@ -1,9 +1,9 @@
 clc
 clear
 
-% This script generates a figure in A4 size and exports it to pdf
+% This script generates a figure in A4 size and exports it to pdf; it could
+% be used to generate a full-page cover image for a thesis.
 %
-% I used it to generate a full-page cover image for my thesis.
 % Requires 'export_fig' (https://github.com/altmany/export_fig) and 
 % 'cbrewer' (https://uk.mathworks.com/matlabcentral/fileexchange/
 % 34087-cbrewer-colorbrewer-schemes-for-matlab).

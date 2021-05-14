@@ -27,9 +27,10 @@ space.displayEnergy
 
 %% Dispersion and dissipation combined-mode errors (phase and amplitude)
 figure
-space.displayAngAmp([1 10 100])
+space.displayAngAmp([1 10 100]);
 
 %% Scalar metrics
-space.getOrder % theoretical order of accuracy
-space.getCutoffWavenumber % dissipation cutoff
-space.getResolvingWavenumber % dissipation + dispersion cutoff
+fprintf('Discretization: %s\n',space.getName)
+fprintf('Theoretical order of accuracy: %g\n',space.getOrder)
+fprintf('Dissipation only cutoff: %g\n',space.getCutoffWavenumber)
+fprintf('Dissipation + dispersion cutoff: %g\n\n',space.getResolvingWavenumber)
