@@ -1,6 +1,5 @@
 clc
 clear
-close all
 
 % This script solves the following nonlinear, 3-dimensional, integer-valued
 % optimization problem:
@@ -8,10 +7,6 @@ close all
 % Given DGIGA of 'J' basis functions, find the combination of 'k', 'p' and
 % 's' parameters that minimizes some cost function associated with its
 % modified dispersion and dissipation relations.
-
-%% Dependencies
-addpath('../../Solver')
-addpath('../../Basis')
 
 %% Setup
 J = logspacei(2,19,8) + 1;

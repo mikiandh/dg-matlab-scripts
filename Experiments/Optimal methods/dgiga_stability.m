@@ -1,6 +1,5 @@
 clc
 clear
-close all
 
 % This script solves the following nonlinear, 3-dimensional, integer-valued
 % optimization problem:
@@ -8,16 +7,12 @@ close all
 % Given DGIGA of 'J' basis functions, find the combination of 'k', 'p' and
 % 's' parameters that maximizes the maximum allowable CFL number.
 
-%% Dependencies
-addpath('../../Solver')
-addpath('../../Basis')
-
 %% Setup
 J = [3 4 5 6]; % 8 11 15 20];
 pMin = 0*J; % minimum degree required
 time = SSP_RK3;
 name = 'dgiga_stability';
-export = struct('dat',false,'fig',false,'tikz',false);
+export = struct('dat',true,'fig',false,'tikz',false);
 
 %% Preprocess
 try

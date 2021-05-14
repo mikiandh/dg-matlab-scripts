@@ -1,13 +1,8 @@
 clc
 clear
-close all
 
 % This script generates a table comparing DGSEM with itself, at varying
 % degrees, in terms of the common 'optimality criteria'.
-
-%% Dependencies
-addpath('../../Solver')
-addpath('../../Basis')
 
 %% Setup
 p = [0 1 logspacei(2,19,8)];
@@ -62,7 +57,12 @@ parfor i = 1:I
         ]'; %#ok<PFBNS>
         fprintf('\nRun %d of %d:\n',i,I)
         disp(tbl(i,:))
-        %%%
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        % This plots and saves (if active) the dispersion and dissipation
+        % relations obtained from using simple MWA (physical mode), and
+        % combined-mode analysis. Neither are actually representative
+        % of actual behaviour; only phase shift and amplification factor
+        % are.
         if export.fig %#ok<PFBNS>
             figure(i)
             optimum.displayDispDiss
@@ -70,7 +70,7 @@ parfor i = 1:I
             saveas(gcf,[export.name '_' num2str(i) '.fig'])
             close hidden
         end
-        %%%
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     catch me
        warning("Run %d (p = %d) failed with error:\n '%s'",i,p(i),getReport(me))
     end

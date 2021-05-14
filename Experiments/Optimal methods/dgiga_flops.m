@@ -1,7 +1,8 @@
+clc
+clear
+
 % This script computes and writes into files the estimated cost (in FLOPs)
 % of solving advection using RK3 and some DGIGA scheme.
-%
-clear, clc, close all
 
 %% File name root
 fileRoot = 'flops';

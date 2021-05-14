@@ -1,12 +1,15 @@
 function F = objFun_Asthana2015(basis)
-% Objective function from Asthana & Jameson (2015).
+% Objective function based on Asthana & Jameson, 2015
+%
+% Improved version, using combined-mode analysis (most rigorous) rather
+% than an energy-weighted eigenmodal average (intuitive, but unjustified).
 %
 % I/O
 %  basis: discretization to evaluate
 %  ---
 %  F: cost <-> badness <-> penalty (smaller is better)
 %
-t = 100;
+t = 100; % evaluate at an arbitrary (long) simulated time instant
 
 % %%% Vanilla version %%%
 %     function f = fun(k)
@@ -15,7 +18,7 @@ t = 100;
 %     end
 % %%%%%%%%%%%%%%%%%%%%%%%
 
-%%% Combined mode version %%%
+%%% Combined-mode version %%%
     function f = fun(k)
         [~,angs,amps] = basis.getAngAmp(t,'wavenumbers',k);
         f = abs(1 - amps.*exp(1i*angs));

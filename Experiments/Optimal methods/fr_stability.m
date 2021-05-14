@@ -1,6 +1,5 @@
 clc
 clear
-close all
 
 % This script solves the following nonlinear, scalar, real-valued
 % optimization problem:
@@ -8,10 +7,6 @@ close all
 % Given FR of degree 'p' and an explicit time scheme, find the correction
 % parameter 'eta' that maximizes the maximum stable Courant number,
 % 'CFL_max', of the combination.
-
-%% Dependencies
-addpath('../../Solver')
-addpath('../../Basis')
 
 %% Setup
 p = logspacei(2,19,8);
@@ -34,7 +29,7 @@ tbl = array2table(zeros(numel(p),7),'VariableNames',{'p','eta','c','exitFlag','r
 parfor i = 1:I
     try
         options = optimset('PlotFcn',{
-            @(varargin) plotFun_eigenvalues(p(i),varargin{:})
+            @(varargin) plotFun_eigenvalues(p(i),varargin{:}) % run in series (parfor -> for) to monitor the optimization in real time
         });
         [eta,badness,flag] = fminbnd(@(x) objFun(x,p(i)),0,10,options);
         basis = FR({'eta',eta},p(i));

@@ -1,7 +1,8 @@
+clc
+clear
+
 % This script computes and writes into files the estimated cost (in FLOPs)
 % of solving advection using RK3 and some DG scheme.
-%
-clear, clc, close all
 
 %% File name root
 fileRoot = 'flops';
@@ -33,7 +34,7 @@ parfor j = 1:size(bases,2)
         N = timeRange*K/solver.optimizeCFL(bases(i,j));
         N = ceil(N); % last step is smaller but costs the same
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        flops = 6*K.*J^2 + 45*J*K + 24*J + 18*K + 15;               %
+        flops = 6*K.*J^2 + 45*J*K + 24*J + 18*K + 15;               % see appendix B in the report
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         flops = flops.*N;
         if i == 1

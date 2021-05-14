@@ -1,17 +1,12 @@
 clc
 clear
-close all
 
 % This script solves the following nonlinear, scalar, real-valued
 % optimization problem:
 %
 % Given FR of degree 'p' and an explicit time scheme, find the correction
 % parameter 'eta' that minimizes the L2-norm of the error with the exact
-% dispersion relation.
-
-%% Dependencies
-addpath('../../Solver')
-addpath('../../Basis')
+% dispersion relation. 
 
 %% Setup
 p = logspacei(2,19,8);
@@ -21,7 +16,7 @@ export = struct('name','fr_dispersion',...
     'dat',true,...
     'fig',false,...
     'gif',false,... incompatible with parfor, sorry
-    'tikz',false);
+    'tikz',false); % requires matlab2tikz
 
 %% Preprocess
 try
