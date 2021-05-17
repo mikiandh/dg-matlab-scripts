@@ -8,6 +8,8 @@ Galerkin Method", is publicly available [here](http://resolver.tudelft.nl/uuid:a
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4767431.svg)](https://doi.org/10.5281/zenodo.4767431)
 
+![](Extra/cover.svg)
+
 ## Methods available
 Three discontinous high-order discretization methods,
 - Discontinuous Galerkin spectral element method (DGSEM)
