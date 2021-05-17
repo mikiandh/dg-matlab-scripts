@@ -6,6 +6,8 @@ The thesis document, titled "High-Order Discretization
 of Hyperbolic Equations: Characterization of an Isogeometric Discontinuous
 Galerkin Method", is publicly available [here](http://resolver.tudelft.nl/uuid:a013de4a-a869-47ff-a020-98ff5da743cd).
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4767431.svg)](https://doi.org/10.5281/zenodo.4767431)
+
 ## Methods available
 Three discontinous high-order discretization methods,
 - Discontinuous Galerkin spectral element method (DGSEM)
@@ -52,3 +54,7 @@ Miquel Herrera | mail@miquelherrera.com
 
 ## License
 BSD 3-clause (see `LICENSE` file)
+
+## Cite as
+[1] Miquel Herrera. mikiandh/dg-matlab-scripts: Release v1.0.0 2021. [doi:10.5281/zenodo.4767431](https://doi.org/10.5281/zenodo.4767431).
+
