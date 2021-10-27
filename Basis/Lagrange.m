@@ -19,8 +19,7 @@ classdef Lagrange < Basis
                 this.order = p+1;
                 this.basisCount = this.order;
                 this.breakCoords = [-1 1];
-                [this.nodeCoords, this.nodeWeights,this.vandermonde] =...
-                    Legendre.quadratureGaussLegendre(p);
+                this.setQuadratureVars;
                 this.gaussCoords = this.nodeCoords;
                 this.gaussWeights = this.nodeWeights;
                 this.dofCoords = this.nodeCoords;
@@ -35,6 +34,11 @@ classdef Lagrange < Basis
                 % Sparsity graph:
                 this.computeSparsityGraph;
             end
+        end
+        %% Initialize Gauss quadrature variables
+        function setQuadratureVars(this)
+            [this.nodeCoords, this.nodeWeights, this.vandermonde] =...
+                Legendre.quadratureGaussLegendre(this.degree);
         end
         %% Evaluate Lagrange polynomial basis
         function l = sampleAt(this,x)

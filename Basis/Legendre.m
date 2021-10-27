@@ -186,6 +186,29 @@ classdef Legendre < Basis
             weights = 2./((1-coords.^2).*dLGV.^2)*(N2/N1)^2; % compute weights
             LGVM = (LGVM(:,1:end-1))'; % clean-up the Vandermonde matrix
         end
+        %% Legendre-Gauss-Lobatto quadrature data
+        function [coords, weights, LGLVM] = quadratureGaussLobatto(N)
+            % Truncation + 1
+            N1 = N+1;
+            % Use the Chebyshev-Gauss-Lobatto nodes as the first guess
+            coords = -cos(pi*(0:N)/N)';
+            % The Legendre Vandermonde Matrix
+            LGLVM = ones(N1);
+            % Compute P_(N) using the recursion relation
+            % Compute its first and second derivatives and
+            % update x using the Newton-Raphson method.
+            xold = 2;
+            while max(abs(coords-xold)) > eps
+                xold = coords;
+                LGLVM(:,2) = coords;
+                for k = 2:N
+                    LGLVM(:,k+1)=( (2*k-1)*coords.*LGLVM(:,k)-(k-1)*LGLVM(:,k-1) )/k;
+                end
+                coords = xold - ( coords.*LGLVM(:,N1)-LGLVM(:,N) )./( N1*LGLVM(:,N1) );
+            end
+            weights = 2./(N*N1*LGLVM(:,N1).^2);
+            LGLVM = LGLVM';
+        end
     end
     methods (Access = {?Basis,?Element})
         %% Identity projection (forwards)
