@@ -154,5 +154,21 @@ classdef Algorithms < handle
             norm = Algorithms.quadvgk(@(x) abs(f(x)).^p,[x(1:end-1); x(2:end)],1:length(f(0)));
             norm = nthroot(norm,p);
         end
+        %% Logarithmic mean (stable evaluation)
+        function uLog = logMean(uL,uR)
+            % Computes the logarithmic mean between two scalars in a stable
+            % manner. From Ismail and Roe, 2009, appendix B.
+            %
+            % Arguments
+            %  uL, uR: (vectors representing arrays of) scalar values
+            %
+            zeta = uL ./ uR;
+            f = (zeta - 1) ./ (zeta + 1);
+            u = f.^2;
+            F = 1 + u/3 + u.^2/5 + u.^2/7;
+            isLogSafe = u >= 1e-2;
+            F(isLogSafe) = log(zeta(isLogSafe)) ./ (2 * f(isLogSafe));
+            uLog = (uL + uR) ./ (2 * F);
+        end
     end
 end

@@ -345,6 +345,30 @@ classdef Euler < Physics
             flux = [avgs(1)*avgs(2); avgs(1)*avgs(2)^2 + avgs(3); avgs(1)*avgs(2)*avgs(5)];
             lambdas = avgs(4);
         end
+        %% Chandrashekar numerical flux
+        function [flux,lambdas] = Chandrashekar(stateL,stateR)
+            % Computes Chandrashekar 2012's entropy conservative (centered) 
+            % numerical flux, between two (arrays of) state vectors.
+            %
+            % 
+            [rhoL, uL, pL, aL, ~] = Euler.getPrimitivesFromState(stateL);
+            [rhoR, uR, pR, aR, ~] = Euler.getPrimitivesFromState(stateR);
+            
+            rhoHat = Algorithms.logMean(rhoL, rhoR);
+            uBar = 0.5 * (uL + uR);
+            betaL = rhoL ./ (2 * pL);
+            betaR = rhoR ./ (2 * pR);
+            betaBar = 0.5 *(betaL + betaR);
+            pTilde = 0.25 * (rhoL + rhoR) ./ betaBar;
+            betaHat = Algorithms.logMean(betaL, betaR);
+            uSquareBar = 0.5 * (uL.^2 + uR.^2);
+            
+            flux = [rhoHat .* uBar; pTilde; 1./(0.8 * betaHat) - 0.5 * uSquareBar];
+            flux(2,:) = flux(2,:) + uBar .* flux(1,:);
+            flux(3,:) = flux(3,:) .* flux(1,:) + uBar .* flux(2,:);            
+            
+            lambdas = 0.5 * (aL + aR);
+        end
         %% Return 3D arrays of left and right eigenvectors
         function [L,R] = getEigenvectors(meanStates)
             % Returns the eigenvector matrices corresponding to each
